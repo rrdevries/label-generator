@@ -1,0 +1,81 @@
+Studio RD – Commerciële Licentie (Individuele Licentie)
+Versie 1.2 — 2025-__-__
+
+Licentiegever: Renée de Vries | Studio RD (“Licentiegever”)
+Licentienemer: <BEDRIJF X NAAM + KvK/Adres> (“Licentienemer”)
+Software: “Etiketten Generator” en bijbehorende documentatie, broncode en builds (“Software”).
+
+1. Licentie
+   1.1 Licentiegever verleent Licentienemer een niet-exclusieve, niet-overdraagbare,
+       wereldwijde en eeuwigdurende licentie om de Software intern te installeren
+       en te gebruiken ten behoeve van de eigen bedrijfsvoering van Licentienemer,
+       inclusief het genereren en distribueren van door de Software geproduceerde
+       PDF-bestanden.
+   1.2 Herdistributie, openbaarmaking of sublicentiëring van de broncode aan derden
+       is niet toegestaan zonder voorafgaande schriftelijke toestemming van
+       Licentiegever.
+
+2. Intellectueel eigendom en beperkingen
+   2.1 Alle intellectuele-eigendomsrechten op en in de Software berusten uitsluitend
+       bij Licentiegever. Deze overeenkomst bewerkstelligt geen overdracht van
+       eigendomsrechten.
+   2.2 Verboden handelingen (tenzij wettelijk dwingend toegestaan):
+       (a) het wijzigen, bewerken, vertalen, aan- of inbouwen in andere software,
+           of anderszins het maken van afgeleide werken van (delen van) de Software;
+       (b) reverse-engineeren, decompileren of disassembleren van de Software;
+       (c) het verwijderen of aanpassen van eigendoms- of licentiekenmerken;
+       (d) het omzeilen van technische voorzieningen die gebruik beperken.
+       Gebruik van configuratie-instellingen of parameters die door de Software
+       zélf wordt aangeboden (bijv. via de UI of config-bestanden) is toegestaan
+       voor normaal gebruik, voor zover daarmee geen afgeleide werken ontstaan.
+
+3. Ondersteuning en onderhoud
+   3.1 De Software wordt opgeleverd **“AS IS”**. Er is **geen** ondersteuning,
+       onderhoud, bugfixing of herstel van fouten bij oplevering inbegrepen.
+   3.2 Eventuele ondersteuning/onderhoud kan uitsluitend op basis van een
+       afzonderlijke, schriftelijke overeenkomst (bijv. SLA) worden afgenomen.
+
+4. Garanties en vrijwaring
+   4.1 Voor zover rechtens toegestaan, wordt de Software geleverd **zonder enige
+       (impliciete of expliciete) garantie**, waaronder — maar niet beperkt tot —
+       garanties van verhandelbaarheid, geschiktheid voor een bepaald doel en
+       niet-inbreuk.
+   4.2 Licentienemer verklaart de Software op eigen initiatief te gebruiken en
+       zich vooraf adequaat te hebben vergewist van de (on)geschiktheid voor het
+       beoogde gebruik.
+
+5. Aansprakelijkheid en risico
+   5.1 Het gebruik van de Software is **volledig voor rekening en risico** van
+       Licentienemer. Licentienemer draagt **100% verantwoordelijkheid** voor elk
+       gebruik en misbruik van de Software en de daaruit voortvloeiende resultaten.
+   5.2 Voor zover dwingend recht niet anders bepaalt, is Licentiegever **op geen
+       enkele wijze aansprakelijk** voor **directe of indirecte** schade, gevolg-
+       schade, bijzondere of incidentele schade, winst- of omzetderving, verlies
+       van gegevens, bedrijfsstagnatie of claims van derden, voortvloeiend uit of
+       verband houdend met het gebruik of het onvermogen tot gebruik van de Software,
+       ongeacht de grondslag (contract, onrechtmatige daad of anderszins), zelfs
+       indien Licentiegever op de mogelijkheid van dergelijke schade is gewezen.
+   5.3 Licentienemer **vrijwaart** Licentiegever tegen aanspraken van derden die
+       voortvloeien uit het gebruik of misbruik van de Software door Licentienemer.
+
+6. Derdencomponenten
+   De Software kan gebruikmaken van componenten van derden die onder eigen
+   licentievoorwaarden vallen (zie NOTICE). Die voorwaarden blijven onverkort
+   van toepassing.
+
+7. Overige bepalingen
+   7.1 Deze licentie is niet-overdraagbaar. Cessie of sublicentiëring is niet
+       toegestaan zonder voorafgaande schriftelijke toestemming van Licentiegever.
+   7.2 Indien een bepaling ongeldig of onafdwingbaar blijkt, blijven de overige
+       bepalingen onverkort van kracht; de ongeldige bepaling wordt vervangen door
+       een geldige bepaling die de bedoeling het dichtst benadert.
+
+8. Toepasselijk recht en forumkeuze
+   Op deze licentie is **Nederlands recht** van toepassing. Geschillen worden
+   exclusief voorgelegd aan de bevoegde rechter in het arrondissement
+   <VUL IN: bijv. “Amsterdam”>.
+
+Ondertekend:
+
+Licentiegever: __________________________  Datum: _______________
+Licentienemer: __________________________  Datum: _______________
