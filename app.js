@@ -286,7 +286,7 @@
 
   async function generatePDFSingle(){
     if (!document.querySelector('.label')) { try { renderSingle(); } catch (e) { alert(e.message||e); return; } }
-    const vals  = readValue();
+    const vals  = getFormValues();
     const sizes = computeLabelSizes(vals);
     const jsPDF = await loadJsPDF();
     const h2c   = await loadHtml2Canvas();
