@@ -75,7 +75,7 @@
   }
 
   /* ====== ENKELVOUDIG IN/OUTPUT ====== */
-  function readValuesSingle(){
+  function readValue(){
     const g = id => document.getElementById(id).value.trim();
     const L = parseFloat(g('boxLength'));
     const W = parseFloat(g('boxWidth'));
@@ -229,7 +229,7 @@
 
 
   async function renderSingle(){
-  const vals  = readValues();            // of readValuesSingle() als dat jouw naam is
+  const vals  = getFormValues();            // of readValue() als dat jouw naam is
   const sizes = computeLabelSizes(vals);
   const scale = computePreviewScale(sizes);
   currentPreviewScale = scale;
@@ -286,7 +286,7 @@
 
   async function generatePDFSingle(){
     if (!document.querySelector('.label')) { try { renderSingle(); } catch (e) { alert(e.message||e); return; } }
-    const vals  = readValuesSingle();
+    const vals  = readValue();
     const sizes = computeLabelSizes(vals);
     const jsPDF = await loadJsPDF();
     const h2c   = await loadHtml2Canvas();
