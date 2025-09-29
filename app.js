@@ -8,9 +8,7 @@
   // typografie/fit
   const WRAP_THRESHOLD_PX = 10;      // onder 10px pas soft-wrap
   const MIN_FS_PX = 6;               // absolute minima
-  const MAX_BODY_PX = 28;            // bovengrens body
   const CODE_MULT    = 1.6;          // productcode ≈ 1.6× body
-  const CODE_CAP_PX  = 28;           // productcode max 28px
 
   /* ====== DOM ====== */
   const labelsGrid  = document.getElementById('labelsGrid');
@@ -128,11 +126,10 @@
             innerEl.scrollHeight <= (innerEl.clientHeight - guardY));
   }
   function applyFontSizes(innerEl, fsPx){
-    const codeEl = innerEl.querySelector('.code-box');
     innerEl.style.setProperty('--fs', fsPx + 'px');
+    const codeEl = innerEl.querySelector('.code-box');
     if (codeEl){
-      const codePx = Math.min(fsPx * CODE_MULT, CODE_CAP_PX);
-      codeEl.style.fontSize = codePx + 'px';
+      const codeEl = innerEl.querySelector('.code-box');
     }
   }
   function searchFontSize(innerEl, minFs, hi, guardX, guardY){
@@ -160,8 +157,7 @@
     const box = innerEl.getBoundingClientRect();
     const guardX = Math.max(6, box.width  * 0.02);
     const guardY = Math.max(6, box.height * 0.02);
-    const fracHi = Math.max(16, Math.min(box.height * 0.22, box.width * 0.18));
-    const hi = Math.min(fracHi, MAX_BODY_PX);
+    const hi = Math.max(16, Math.min(box.height * 0.22, box.width * 0.18));
     innerEl.classList.add('nowrap-mode'); innerEl.classList.remove('softwrap-mode');
     let fs = searchFontSize(innerEl, WRAP_THRESHOLD_PX, hi, guardX, guardY);
     if (fs >= WRAP_THRESHOLD_PX) return;
