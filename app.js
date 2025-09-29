@@ -1,10 +1,10 @@
 /*
-  Etiketten Generator — app.js (batch fix)
-  - Per etiket eigen font-fit (grotere etiketten ⇒ grotere fonts)
-  - Fit pas ná mount (requestAnimationFrame) voor consistente metingen
-  - Geen caps op lettergrootte: tekst mag meegroeien met label
-  - Single en batch delen dezelfde fit-routine
-  - C/N is altijd lijntje (niet invoerbaar), Batch is verplicht
+  Etiketten Generator — app.js (PARITY FIX)
+  - Single én Batch gebruiken exact dezelfde PREVIEW → FIT → CAPTURE pipeline
+  - Fit gebeurt pas ná mount (requestAnimationFrame) voor correcte layout-meting
+  - Geen harde caps op lettergrootte: tekst groeit met het label mee
+  - C/N is altijd een vaste onderstreep op één regel (geen invoer)
+  - Batch: per rij één PDF, alles gebundeld in ZIP
 */
 
 (() => {
@@ -14,20 +14,22 @@
   const PDF_MARGIN_CM = 0.5;       // witmarge rondom in PDF
   const LABEL_PADDING_CM = 0.5;    // binnenmarge in label (cm)
 
-  // typografie
+  // Typografie / fit
   const WRAP_THRESHOLD_PX = 10;    // onder 10px pas zachte afbreking aanzetten
   const MIN_FS_PX = 6;             // noodrem bij heel kleine labels
   const CODE_MULT = 1.6;           // productcode ≈ 1.6 × body
-  const BORDER_PX = 2;             // rand in PDF (px, visueel)
 
-  /* ====== DOM ====== */
+  // PDF rand (alleen voor capture-visual; fysieke rand komt uit DOM-stijl)
+  const BORDER_PX = 2;
+
+  /* ====== DOM HOOKS ====== */
   const labelsGrid  = document.getElementById('labelsGrid');
   const controlInfo = document.getElementById('controlInfo');
   const canvasEl    = document.getElementById('canvas');
   const btnGen      = document.getElementById('btnGenerate');
   const btnPDF      = document.getElementById('btnPDF');
 
-  // Batch DOM (alleen als aanwezig in HTML)
+  // Batch DOM (optioneel aanwezig)
   const dropzone    = document.getElementById('dropzone');
   const fileInput   = document.getElementById('fileInput');
   const btnPickFile = document.getElementById('btnPickFile');
@@ -57,7 +59,7 @@
   let mapping = {};
   let abortFlag = false;
 
-  /* ====== HELPERS (DOM/UTIL) ====== */
+  /* ====== HELPERS ====== */
   const el = (tag, attrs = {}, ...children) => {
     const node = document.createElement(tag);
     Object.entries(attrs).forEach(([k, v]) => {
@@ -72,14 +74,14 @@
   const pad2 = n => String(n).padStart(2,'0');
   const ts = (d=new Date()) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}.${pad2(d.getMinutes())}.${pad2(d.getSeconds())}`;
 
-  // Compatibele wrapper: project kan readValues óf readValuesSingle hebben
+  // Compat-wrapper: project kan readValues óf readValuesSingle hebben
   function getFormValues(){
     if (typeof readValues === 'function')       return readValues();
     if (typeof readValuesSingle === 'function') return readValuesSingle();
     throw new Error('readValues / readValuesSingle niet gevonden');
   }
 
-  // Wacht 1 frame zodat de browser layout/afmetingen heeft berekend
+  // 1 frame wachten zodat layout/afmetingen kloppen
   function nextFrame(){ return new Promise(r => requestAnimationFrame(r)); }
 
   // Fit alle label-inhouden in container
@@ -124,9 +126,9 @@
     return vals;
   }
 
-  /* ====== LABELMATEN / PREVIEW-SCHAAL ====== */
+  /* ====== LABELMATEN & PREVIEW SCALE ====== */
   function computeLabelSizes({ L, W, H }){
-    // Etiket = doosmaat * 0.8 (10% marge rondom)
+    // Etiket = 80% van respectievelijk L×H (1&2) en W×H (3&4) → 10% marge rondom
     const scale=0.8;
     const fb={ w:L*scale, h:H*scale };
     const sd={ w:W*scale, h:H*scale };
@@ -172,7 +174,7 @@
   function applyFontSizes(innerEl, fsPx){
     // basis (body)
     innerEl.style.setProperty('--fs', fsPx + 'px');
-    // productcode schaalt mee zonder cap
+    // productcode schaalt mee (geen cap)
     const codeEl = innerEl.querySelector('.code-box');
     if (codeEl){
       codeEl.style.fontSize = (fsPx * CODE_MULT) + 'px';
@@ -263,22 +265,28 @@
     return wrap;
   }
 
-  /* ====== PREVIEW (SINGLE) ====== */
-  async function renderSingle(){
-    const vals  = getFormValues();
+  /* ====== PREVIEW PIPELINE (single & batch) ====== */
+  async function renderPreviewFor(vals){
     const sizes = computeLabelSizes(vals);
     const scale = computePreviewScale(sizes);
     currentPreviewScale = scale;
 
     updateControlInfo(sizes);
-    labelsGrid.style.gap = '0'; // geen witruimte tussen etiketten
+    labelsGrid.style.gap = '0'; // géén witruimte tussen etiketten
     labelsGrid.innerHTML = '';
 
-    // 1 & 3 boven, 2 & 4 onder
+    // Volgorde: 1 & 3 boven, 2 & 4 onder
     [0,2,1,3].forEach(i => labelsGrid.appendChild(createLabelEl(sizes[i], vals, scale)));
 
-    // Fit ná mount
+    // Fit ná mount (twee frames voor robuustheid)
     await mountThenFit(labelsGrid);
+
+    return { sizes, scale };
+  }
+
+  async function renderSingle(){
+    const vals = getFormValues();
+    await renderPreviewFor(vals);
   }
 
   /* ====== jsPDF / html2canvas ====== */
@@ -289,24 +297,23 @@
     const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
     s.onload=()=>res(window.html2canvas); s.onerror=()=>rej(new Error('Kon html2canvas niet laden.')); document.head.appendChild(s); }); }
 
-  async function capturePreviewLabelToImage(h2c, idx, isFirst, root){
-    const scope = root || document;
-    const src = scope.querySelector(`.label[data-idx="${idx}"]`);
+  async function capturePreviewLabelToImage(h2c, idx, isFirst){
+    const src = document.querySelector(`.label[data-idx="${idx}"]`);
     if (!src) throw new Error('Label niet gevonden voor capture.');
 
     const clone = src.cloneNode(true);
-    // randen zó zetten dat “gestapelde” rand 1px/2px blijft
+    // randen zó zetten dat het visueel klopt; liever te veel dan te weinig (geen missing edge)
     clone.style.borderTop    = `${BORDER_PX}px solid #000`;
     clone.style.borderRight  = `${BORDER_PX}px solid #000`;
     clone.style.borderBottom = `${BORDER_PX}px solid #000`;
-    clone.style.borderLeft   = isFirst ? `${BORDER_PX}px solid #000` : '0';
+    clone.style.borderLeft   = `${BORDER_PX}px solid #000`;
 
     const wrap = document.createElement('div');
     wrap.style.position='fixed'; wrap.style.left='-10000px'; wrap.style.top='0'; wrap.style.background='#fff';
     document.body.appendChild(wrap);
     wrap.appendChild(clone);
 
-    // scherpteschaal — stabiel, maar tast fysieke cm in PDF niet aan
+    // scherpteschaal — tast fysieke cm in PDF niet aan
     const capScale = Math.max(2, window.devicePixelRatio || 1, 1/currentPreviewScale);
     const canvas = await h2c(clone, { backgroundColor:'#fff', scale: capScale });
 
@@ -320,16 +327,15 @@
     return rot.toDataURL('image/png');
   }
 
+  /* ====== SINGLE PDF (via preview) ====== */
   async function generatePDFSingle(){
-    if (!document.querySelector('.label')) {
-      try { await renderSingle(); } catch(e){ alert(e.message||e); return; }
-    }
+    const vals = getFormValues();
+    const { sizes } = await renderPreviewFor(vals);
 
-    const vals  = getFormValues();
-    const sizes = computeLabelSizes(vals);
     const jsPDF = await loadJsPDF();
     const h2c   = await loadHtml2Canvas();
 
+    // Na rotatie: breedte = s.h, hoogte = s.w (cm)
     const contentW = Math.max(...sizes.map(s => s.h));
     const contentH = sizes.reduce((sum, s) => sum + s.w, 0);
     const pageW = contentW + PDF_MARGIN_CM*2;
@@ -340,22 +346,17 @@
     doc.setFont('helvetica','normal');
 
     const orderIdx = [1,3,2,4];
-    const imgs = [];
-    for (let i=0;i<orderIdx.length;i++){
-      imgs.push(await capturePreviewLabelToImage(h2c, orderIdx[i], i===0));
-    }
-
-    let y = PDF_MARGIN_CM, x = PDF_MARGIN_CM;
-    for (let i=0;i<orderIdx.length;i++){
+    for (let i=0, y=PDF_MARGIN_CM; i<orderIdx.length; i++){
+      const img = await capturePreviewLabelToImage(h2c, orderIdx[i], i===0);
       const s = sizes[orderIdx[i]-1];
-      const wRot = s.h, hRot = s.w; // cm
-      doc.addImage(imgs[i], 'PNG', x, y, wRot, hRot, undefined, 'FAST');
+      const wRot = s.h, hRot = s.w;
+      doc.addImage(img, 'PNG', PDF_MARGIN_CM, y, wRot, hRot, undefined, 'FAST');
       y += hRot;
     }
     doc.save(`${vals.code} - ${ts()}.pdf`);
   }
 
-  /* ====== BATCH PIPELINE ====== */
+  /* ====== BATCH PIPELINE (via dezelfde preview) ====== */
   function setHidden(elm, hidden){ if (elm) elm.classList.toggle('hidden', hidden); }
   function log(msg, type='info'){
     if (!logList) return;
@@ -512,30 +513,17 @@
     return { ok:true, vals };
   }
 
-  async function renderOnePdfBlob(vals){
-    const sizes = computeLabelSizes(vals);
+  // Render één PDF via de zichtbare PREVIEW (parity met single)
+  async function renderOnePdfBlobViaPreview(vals){
+    const oldOpacity = canvasEl.style.opacity;
+    canvasEl.style.opacity = '0.15'; // demp UI tijdens batch-render (layout blijft zichtbaar)
 
-    // onzichtbare root
-    const root = document.createElement('div');
-    root.style.position='fixed';
-    root.style.left='-10000px';
-    root.style.top='0';
-    root.style.background='#fff';
-    document.body.appendChild(root);
-
-    const previewScale = 1;
-    [0,2,1,3].forEach(i => root.appendChild(createLabelEl(sizes[i], vals, previewScale)));
-
-    // fit ná mount
-    await mountThenFit(root);
-
-    // capture in batch met scale=1
-    const oldScale = currentPreviewScale;
-    currentPreviewScale = 1;
+    const { sizes } = await renderPreviewFor(vals);
 
     const jsPDF = await loadJsPDF();
     const h2c   = await loadHtml2Canvas();
 
+    // Na rotatie: breedte = s.h, hoogte = s.w (cm)
     const contentW = Math.max(...sizes.map(s => s.h));
     const contentH = sizes.reduce((sum, s) => sum + s.w, 0);
     const pageW = contentW + PDF_MARGIN_CM*2;
@@ -546,23 +534,16 @@
     doc.setFont('helvetica','normal');
 
     const orderIdx = [1,3,2,4];
-    const imgs = [];
-    for (let i=0;i<orderIdx.length;i++){
-      imgs.push(await capturePreviewLabelToImage(h2c, orderIdx[i], i===0, root));
-    }
-
-    let y = PDF_MARGIN_CM, x = PDF_MARGIN_CM;
-    for (let i=0;i<orderIdx.length;i++){
+    for (let i=0, y=PDF_MARGIN_CM; i<orderIdx.length; i++){
+      const img = await capturePreviewLabelToImage(h2c, orderIdx[i], i===0);
       const s = sizes[orderIdx[i]-1];
-      const wRot = s.h, hRot = s.w; // cm
-      doc.addImage(imgs[i], 'PNG', x, y, wRot, hRot, undefined, 'FAST');
+      const wRot = s.h, hRot = s.w;
+      doc.addImage(img, 'PNG', PDF_MARGIN_CM, y, wRot, hRot, undefined, 'FAST');
       y += hRot;
     }
 
-    const blob = doc.output('blob');
-    document.body.removeChild(root);
-    currentPreviewScale = oldScale;
-    return blob;
+    canvasEl.style.opacity = oldOpacity || '';
+    return doc.output('blob');
   }
 
   /* ====== BATCH UI EVENTS ====== */
@@ -611,6 +592,7 @@
 
   if (btnTemplateCsv){
     btnTemplateCsv.addEventListener('click', ()=>{
+      // Alleen headers — géén voorbeeldregels
       const hdrs = ['Productcode','Omschrijving','EAN','QTY','G.W','CBM','Lengte (L)','Breedte (W)','Hoogte (H)','Batch'];
       const blob = new Blob([hdrs.join(',') + '\n'], {type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob);
@@ -621,6 +603,7 @@
 
   if (btnTemplateXlsx){
     btnTemplateXlsx.addEventListener('click', ()=>{
+      // Alleen headers — géén voorbeeldregels
       const hdrs = ['Productcode','Omschrijving','EAN','QTY','G.W','CBM','Lengte (L)','Breedte (W)','Hoogte (H)','Batch'];
       const ws = XLSX.utils.aoa_to_sheet([hdrs]);
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Etiketten');
@@ -643,7 +626,7 @@
       if (btnAbortBatch) btnAbortBatch.disabled = false;
       setHidden(progressWrap, false);
       progressBar.style.width = '0%';
-      progressLabel.textContent = `0 / ${parsedRows.length}`;
+      progressLabel.textContent = `${0} / ${parsedRows.length}`;
       progressPhase.textContent = 'Voorbereiden…';
 
       const zip = new JSZip();
@@ -652,13 +635,14 @@
 
       for (let i=0; i<parsedRows.length; i++){
         if (abortFlag){ log(`Batch afgebroken op rij ${i+1}.`, 'error'); break; }
+
         const r = readRowWithMapping(parsedRows[i], mapping);
         if (!r.ok){
           errCount++; log(`Rij ${i+1}: ${r.error}`, 'error');
         } else {
           try{
             progressPhase.textContent = `Rij ${i+1}: PDF renderen…`;
-            const blob = await renderOnePdfBlob(r.vals);
+            const blob = await renderOnePdfBlobViaPreview(r.vals); // <<< parity pad
             const safeCode = r.vals.code.replace(/[^\w.-]+/g,'_');
             const name = `${safeCode} - ${batchTime} - R${String(i+1).padStart(3,'0')}.pdf`;
             zip.file(name, blob);
@@ -669,7 +653,7 @@
         }
         progressBar.style.width = `${Math.round(((i+1)/parsedRows.length)*100)}%`;
         progressLabel.textContent = `${i+1} / ${parsedRows.length}`;
-        await new Promise(r=>setTimeout(r,0));
+        await new Promise(r=>setTimeout(r,0)); // UI ademruimte
       }
 
       if (btnAbortBatch) btnAbortBatch.disabled = true;
@@ -696,13 +680,13 @@
     });
   }
 
-  /* ====== EVENTS EN INIT ====== */
+  /* ====== EVENTS & INIT ====== */
   const safeRender = () => renderSingle().catch(e => alert(e.message||e));
   if (btnGen) btnGen.addEventListener('click', safeRender);
   if (btnPDF) btnPDF.addEventListener('click', async ()=>{ try{ await generatePDFSingle(); } catch(e){ alert(e.message||e); } });
   window.addEventListener('resize', ()=>{ renderSingle().catch(()=>{}); });
 
-  // Demo (optioneel, kan weg)
+  // (optioneel) demo-waarden voor snelle start
   try{
     if (document.getElementById('prodCode')){
       document.getElementById('prodCode').value   = 'LG1000843';
