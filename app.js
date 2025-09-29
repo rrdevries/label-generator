@@ -1,14 +1,24 @@
-(() => {
-  /* ====== CONSTANTEN ====== */
-  const PX_PER_CM = 37.7952755906;   // 96dpi
-  const PREVIEW_GAP_CM_NUM = 0.5;
-  const PDF_MARGIN_CM = 0.5;
-  const LABEL_PADDING_CM = 0.5;      // cm binnenmarge
+/*
+  Etiketten Generator — app.js (batch fix)
+  - Per etiket eigen font-fit (grotere etiketten ⇒ grotere fonts)
+  - Fit pas ná mount (requestAnimationFrame) voor consistente metingen
+  - Geen caps op lettergrootte: tekst mag meegroeien met label
+  - Single en batch delen dezelfde fit-routine
+  - C/N is altijd lijntje (niet invoerbaar), Batch is verplicht
+*/
 
-  // typografie/fit
-  const WRAP_THRESHOLD_PX = 10;      // onder 10px pas soft-wrap
-  const MIN_FS_PX = 6;               // absolute minima
-  const CODE_MULT    = 1.6;          // productcode ≈ 1.6× body
+(() => {
+  /* ====== CONSTANTS ====== */
+  const PX_PER_CM = 37.7952755906; // 96dpi
+  const PREVIEW_GAP_CM_NUM = 0;    // geen ruimte tussen etiketten in preview
+  const PDF_MARGIN_CM = 0.5;       // witmarge rondom in PDF
+  const LABEL_PADDING_CM = 0.5;    // binnenmarge in label (cm)
+
+  // typografie
+  const WRAP_THRESHOLD_PX = 10;    // onder 10px pas zachte afbreking aanzetten
+  const MIN_FS_PX = 6;             // noodrem bij heel kleine labels
+  const CODE_MULT = 1.6;           // productcode ≈ 1.6 × body
+  const BORDER_PX = 2;             // rand in PDF (px, visueel)
 
   /* ====== DOM ====== */
   const labelsGrid  = document.getElementById('labelsGrid');
@@ -17,7 +27,7 @@
   const btnGen      = document.getElementById('btnGenerate');
   const btnPDF      = document.getElementById('btnPDF');
 
-  // Batch DOM
+  // Batch DOM (alleen als aanwezig in HTML)
   const dropzone    = document.getElementById('dropzone');
   const fileInput   = document.getElementById('fileInput');
   const btnPickFile = document.getElementById('btnPickFile');
@@ -40,14 +50,14 @@
   const logWrap   = document.getElementById('logWrap');
   const logList   = document.getElementById('logList');
 
-  // state
+  /* ====== STATE ====== */
   let currentPreviewScale = 1;
   let parsedRows = [];
   let headers = [];
   let mapping = {};
   let abortFlag = false;
 
-  /* ====== HELPERS ====== */
+  /* ====== HELPERS (DOM/UTIL) ====== */
   const el = (tag, attrs = {}, ...children) => {
     const node = document.createElement(tag);
     Object.entries(attrs).forEach(([k, v]) => {
@@ -55,31 +65,47 @@
       else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.substring(2), v);
       else node.setAttribute(k, v);
     });
-    children.flat().forEach(c => { if (c!=null) node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    children.flat().forEach(c => node.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
     return node;
   };
   const line = (lab, val) => [el('div',{class:'lab'}, lab), el('div',{class:'val'}, val)];
   const pad2 = n => String(n).padStart(2,'0');
-  const ts=(d=new Date())=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}.${pad2(d.getMinutes())}.${pad2(d.getSeconds())}`;
+  const ts = (d=new Date()) => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}.${pad2(d.getMinutes())}.${pad2(d.getSeconds())}`;
 
-  // Wacht tot de browser één render-frame heeft gemaakt (zodat afmetingen kloppen)
-  const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  // Compatibele wrapper: project kan readValues óf readValuesSingle hebben
+  function getFormValues(){
+    if (typeof readValues === 'function')       return readValues();
+    if (typeof readValuesSingle === 'function') return readValuesSingle();
+    throw new Error('readValues / readValuesSingle niet gevonden');
+  }
 
-  // Fit alle label-inhouden binnen hun kader (no-wrap -> fit; wrap pas als nodig)
+  // Wacht 1 frame zodat de browser layout/afmetingen heeft berekend
+  function nextFrame(){ return new Promise(r => requestAnimationFrame(r)); }
+
+  // Fit alle label-inhouden in container
   function fitAllIn(container){
-    container.querySelectorAll('.label-inner').forEach((inner) => {
+    container.querySelectorAll('.label-inner').forEach(inner => {
       inner.classList.add('nowrap-mode');
       inner.classList.remove('softwrap-mode');
       fitContentToBoxConditional(inner);
     });
   }
 
-  /* ====== ENKELVOUDIG IN/OUTPUT ====== */
-  function getFormValues(){
+  // Extra robuust: twee fit-rondes met tussentijds frame
+  async function mountThenFit(container){
+    await nextFrame();
+    fitAllIn(container);
+    await nextFrame();
+    fitAllIn(container);
+  }
+
+  /* ====== ENKELVOUDIG INLEZEN ====== */
+  function readValuesSingle(){
     const g = id => document.getElementById(id).value.trim();
     const L = parseFloat(g('boxLength'));
     const W = parseFloat(g('boxWidth'));
     const H = parseFloat(g('boxHeight'));
+
     const vals = {
       L,W,H,
       code:g('prodCode'),
@@ -90,6 +116,7 @@
       cbm:g('cbm'),
       batch:g('batch') // verplicht
     };
+
     if ([L,W,H].some(v=>!isFinite(v)||v<=0) ||
         !vals.code || !vals.desc || !vals.ean || !vals.qty || !vals.gw || !vals.cbm || !vals.batch){
       throw new Error('Controleer de verplichte velden (incl. Batch).');
@@ -97,16 +124,18 @@
     return vals;
   }
 
-  /* ====== LABELAFMETINGEN ====== */
+  /* ====== LABELMATEN / PREVIEW-SCHAAL ====== */
   function computeLabelSizes({ L, W, H }){
+    // Etiket = doosmaat * 0.8 (10% marge rondom)
     const scale=0.8;
     const fb={ w:L*scale, h:H*scale };
     const sd={ w:W*scale, h:H*scale };
+    const cnText = 'C/N: ___________________';
     return [
-      { idx:1, kind:'front/back', ...fb, underType:'china' },
-      { idx:2, kind:'front/back', ...fb, underType:'cn'    },
-      { idx:3, kind:'side',       ...sd, underType:'china' },
-      { idx:4, kind:'side',       ...sd, underType:'cn'    }
+      { idx:1, kind:'front/back', ...fb, under:'Made in China' },
+      { idx:2, kind:'front/back', ...fb, under: cnText },
+      { idx:3, kind:'side',       ...sd, under:'Made in China' },
+      { idx:4, kind:'side',       ...sd, under: cnText }
     ];
   }
 
@@ -132,23 +161,30 @@
     return Math.min(innerW/requiredW, 1);
   }
 
-  /* ====== FONT FIT ====== */
+  /* ====== FONT-FIT ====== */
   function fitsWithGuard(innerEl, guardX, guardY){
-    return (innerEl.scrollWidth <= (innerEl.clientWidth - guardX) &&
-            innerEl.scrollHeight <= (innerEl.clientHeight - guardY));
+    return (
+      innerEl.scrollWidth  <= (innerEl.clientWidth  - guardX) &&
+      innerEl.scrollHeight <= (innerEl.clientHeight - guardY)
+    );
   }
+
   function applyFontSizes(innerEl, fsPx){
+    // basis (body)
     innerEl.style.setProperty('--fs', fsPx + 'px');
+    // productcode schaalt mee zonder cap
     const codeEl = innerEl.querySelector('.code-box');
     if (codeEl){
-      const codeEl = innerEl.querySelector('.code-box');
+      codeEl.style.fontSize = (fsPx * CODE_MULT) + 'px';
     }
   }
+
   function searchFontSize(innerEl, minFs, hi, guardX, guardY){
+    // probeer eerst omhoog te groeien
     applyFontSizes(innerEl, hi);
     if (fitsWithGuard(innerEl, guardX, guardY)){
       let grow = hi;
-      for (let i=0;i<24;i++){
+      for (let i=0;i<36;i++){
         const next = grow * 1.06;
         applyFontSizes(innerEl, next);
         if (!fitsWithGuard(innerEl, guardX, guardY)){ applyFontSizes(innerEl, grow); return grow; }
@@ -156,6 +192,7 @@
       }
       return grow;
     }
+    // anders binair omlaag zoeken
     let lo = minFs, best = lo;
     while (hi - lo > 0.5){
       const mid = (lo + hi)/2;
@@ -165,19 +202,26 @@
     applyFontSizes(innerEl, best);
     return best;
   }
+
+  // eerst no-wrap (>=10px), dan indien nodig soft-wrap (>=6px)
   function fitContentToBoxConditional(innerEl){
     const box = innerEl.getBoundingClientRect();
     const guardX = Math.max(6, box.width  * 0.02);
     const guardY = Math.max(6, box.height * 0.02);
-    const hi = Math.max(16, Math.min(box.height * 0.22, box.width * 0.18));
-    innerEl.classList.add('nowrap-mode'); innerEl.classList.remove('softwrap-mode');
+
+    const hi = Math.max(16, Math.min(box.height * 0.22, box.width * 0.18)); // geen hard cap
+
+    innerEl.classList.add('nowrap-mode');
+    innerEl.classList.remove('softwrap-mode');
     let fs = searchFontSize(innerEl, WRAP_THRESHOLD_PX, hi, guardX, guardY);
     if (fs >= WRAP_THRESHOLD_PX) return;
-    innerEl.classList.remove('nowrap-mode'); innerEl.classList.add('softwrap-mode');
+
+    innerEl.classList.remove('nowrap-mode');
+    innerEl.classList.add('softwrap-mode');
     searchFontSize(innerEl, MIN_FS_PX, hi, guardX, guardY);
   }
 
-  /* ====== UI LABELS ====== */
+  /* ====== UI OPBOUW ====== */
   function buildLeftBlock(values, size){
     const block = el('div', { class:'label-leftblock' });
     const grid  = el('div', { class:'specs-grid' });
@@ -189,64 +233,53 @@
     ].forEach(n => grid.append(n));
     block.append(grid);
     block.append(el('div',{class:'line'}, `Batch: ${values.batch}`));
-    if (size.underType === 'china'){
-      block.append(el('div',{class:'line'}, 'Made in China'));
-    } else {
-      const row = el('div',{class:'cn-row'},
-        el('div',{class:'lab'}, 'C/N:'),
-        el('div',{class:'cn-line'}, '')
-      );
-      block.append(row);
-    }
+    block.append(el('div',{class:'line'}, size.under));
     return block;
   }
 
   function createLabelEl(size, values, previewScale){
-  const widthPx  = Math.round(size.w * PX_PER_CM * previewScale);
-  const heightPx = Math.round(size.h * PX_PER_CM * previewScale);
+    const widthPx  = Math.round(size.w * PX_PER_CM * previewScale);
+    const heightPx = Math.round(size.h * PX_PER_CM * previewScale);
 
-  const wrap  = el('div', { class:'label-wrap' });
-  const label = el('div', { class:'label', style:{ width:widthPx+'px', height:heightPx+'px' }});
-  label.dataset.idx = String(size.idx);
+    const wrap  = el('div', { class:'label-wrap' });
+    const label = el('div', { class:'label', style:{ width:widthPx+'px', height:heightPx+'px' }});
+    label.dataset.idx = String(size.idx);
 
-  const inner = el('div', { class:'label-inner nowrap-mode' });
-  inner.style.padding = (LABEL_PADDING_CM * PX_PER_CM * previewScale) + 'px';
+    const inner = el('div', { class:'label-inner nowrap-mode' });
+    inner.style.padding = (LABEL_PADDING_CM * PX_PER_CM * previewScale) + 'px';
 
-  const head = el('div', { class:'label-head' },
-    el('div', { class:'code-box line' }, values.code),
-    el('div', { class:'line' }, values.desc)
-  );
+    const head = el('div', { class:'label-head' },
+      el('div', { class:'code-box line' }, values.code),
+      el('div', { class:'line' }, values.desc)
+    );
 
-  inner.append(head, el('div',{class:'block-spacer'}), buildLeftBlock(values, size));
-  label.append(inner);
-  wrap.append(label, el('div',{class:'label-num'}, `Etiket ${size.idx}`));
+    inner.append(head, el('div',{class:'block-spacer'}), buildLeftBlock(values, size));
+    label.append(inner);
+    wrap.append(label, el('div',{class:'label-num'}, `Etiket ${size.idx}`));
 
-  // Alleen een ruwe startwaarde; géén fit hier!
-  applyFontSizes(inner, Math.max(10, Math.floor(heightPx * 0.06)));
+    // Alleen startwaarde — echte fit na mount
+    applyFontSizes(inner, Math.max(10, Math.floor(heightPx * 0.06)));
 
-  return wrap;
-}
-
-
-  async function renderSingle(){
-  const vals  = getFormValues();            // of readValue() als dat jouw naam is
-  const sizes = computeLabelSizes(vals);
-  const scale = computePreviewScale(sizes);
-  currentPreviewScale = scale;
-
-  updateControlInfo(sizes);
-  labelsGrid.style.gap = '0.5cm';
-  labelsGrid.innerHTML = '';
-
-  // Preview volgorde: 1 & 3 boven, 2 & 4 onder
-  [0,2,1,3].forEach(i => labelsGrid.appendChild(createLabelEl(sizes[i], vals, scale)));
-
-  // Wacht één frame → layout staat; daarna fitten
-  await nextFrame();
-  fitAllIn(labelsGrid);
+    return wrap;
   }
 
+  /* ====== PREVIEW (SINGLE) ====== */
+  async function renderSingle(){
+    const vals  = getFormValues();
+    const sizes = computeLabelSizes(vals);
+    const scale = computePreviewScale(sizes);
+    currentPreviewScale = scale;
 
+    updateControlInfo(sizes);
+    labelsGrid.style.gap = '0'; // geen witruimte tussen etiketten
+    labelsGrid.innerHTML = '';
+
+    // 1 & 3 boven, 2 & 4 onder
+    [0,2,1,3].forEach(i => labelsGrid.appendChild(createLabelEl(sizes[i], vals, scale)));
+
+    // Fit ná mount
+    await mountThenFit(labelsGrid);
+  }
 
   /* ====== jsPDF / html2canvas ====== */
   function loadJsPDF(){ return new Promise((res,rej)=>{ if (window.jspdf?.jsPDF) return res(window.jspdf.jsPDF);
@@ -256,69 +289,80 @@
     const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
     s.onload=()=>res(window.html2canvas); s.onerror=()=>rej(new Error('Kon html2canvas niet laden.')); document.head.appendChild(s); }); }
 
-  async function capturePreviewLabelToImage(h2c, idx, isFirst, root=document){
-    const src = (root===document)
-      ? document.querySelector(`.label[data-idx="${idx}"]`)
-      : root.querySelector(`.label[data-idx="${idx}"]`);
+  async function capturePreviewLabelToImage(h2c, idx, isFirst, root){
+    const scope = root || document;
+    const src = scope.querySelector(`.label[data-idx="${idx}"]`);
     if (!src) throw new Error('Label niet gevonden voor capture.');
 
     const clone = src.cloneNode(true);
-    clone.style.borderTop = '1px solid #000';
-    clone.style.borderRight = '1px solid #000';
-    clone.style.borderBottom = '1px solid #000';
-    clone.style.borderLeft = isFirst ? '1px solid #000' : '0';
+    // randen zó zetten dat “gestapelde” rand 1px/2px blijft
+    clone.style.borderTop    = `${BORDER_PX}px solid #000`;
+    clone.style.borderRight  = `${BORDER_PX}px solid #000`;
+    clone.style.borderBottom = `${BORDER_PX}px solid #000`;
+    clone.style.borderLeft   = isFirst ? `${BORDER_PX}px solid #000` : '0';
 
     const wrap = document.createElement('div');
     wrap.style.position='fixed'; wrap.style.left='-10000px'; wrap.style.top='0'; wrap.style.background='#fff';
     document.body.appendChild(wrap);
     wrap.appendChild(clone);
 
-    const capScale = Math.max(2, (1/currentPreviewScale));
+    // scherpteschaal — stabiel, maar tast fysieke cm in PDF niet aan
+    const capScale = Math.max(2, window.devicePixelRatio || 1, 1/currentPreviewScale);
     const canvas = await h2c(clone, { backgroundColor:'#fff', scale: capScale });
 
+    // 90° met de klok mee
     const rot = document.createElement('canvas');
     rot.width = canvas.height; rot.height = canvas.width;
     const ctx = rot.getContext('2d');
     ctx.translate(rot.width, 0); ctx.rotate(Math.PI/2); ctx.drawImage(canvas, 0, 0);
+
     document.body.removeChild(wrap);
     return rot.toDataURL('image/png');
   }
 
   async function generatePDFSingle(){
-    if (!document.querySelector('.label')) { try { renderSingle(); } catch (e) { alert(e.message||e); return; } }
+    if (!document.querySelector('.label')) {
+      try { await renderSingle(); } catch(e){ alert(e.message||e); return; }
+    }
+
     const vals  = getFormValues();
     const sizes = computeLabelSizes(vals);
     const jsPDF = await loadJsPDF();
     const h2c   = await loadHtml2Canvas();
+
     const contentW = Math.max(...sizes.map(s => s.h));
     const contentH = sizes.reduce((sum, s) => sum + s.w, 0);
     const pageW = contentW + PDF_MARGIN_CM*2;
     const pageH = contentH + PDF_MARGIN_CM*2;
+
     const A4W=21.0, A4H=29.7;
     const doc = new jsPDF({ unit:'cm', orientation:'portrait', format: (pageW<=A4W && pageH<=A4H) ? 'a4' : [pageW, pageH] });
     doc.setFont('helvetica','normal');
+
     const orderIdx = [1,3,2,4];
     const imgs = [];
     for (let i=0;i<orderIdx.length;i++){
       imgs.push(await capturePreviewLabelToImage(h2c, orderIdx[i], i===0));
     }
+
     let y = PDF_MARGIN_CM, x = PDF_MARGIN_CM;
     for (let i=0;i<orderIdx.length;i++){
       const s = sizes[orderIdx[i]-1];
-      const wRot = s.h, hRot = s.w;
+      const wRot = s.h, hRot = s.w; // cm
       doc.addImage(imgs[i], 'PNG', x, y, wRot, hRot, undefined, 'FAST');
       y += hRot;
     }
     doc.save(`${vals.code} - ${ts()}.pdf`);
   }
 
-  /* ====== BATCH PARSE/MAP/RENDER ====== */
-  function setHidden(elm, hidden){ elm.classList.toggle('hidden', hidden); }
+  /* ====== BATCH PIPELINE ====== */
+  function setHidden(elm, hidden){ if (elm) elm.classList.toggle('hidden', hidden); }
   function log(msg, type='info'){
+    if (!logList) return;
     const div = el('div', { class: type==='error'?'err': (type==='ok'?'ok':'') }, msg);
     logList.appendChild(div);
   }
-  function resetLog(){ logList.innerHTML=''; }
+  function resetLog(){ if (logList) logList.innerHTML=''; }
 
   async function parseFile(file){
     const data = await file.arrayBuffer();
@@ -339,6 +383,8 @@
     ['hoogte','Hoogte (H)'],
     ['batch','Batch']
   ];
+  const ALL_FIELDS = [...REQUIRED_FIELDS];
+
   const SYNONYMS = {
     productcode: ['productcode','code','sku','artikelcode','itemcode','prodcode'],
     omschrijving:['omschrijving','description','product','naam','title','titel'],
@@ -351,73 +397,103 @@
     hoogte:      ['hoogte','h','height'],
     batch:       ['batch','lot','lotno','batchno','batchnr']
   };
+
   function slugify(s){
-    return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'').trim();
+    return String(s||'')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]+/g,'')
+      .trim();
   }
-  function guessMapping(headers){
-    const m = {}; REQUIRED_FIELDS.forEach(([key]) => m[key]='');
-    const slugs = headers.map(slugify);
-    for (let i=0;i<headers.length;i++){
-      const h=headers[i], s=slugs[i];
+
+  function guessMapping(hdrs){
+    const m = {}; ALL_FIELDS.forEach(([key]) => m[key] = '');
+    const slugs = hdrs.map(slugify);
+    for (let i=0;i<hdrs.length;i++){
+      const h = hdrs[i], s = slugs[i];
       for (const [key, syns] of Object.entries(SYNONYMS)){
-        if (syns.includes(s)) { m[key]=h; break; }
+        if (syns.includes(s)) { m[key] = h; break; }
       }
     }
-    for (const [key] of REQUIRED_FIELDS){
-      if (!m[key]){
-        const set=SYNONYMS[key]||[key];
-        const idx=slugs.findIndex(s=>set.some(tok=>s.includes(tok)));
-        if (idx>=0) m[key]=headers[idx];
+    for (const [key] of ALL_FIELDS){
+      if (!m[key]) {
+        const sset = SYNONYMS[key] || [key];
+        const idx = slugs.findIndex(s => sset.some(tok => s.includes(tok)));
+        if (idx >= 0) m[key] = hdrs[idx];
       }
     }
     return m;
   }
-  function buildMappingUI(headers, mapping){
+
+  function buildMappingUI(hdrs, mapping){
+    if (!mappingGrid) return;
     mappingGrid.innerHTML='';
-    const makeRow=(key,labelText)=>{
-      const row=el('div',{class:'map-row'});
-      const lab=el('label',{},labelText+' *');
-      const sel=el('select',{'data-key':key});
-      sel.appendChild(el('option',{value:''},'-- kies kolom --'));
-      headers.forEach(h=>{ const opt=el('option',{value:h},h); if(mapping[key]===h) opt.selected=true; sel.appendChild(opt); });
-      row.append(lab,sel); mappingGrid.appendChild(row);
+    const makeRow = (key, labelText) => {
+      const row = el('div', { class:'map-row' });
+      const lab = el('label', {}, labelText + ' *');
+      const sel = el('select', { 'data-key': key });
+      sel.appendChild(el('option', { value:'' }, '-- kies kolom --'));
+      hdrs.forEach(h => {
+        const opt = el('option', { value:h }, h);
+        if (mapping[key] === h) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      row.append(lab, sel);
+      mappingGrid.appendChild(row);
     };
-    REQUIRED_FIELDS.forEach(([k,l])=>makeRow(k,l));
+    REQUIRED_FIELDS.forEach(([k,l])=> makeRow(k,l));
     mappingGrid.querySelectorAll('select').forEach(sel=>{
-      sel.addEventListener('change',()=>{ const k=sel.getAttribute('data-key'); mapping[k]=sel.value; });
+      sel.addEventListener('change', ()=>{ mapping[sel.getAttribute('data-key')] = sel.value; });
     });
   }
+
   function showTablePreview(rows){
+    if (!tablePreview) return;
     if (!rows.length){ tablePreview.innerHTML='<em>Geen data gevonden.</em>'; return; }
-    const cols=Object.keys(rows[0]); const n=Math.min(5,rows.length);
-    const table=el('table'); const thead=el('thead'); const trh=el('tr');
-    cols.forEach(c=>trh.appendChild(el('th',{},c))); thead.appendChild(trh);
-    const tbody=el('tbody');
-    for (let i=0;i<n;i++){ const tr=el('tr'); cols.forEach(c=>tr.appendChild(el('td',{},String(rows[i][c]??'')))); tbody.appendChild(tr); }
-    table.append(thead,tbody); tablePreview.innerHTML=''; tablePreview.appendChild(table);
+    const cols = Object.keys(rows[0]);
+    const n = Math.min(5, rows.length);
+    const table = el('table');
+    const thead = el('thead'); const trh = el('tr');
+    cols.forEach(c=> trh.appendChild(el('th',{}, c)));
+    thead.appendChild(trh);
+    const tbody = el('tbody');
+    for (let i=0;i<n;i++){
+      const tr = el('tr');
+      cols.forEach(c=> tr.appendChild(el('td',{}, String(rows[i][c]??''))));
+      tbody.appendChild(tr);
+    }
+    table.append(thead, tbody);
+    tablePreview.innerHTML=''; tablePreview.appendChild(table);
   }
+
   function normalizeNumber(val){
-    if (typeof val!=='string') val=String(val??'');
-    if (chkTrim?.checked) val=val.trim();
-    if (chkComma?.checked) val=val.replace(',', '.');
-    if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(val)) { val=val.replace(/\./g,''); }
-    const num=parseFloat(val); return isFinite(num)?num:NaN;
+    if (typeof val !== 'string') val = String(val??'');
+    if (chkTrim?.checked) val = val.trim();
+    if (chkComma?.checked) val = val.replace(',', '.');
+    if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(val)) { val = val.replace(/\./g, ''); }
+    const num = parseFloat(val);
+    return isFinite(num) ? num : NaN;
   }
+
   function readRowWithMapping(row, mapping){
-    const get = key => { const hdr = mapping[key]||''; return hdr?(row[hdr]??''):''; };
-    const vals = {
-      code:String(get('productcode')??'').trim(),
-      desc:String(get('omschrijving')??'').trim(),
-      ean: String(get('ean')??'').trim(),
-      qty: String(Math.max(0, Math.floor(normalizeNumber(String(get('qty')))))),
-      gw:  (()=>{ const n=normalizeNumber(String(get('gw'))); return isFinite(n)?n.toFixed(2):''; })(),
-      cbm: String(get('cbm')??'').trim(),
-      L:   normalizeNumber(String(get('lengte'))),
-      W:   normalizeNumber(String(get('breedte'))),
-      H:   normalizeNumber(String(get('hoogte'))),
-      batch:String(get('batch')??'').trim()
+    const get = key => {
+      const hdr = mapping[key] || '';
+      return hdr ? (row[hdr] ?? '') : '';
     };
-    const missing=[];
+    const vals = {
+      code: String(get('productcode') ?? '').trim(),
+      desc: String(get('omschrijving') ?? '').trim(),
+      ean:  String(get('ean') ?? '').trim(),
+      qty:  String(Math.max(0, Math.floor(normalizeNumber(String(get('qty')))))),
+      gw:   (()=>{ const n = normalizeNumber(String(get('gw'))); return isFinite(n) ? n.toFixed(2) : ''; })(),
+      cbm:  String(get('cbm') ?? '').trim(),
+      L:    normalizeNumber(String(get('lengte'))),
+      W:    normalizeNumber(String(get('breedte'))),
+      H:    normalizeNumber(String(get('hoogte'))),
+      batch:String(get('batch') ?? '').trim()
+    };
+
+    const missing = [];
     if (!vals.code) missing.push('Productcode');
     if (!vals.desc) missing.push('Omschrijving');
     if (!vals.ean)  missing.push('EAN');
@@ -428,165 +504,218 @@
     if (!isFinite(vals.W) || vals.W<=0) missing.push('Breedte');
     if (!isFinite(vals.H) || vals.H<=0) missing.push('Hoogte');
     if (!vals.batch) missing.push('Batch');
-    if (missing.length){ return { ok:false, error:`Ontbrekende/ongeldige velden: ${missing.join(', ')}` }; }
-    vals.L=+vals.L; vals.W=+vals.W; vals.H=+vals.H;
+
+    if (missing.length){
+      return { ok:false, error:`Ontbrekende/ongeldige velden: ${missing.join(', ')}` };
+    }
+    vals.L = +vals.L; vals.W = +vals.W; vals.H = +vals.H;
     return { ok:true, vals };
   }
 
-  // Headless render: maak DOM buiten beeld en capture images → PDF blob
   async function renderOnePdfBlob(vals){
-  const sizes = computeLabelSizes(vals);
+    const sizes = computeLabelSizes(vals);
 
-  // onzichtbare root
-  const root = document.createElement('div');
-  root.style.position='fixed';
-  root.style.left='-10000px';
-  root.style.top='0';
-  root.style.background='#fff';
-  document.body.appendChild(root);
+    // onzichtbare root
+    const root = document.createElement('div');
+    root.style.position='fixed';
+    root.style.left='-10000px';
+    root.style.top='0';
+    root.style.background='#fff';
+    document.body.appendChild(root);
 
-  // schaal = 1 in batch
-  const previewScale = 1;
-  const wraps = [0,2,1,3].map(i => createLabelEl(sizes[i], vals, previewScale));
-  wraps.forEach(w => root.appendChild(w));
+    const previewScale = 1;
+    [0,2,1,3].forEach(i => root.appendChild(createLabelEl(sizes[i], vals, previewScale)));
 
-  // wacht 1 frame, fit na mount
-  await nextFrame();
-  fitAllIn(root);
+    // fit ná mount
+    await mountThenFit(root);
 
-  // zet currentPreviewScale tijdelijk op 1 voor capture
-  const oldScale = currentPreviewScale;
-  currentPreviewScale = 1;
+    // capture in batch met scale=1
+    const oldScale = currentPreviewScale;
+    currentPreviewScale = 1;
 
-  const jsPDF = await loadJsPDF();
-  const h2c   = await loadHtml2Canvas();
+    const jsPDF = await loadJsPDF();
+    const h2c   = await loadHtml2Canvas();
 
-  const contentW = Math.max(...sizes.map(s => s.h));
-  const contentH = sizes.reduce((sum, s) => sum + s.w, 0);
-  const pageW = contentW + PDF_MARGIN_CM*2;
-  const pageH = contentH + PDF_MARGIN_CM*2;
+    const contentW = Math.max(...sizes.map(s => s.h));
+    const contentH = sizes.reduce((sum, s) => sum + s.w, 0);
+    const pageW = contentW + PDF_MARGIN_CM*2;
+    const pageH = contentH + PDF_MARGIN_CM*2;
 
-  const A4W=21.0, A4H=29.7;
-  const doc = new jsPDF({ unit:'cm', orientation:'portrait', format: (pageW<=A4W && pageH<=A4H) ? 'a4' : [pageW, pageH] });
-  doc.setFont('helvetica','normal');
+    const A4W=21.0, A4H=29.7;
+    const doc = new jsPDF({ unit:'cm', orientation:'portrait', format: (pageW<=A4W && pageH<=A4H) ? 'a4' : [pageW, pageH] });
+    doc.setFont('helvetica','normal');
 
-  const orderIdx = [1,3,2,4];
-  const imgs = [];
-  for (let i=0;i<orderIdx.length;i++){
-    imgs.push(await capturePreviewLabelToImage(h2c, orderIdx[i], i===0, root));
+    const orderIdx = [1,3,2,4];
+    const imgs = [];
+    for (let i=0;i<orderIdx.length;i++){
+      imgs.push(await capturePreviewLabelToImage(h2c, orderIdx[i], i===0, root));
+    }
+
+    let y = PDF_MARGIN_CM, x = PDF_MARGIN_CM;
+    for (let i=0;i<orderIdx.length;i++){
+      const s = sizes[orderIdx[i]-1];
+      const wRot = s.h, hRot = s.w; // cm
+      doc.addImage(imgs[i], 'PNG', x, y, wRot, hRot, undefined, 'FAST');
+      y += hRot;
+    }
+
+    const blob = doc.output('blob');
+    document.body.removeChild(root);
+    currentPreviewScale = oldScale;
+    return blob;
   }
 
-  let y = PDF_MARGIN_CM, x = PDF_MARGIN_CM;
-  for (let i=0;i<orderIdx.length;i++){
-    const s = sizes[orderIdx[i]-1];
-    const wRot = s.h, hRot = s.w; // cm
-    doc.addImage(imgs[i], 'PNG', x, y, wRot, hRot, undefined, 'FAST');
-    y += hRot;
+  /* ====== BATCH UI EVENTS ====== */
+  if (btnPickFile && fileInput) btnPickFile.addEventListener('click', ()=> fileInput.click());
+
+  if (dropzone){
+    ['dragover','dragenter'].forEach(ev=>{
+      dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.add('dragover'); });
+    });
+    ['dragleave','drop'].forEach(ev=>{
+      dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.remove('dragover'); });
+    });
+    dropzone.addEventListener('drop', async (e)=>{ const f = e.dataTransfer.files?.[0]; if (f) await handleFile(f); });
   }
 
-  const blob = doc.output('blob');
-
-  // opruimen & schaal herstellen
-  document.body.removeChild(root);
-  currentPreviewScale = oldScale;
-
-  return blob;
-}
-
-
-  /* ====== Batch UI events ====== */
-  btnPickFile.addEventListener('click', ()=> fileInput.click());
-  ;['dragover','dragenter'].forEach(ev=>{
-    dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.add('dragover'); });
-  });
-  ;['dragleave','drop'].forEach(ev=>{
-    dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.remove('dragover'); });
-  });
-  dropzone.addEventListener('drop', async (e)=>{ const f=e.dataTransfer.files?.[0]; if (f) await handleFile(f); });
-  fileInput.addEventListener('change', async ()=>{ const f=fileInput.files?.[0]; if (f) await handleFile(f); });
+  if (fileInput){
+    fileInput.addEventListener('change', async ()=>{ const f = fileInput.files?.[0]; if (f) await handleFile(f); });
+  }
 
   async function handleFile(file){
-    resetLog(); logWrap.classList.remove('hidden');
+    resetLog(); if (logWrap) logWrap.classList.remove('hidden');
     try{
       log(`Bestand: ${file.name}`);
-      const rows=await parseFile(file);
+      const rows = await parseFile(file);
       if (!rows.length){ log('Geen rijen gevonden.', 'error'); return; }
-      headers=Object.keys(rows[0]); mapping=guessMapping(headers);
-      buildMappingUI(headers, mapping); setHidden(mappingWrap,false);
-      showTablePreview(rows); setHidden(previewWrap,false);
-      setHidden(normWrap,false); setHidden(batchControls,false);
-      setHidden(progressWrap,true); parsedRows=rows;
-      log(`Gelezen rijen: ${rows.length}`,'ok');
-    }catch(err){ log(`Fout bij lezen: ${err.message||err}`, 'error'); }
+
+      headers = Object.keys(rows[0]);
+      mapping = guessMapping(headers);
+
+      buildMappingUI(headers, mapping);
+      setHidden(mappingWrap, false);
+
+      showTablePreview(rows);
+      setHidden(previewWrap, false);
+
+      setHidden(normWrap, false);
+      setHidden(batchControls, false);
+      setHidden(progressWrap, true);
+
+      parsedRows = rows;
+      log(`Gelezen rijen: ${rows.length}`, 'ok');
+    }catch(err){
+      log(`Fout bij lezen bestand: ${err.message||err}`, 'error');
+    }
   }
 
-  btnTemplateCsv.addEventListener('click', ()=>{
-    const hdrs=['Productcode','Omschrijving','EAN','QTY','G.W','CBM','Lengte (L)','Breedte (W)','Hoogte (H)','Batch'];
-    const blob=new Blob([hdrs.join(',')+'\n'],{type:'text/csv;charset=utf-8;'});
-    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='etiketten-template.csv';
-    document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },0);
-  });
-  btnTemplateXlsx.addEventListener('click', ()=>{
-    const hdrs=['Productcode','Omschrijving','EAN','QTY','G.W','CBM','Lengte (L)','Breedte (W)','Hoogte (H)','Batch'];
-    const ws=XLSX.utils.aoa_to_sheet([hdrs]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Etiketten');
-    const wbout=XLSX.write(wb,{bookType:'xlsx',type:'array'});
-    const blob=new Blob([wbout],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='etiketten-template.xlsx';
-    document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },0);
-  });
+  if (btnTemplateCsv){
+    btnTemplateCsv.addEventListener('click', ()=>{
+      const hdrs = ['Productcode','Omschrijving','EAN','QTY','G.W','CBM','Lengte (L)','Breedte (W)','Hoogte (H)','Batch'];
+      const blob = new Blob([hdrs.join(',') + '\n'], {type:'text/csv;charset=utf-8;'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'etiketten-template.csv';
+      document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+    });
+  }
 
-  btnRunBatch.addEventListener('click', async ()=>{
-    if (!parsedRows.length){ log('Geen dataset geladen.', 'error'); return; }
-    const missingMap = REQUIRED_FIELDS.filter(([k])=>!mapping[k]).map(([,l])=>l);
-    if (missingMap.length){ log(`Koppel verplichte velden: ${missingMap.join(', ')}`,'error'); return; }
-    abortFlag=false; btnAbortBatch.disabled=false; setHidden(progressWrap,false);
-    progressBar.style.width='0%'; progressLabel.textContent=`0 / ${parsedRows.length}`; progressPhase.textContent='Start…';
-    const zip=new JSZip(); const batchTime=ts(); let okCount=0, errCount=0;
-    for (let i=0;i<parsedRows.length;i++){
-      if (abortFlag){ log(`Batch afgebroken op rij ${i+1}.`,'err'); break; }
-      const r=readRowWithMapping(parsedRows[i], mapping);
-      if (!r.ok){ errCount++; log(`Rij ${i+1}: ${r.error}`,'error'); }
-      else{
-        try{
-          progressPhase.textContent=`Rij ${i+1}: PDF renderen…`;
-          const blob=await renderOnePdfBlob(r.vals);
-          const safe=r.vals.code.replace(/[^\w.-]+/g,'_');
-          const name=`${safe} - ${batchTime} - R${String(i+1).padStart(3,'0')}.pdf`;
-          zip.file(name, blob); okCount++;
-        }catch(err){ errCount++; log(`Rij ${i+1}: renderfout: ${err.message||err}`,'error'); }
+  if (btnTemplateXlsx){
+    btnTemplateXlsx.addEventListener('click', ()=>{
+      const hdrs = ['Productcode','Omschrijving','EAN','QTY','G.W','CBM','Lengte (L)','Breedte (W)','Hoogte (H)','Batch'];
+      const ws = XLSX.utils.aoa_to_sheet([hdrs]);
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Etiketten');
+      const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
+      const blob = new Blob([wbout], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'etiketten-template.xlsx';
+      document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+    });
+  }
+
+  if (btnRunBatch){
+    btnRunBatch.addEventListener('click', async ()=>{
+      if (!parsedRows.length){ log('Geen dataset geladen.', 'error'); return; }
+
+      const missingMap = REQUIRED_FIELDS.filter(([k]) => !mapping[k]).map(([,label]) => label);
+      if (missingMap.length){ log(`Koppel alle verplichte velden: ${missingMap.join(', ')}`, 'error'); return; }
+
+      abortFlag = false;
+      if (btnAbortBatch) btnAbortBatch.disabled = false;
+      setHidden(progressWrap, false);
+      progressBar.style.width = '0%';
+      progressLabel.textContent = `0 / ${parsedRows.length}`;
+      progressPhase.textContent = 'Voorbereiden…';
+
+      const zip = new JSZip();
+      const batchTime = ts();
+      let okCount = 0, errCount = 0;
+
+      for (let i=0; i<parsedRows.length; i++){
+        if (abortFlag){ log(`Batch afgebroken op rij ${i+1}.`, 'error'); break; }
+        const r = readRowWithMapping(parsedRows[i], mapping);
+        if (!r.ok){
+          errCount++; log(`Rij ${i+1}: ${r.error}`, 'error');
+        } else {
+          try{
+            progressPhase.textContent = `Rij ${i+1}: PDF renderen…`;
+            const blob = await renderOnePdfBlob(r.vals);
+            const safeCode = r.vals.code.replace(/[^\w.-]+/g,'_');
+            const name = `${safeCode} - ${batchTime} - R${String(i+1).padStart(3,'0')}.pdf`;
+            zip.file(name, blob);
+            okCount++;
+          }catch(err){
+            errCount++; log(`Rij ${i+1}: renderfout: ${err.message||err}`, 'error');
+          }
+        }
+        progressBar.style.width = `${Math.round(((i+1)/parsedRows.length)*100)}%`;
+        progressLabel.textContent = `${i+1} / ${parsedRows.length}`;
+        await new Promise(r=>setTimeout(r,0));
       }
-      progressBar.style.width=`${Math.round(((i+1)/parsedRows.length)*100)}%`;
-      progressLabel.textContent=`${i+1} / ${parsedRows.length}`;
-      await new Promise(r=>setTimeout(r,0));
+
+      if (btnAbortBatch) btnAbortBatch.disabled = true;
+      progressPhase.textContent = 'Bundelen als ZIP…';
+
+      if (okCount>0){
+        const zipBlob = await zip.generateAsync({type:'blob'});
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a'); a.href = url; a.download = `etiketten-batch - ${batchTime}.zip`;
+        document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 0);
+        log(`Gereed: ${okCount} PDF’s succesvol, ${errCount} fouten.`, 'ok');
+      }else{
+        log(`Geen PDF’s gegenereerd. (${errCount} fouten)`, 'error');
+      }
+      progressPhase.textContent = 'Klaar.';
+    });
+  }
+
+  if (btnAbortBatch){
+    btnAbortBatch.addEventListener('click', ()=>{
+      abortFlag = true;
+      btnAbortBatch.disabled = true;
+      progressPhase.textContent = 'Afbreken…';
+    });
+  }
+
+  /* ====== EVENTS EN INIT ====== */
+  const safeRender = () => renderSingle().catch(e => alert(e.message||e));
+  if (btnGen) btnGen.addEventListener('click', safeRender);
+  if (btnPDF) btnPDF.addEventListener('click', async ()=>{ try{ await generatePDFSingle(); } catch(e){ alert(e.message||e); } });
+  window.addEventListener('resize', ()=>{ renderSingle().catch(()=>{}); });
+
+  // Demo (optioneel, kan weg)
+  try{
+    if (document.getElementById('prodCode')){
+      document.getElementById('prodCode').value   = 'LG1000843';
+      document.getElementById('prodDesc').value   = 'Combination Lock - Orange - 1 Pack (YF20610B)';
+      document.getElementById('ean').value        = '8719632951889';
+      document.getElementById('qty').value        = '12';
+      document.getElementById('gw').value         = '18.00';
+      document.getElementById('cbm').value        = '0.02';
+      document.getElementById('boxLength').value  = '39';
+      document.getElementById('boxWidth').value   = '19.5';
+      document.getElementById('boxHeight').value  = '22';
+      document.getElementById('batch').value      = 'IOR2500307';
+      safeRender();
     }
-    btnAbortBatch.disabled=true; progressPhase.textContent='Bundelen als ZIP…';
-    if (okCount>0){
-      const zipBlob=await zip.generateAsync({type:'blob'});
-      const url=URL.createObjectURL(zipBlob);
-      const a=document.createElement('a'); a.href=url; a.download=`etiketten-batch - ${batchTime}.zip`;
-      document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },0);
-      log(`Gereed: ${okCount} PDF’s, ${errCount} fouten.`,'ok');
-    }else{ log(`Geen PDF’s gegenereerd. (${errCount} fouten)`,'error'); }
-    progressPhase.textContent='Klaar.';
-  });
-  btnAbortBatch.addEventListener('click', ()=>{ abortFlag=true; btnAbortBatch.disabled=true; progressPhase.textContent='Afbreken…'; });
-
-  /* ====== ENKELVOUDIGE EVENTS ====== */
-  const safeRender = () => renderSingle().catch(e => alert(e.message || e));
-  btnGen.addEventListener('click', safeRender);  
-  window.addEventListener('resize', () => { renderSingle().catch(()=>{}); });
-
-
-  /* ====== DEMO DATA ====== */
-  document.getElementById('prodCode').value   = 'LG1000843';
-  document.getElementById('prodDesc').value   = 'Combination Lock - Orange - 1 Pack (YF20610B)';
-  document.getElementById('ean').value        = '8719632951889';
-  document.getElementById('qty').value        = '12';
-  document.getElementById('gw').value         = '18.00';
-  document.getElementById('cbm').value        = '0.02';
-  document.getElementById('boxLength').value  = '39';
-  document.getElementById('boxWidth').value   = '19.5';
-  document.getElementById('boxHeight').value  = '22';
-  document.getElementById('batch').value      = 'IOR2500307';
-  safeRender();
+  }catch(_){}
 })();
