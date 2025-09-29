@@ -190,35 +190,51 @@
   }
 
   function createLabelEl(size, values, previewScale){
-    const widthPx  = Math.round(size.w * PX_PER_CM * previewScale);
-    const heightPx = Math.round(size.h * PX_PER_CM * previewScale);
-    const wrap  = el('div', { class:'label-wrap' });
-    const label = el('div', { class:'label', style:{ width:widthPx+'px', height:heightPx+'px' }});
-    label.dataset.idx = String(size.idx);
-    const inner = el('div', { class:'label-inner nowrap-mode' });
-    inner.style.padding = (LABEL_PADDING_CM * PX_PER_CM * previewScale) + 'px';
-    const head = el('div', { class:'label-head' },
-      el('div', { class:'code-box line' }, values.code),
-      el('div', { class:'line' }, values.desc)
-    );
-    inner.append(head, el('div',{class:'block-spacer'}), buildLeftBlock(values, size));
-    label.append(inner);
-    wrap.append(label, el('div',{class:'label-num'}, `Etiket ${size.idx}`));
-    applyFontSizes(inner, Math.max(10, Math.floor(heightPx * 0.06)));
-    fitContentToBoxConditional(inner);
-    return wrap;
-  }
+  const widthPx  = Math.round(size.w * PX_PER_CM * previewScale);
+  const heightPx = Math.round(size.h * PX_PER_CM * previewScale);
 
-  function renderSingle(){
-    const vals = readValuesSingle();
-    const sizes = computeLabelSizes(vals);
-    const scale = computePreviewScale(sizes);
-    currentPreviewScale = scale;
-    updateControlInfo(sizes);
-    labelsGrid.style.gap = '0.5cm';
-    labelsGrid.innerHTML = '';
-    [0,2,1,3].forEach(i => labelsGrid.appendChild(createLabelEl(sizes[i], vals, scale)));
-  }
+  const wrap  = el('div', { class:'label-wrap' });
+  const label = el('div', { class:'label', style:{ width:widthPx+'px', height:heightPx+'px' }});
+  label.dataset.idx = String(size.idx);
+
+  const inner = el('div', { class:'label-inner nowrap-mode' });
+  inner.style.padding = (LABEL_PADDING_CM * PX_PER_CM * previewScale) + 'px';
+
+  const head = el('div', { class:'label-head' },
+    el('div', { class:'code-box line' }, values.code),
+    el('div', { class:'line' }, values.desc)
+  );
+
+  inner.append(head, el('div',{class:'block-spacer'}), buildLeftBlock(values, size));
+  label.append(inner);
+  wrap.append(label, el('div',{class:'label-num'}, `Etiket ${size.idx}`));
+
+  // Alleen een ruwe startwaarde; géén fit hier!
+  applyFontSizes(inner, Math.max(10, Math.floor(heightPx * 0.06)));
+
+  return wrap;
+}
+
+
+  async function renderSingle(){
+  const vals = readValuesSingle();
+  const sizes = computeLabelSizes(vals);
+  const scale = computePreviewScale(sizes);
+  currentPreviewScale = scale;
+
+  updateControlInfo(sizes);
+  labelsGrid.style.gap = '0.5cm';
+  labelsGrid.innerHTML = '';
+
+  const order = [0,2,1,3]; // 1&3 boven, 2&4 onder
+  const wraps = order.map(i => createLabelEl(sizes[i], vals, scale));
+  wraps.forEach(w => labelsGrid.appendChild(w));
+
+  // wacht 1 frame zodat layout klaar is, fit dan
+  await nextFrame();
+  fitAllIn(labelsGrid);
+}
+
 
   /* ====== jsPDF / html2canvas ====== */
   function loadJsPDF(){ return new Promise((res,rej)=>{ if (window.jspdf?.jsPDF) return res(window.jspdf.jsPDF);
@@ -407,33 +423,64 @@
 
   // Headless render: maak DOM buiten beeld en capture images → PDF blob
   async function renderOnePdfBlob(vals){
-    const sizes = computeLabelSizes(vals);
-    const root=document.createElement('div');
-    root.style.position='fixed'; root.style.left='-10000px'; root.style.top='0'; root.style.background='#fff';
-    document.body.appendChild(root);
-    const previewScale=1;
-    [0,2,1,3].forEach(i=>root.appendChild(createLabelEl(sizes[i], vals, previewScale)));
-    const jsPDF=await loadJsPDF(); const h2c=await loadHtml2Canvas();
-    const contentW=Math.max(...sizes.map(s=>s.h));
-    const contentH=sizes.reduce((sum,s)=>sum+s.w,0);
-    const pageW=contentW+PDF_MARGIN_CM*2; const pageH=contentH+PDF_MARGIN_CM*2;
-    const A4W=21.0, A4H=29.7;
-    const doc=new jsPDF({unit:'cm',orientation:'portrait',format:(pageW<=A4W&&pageH<=A4H)?'a4':[pageW,pageH]});
-    doc.setFont('helvetica','normal');
-    const orderIdx=[1,3,2,4];
-    const imgs=[];
-    for (let i=0;i<orderIdx.length;i++){
-      imgs.push(await capturePreviewLabelToImage(h2c, orderIdx[i], i===0, root));
-    }
-    let y=PDF_MARGIN_CM, x=PDF_MARGIN_CM;
-    for (let i=0;i<orderIdx.length;i++){
-      const s=sizes[orderIdx[i]-1]; const wRot=s.h, hRot=s.w;
-      doc.addImage(imgs[i],'PNG',x,y,wRot,hRot,undefined,'FAST'); y+=hRot;
-    }
-    const blob=doc.output('blob');
-    document.body.removeChild(root);
-    return blob;
+  const sizes = computeLabelSizes(vals);
+
+  // onzichtbare root
+  const root = document.createElement('div');
+  root.style.position='fixed';
+  root.style.left='-10000px';
+  root.style.top='0';
+  root.style.background='#fff';
+  document.body.appendChild(root);
+
+  // schaal = 1 in batch
+  const previewScale = 1;
+  const wraps = [0,2,1,3].map(i => createLabelEl(sizes[i], vals, previewScale));
+  wraps.forEach(w => root.appendChild(w));
+
+  // wacht 1 frame, fit na mount
+  await nextFrame();
+  fitAllIn(root);
+
+  // zet currentPreviewScale tijdelijk op 1 voor capture
+  const oldScale = currentPreviewScale;
+  currentPreviewScale = 1;
+
+  const jsPDF = await loadJsPDF();
+  const h2c   = await loadHtml2Canvas();
+
+  const contentW = Math.max(...sizes.map(s => s.h));
+  const contentH = sizes.reduce((sum, s) => sum + s.w, 0);
+  const pageW = contentW + PDF_MARGIN_CM*2;
+  const pageH = contentH + PDF_MARGIN_CM*2;
+
+  const A4W=21.0, A4H=29.7;
+  const doc = new jsPDF({ unit:'cm', orientation:'portrait', format: (pageW<=A4W && pageH<=A4H) ? 'a4' : [pageW, pageH] });
+  doc.setFont('helvetica','normal');
+
+  const orderIdx = [1,3,2,4];
+  const imgs = [];
+  for (let i=0;i<orderIdx.length;i++){
+    imgs.push(await capturePreviewLabelToImage(h2c, orderIdx[i], i===0, root));
   }
+
+  let y = PDF_MARGIN_CM, x = PDF_MARGIN_CM;
+  for (let i=0;i<orderIdx.length;i++){
+    const s = sizes[orderIdx[i]-1];
+    const wRot = s.h, hRot = s.w; // cm
+    doc.addImage(imgs[i], 'PNG', x, y, wRot, hRot, undefined, 'FAST');
+    y += hRot;
+  }
+
+  const blob = doc.output('blob');
+
+  // opruimen & schaal herstellen
+  document.body.removeChild(root);
+  currentPreviewScale = oldScale;
+
+  return blob;
+}
+
 
   /* ====== Batch UI events ====== */
   btnPickFile.addEventListener('click', ()=> fileInput.click());
