@@ -62,6 +62,18 @@
   const pad2 = n => String(n).padStart(2,'0');
   const ts=(d=new Date())=>`${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())} ${pad2(d.getHours())}.${pad2(d.getMinutes())}.${pad2(d.getSeconds())}`;
 
+  // Wacht tot de browser één render-frame heeft gemaakt (zodat afmetingen kloppen)
+  const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
+  // Fit alle label-inhouden binnen hun kader (no-wrap -> fit; wrap pas als nodig)
+  function fitAllIn(container){
+    container.querySelectorAll('.label-inner').forEach((inner) => {
+      inner.classList.add('nowrap-mode');
+      inner.classList.remove('softwrap-mode');
+      fitContentToBoxConditional(inner);
+    });
+  }
+
   /* ====== ENKELVOUDIG IN/OUTPUT ====== */
   function readValuesSingle(){
     const g = id => document.getElementById(id).value.trim();
@@ -217,7 +229,7 @@
 
 
   async function renderSingle(){
-  const vals = readValuesSingle();
+  const vals  = readValues();            // of readValuesSingle() als dat jouw naam is
   const sizes = computeLabelSizes(vals);
   const scale = computePreviewScale(sizes);
   currentPreviewScale = scale;
@@ -226,14 +238,14 @@
   labelsGrid.style.gap = '0.5cm';
   labelsGrid.innerHTML = '';
 
-  const order = [0,2,1,3]; // 1&3 boven, 2&4 onder
-  const wraps = order.map(i => createLabelEl(sizes[i], vals, scale));
-  wraps.forEach(w => labelsGrid.appendChild(w));
+  // Preview volgorde: 1 & 3 boven, 2 & 4 onder
+  [0,2,1,3].forEach(i => labelsGrid.appendChild(createLabelEl(sizes[i], vals, scale)));
 
-  // wacht 1 frame zodat layout klaar is, fit dan
+  // Wacht één frame → layout staat; daarna fitten
   await nextFrame();
   fitAllIn(labelsGrid);
-}
+  }
+
 
 
   /* ====== jsPDF / html2canvas ====== */
@@ -560,10 +572,10 @@
   btnAbortBatch.addEventListener('click', ()=>{ abortFlag=true; btnAbortBatch.disabled=true; progressPhase.textContent='Afbreken…'; });
 
   /* ====== ENKELVOUDIGE EVENTS ====== */
-  const safeRender = () => { try{ renderSingle(); } catch(e){ alert(e.message||e); } };
-  btnGen.addEventListener('click', safeRender);
-  btnPDF.addEventListener('click', async ()=>{ try{ await generatePDFSingle(); } catch(e){ alert(e.message||e); } });
-  window.addEventListener('resize', ()=>{ try{ renderSingle(); } catch(_){} });
+  const safeRender = () => renderSingle().catch(e => alert(e.message || e));
+  btnGen.addEventListener('click', safeRender);  
+  window.addEventListener('resize', () => { renderSingle().catch(()=>{}); });
+
 
   /* ====== DEMO DATA ====== */
   document.getElementById('prodCode').value   = 'LG1000843';
