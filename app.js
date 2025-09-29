@@ -75,7 +75,7 @@
   }
 
   /* ====== ENKELVOUDIG IN/OUTPUT ====== */
-  function readValue(){
+  function getFormValues(){
     const g = id => document.getElementById(id).value.trim();
     const L = parseFloat(g('boxLength'));
     const W = parseFloat(g('boxWidth'));
