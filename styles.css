@@ -102,6 +102,10 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
 .specs-grid .lab{ font-weight:700; }
 .specs-grid .val{ min-width:0; }
 
+.cn-row{ display:flex; align-items:center; column-gap:var(--tab-gap); white-space:nowrap; }
+.cn-row .lab{ font-weight:700; }
+.cn-row .cn-line{ border-bottom:1.5px solid #000; height:0; flex:1 1 12em; min-width:3em; }
+
 /* Fase 1: no-wrap (voorkeur) */
 .nowrap-mode .specs-grid .val{
   white-space: nowrap;
