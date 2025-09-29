@@ -4,18 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Etiketten Generator</title>
-
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-
-  <script>
-  document.title = "Etiketten Generator";
-</script>
+  <script>document.title = "Etiketten Generator";</script>
 
 <div class="app">
   <header class="app-header">
     <h1>Etiketten Generator</h1>
+    <p class="subtitle">
+      V0.18
+    </p>
     <p class="subtitle">Vul de gegevens in en klik op <strong>“Genereer etiketten”</strong>. Voor PDF: <strong>“PDF genereren”</strong>.</p>
   </header>
 
@@ -42,19 +41,75 @@
     </div>
   </form>
 
+  <!-- Preview/controle -->
   <section class="canvas" id="canvas">
     <div class="control-card" id="controlInfo" aria-live="polite"></div>
     <div class="labels-grid" id="labelsGrid" aria-live="polite"></div>
   </section>
+
+  <!-- BATCH -->
+<section class="batch-panel">
+  <h2>Batch (Excel / CSV)</h2>
+
+  <div class="upload-row">
+    <label class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden>
+      <span><strong>Bestand kiezen</strong> of sleep hierheen (xlsx, xls, csv)</span>
+    </label>
+    <div class="batch-actions">
+      <button type="button" id="btnPickFile">Kies bestand…</button>
+      <button type="button" id="btnTemplateCsv">Template (CSV)</button>
+      <button type="button" id="btnTemplateXlsx">Template (XLSX)</button>
+    </div>
+  </div>
+
+  <div id="mappingWrap" class="mapping hidden">
+    <h3>Kolommen koppelen</h3>
+    <div id="mappingGrid" class="mapping-grid"></div>
+    <p class="hint">Automatisch gedetecteerd. Pas aan indien nodig.</p>
+  </div>
+
+  <div id="previewWrap" class="table-wrap hidden">
+    <h3>Voorbeeld (eerste 5 rijen)</h3>
+    <div id="tablePreview" class="table-scroller"></div>
+  </div>
+
+  <div id="normWrap" class="norms hidden">
+    <h3>Normalisatie</h3>
+    <label><input type="checkbox" id="optCommaDecimal" checked> Komma als decimaal scheidingsteken (1,25 → 1.25)</label>
+    <label><input type="checkbox" id="optTrimSpaces" checked> Spaties rondom waarden verwijderen</label>
+  </div>
+
+  <div class="batch-controls hidden" id="batchControls">
+    <button type="button" id="btnRunBatch" class="primary">PDF’s genereren (batch)</button>
+    <button type="button" id="btnAbortBatch" class="danger" disabled>Stoppen</button>
+  </div>
+
+  <div id="progressWrap" class="progress-wrap hidden">
+    <div class="progress-bar"><div id="progressBar" class="bar"></div></div>
+    <div class="progress-text">
+      <span id="progressLabel">0 / 0</span>
+      <span id="progressPhase"></span>
+    </div>
+  </div>
+
+  <div id="logWrap" class="log-wrap hidden">
+    <h3>Log</h3>
+    <div id="logList" class="log-list"></div>
+  </div>
+</section>
+
 </div>
 
 <footer class="site-footer">
   <small>Copyright and created by: Renée de Vries | Studio RD - 2025</small>
 </footer>
 
+<!-- Batch libs (client-side) -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
+<!-- App -->
 <script src="app.js" defer></script>
 </body>
 </html>
