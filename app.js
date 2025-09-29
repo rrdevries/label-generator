@@ -53,11 +53,10 @@
       qty:String(Math.max(0, Math.floor(Number(g('qty'))||0))),
       gw:(v=>isFinite(+v)?(+v).toFixed(2):v)(g('gw')),
       cbm:g('cbm'),
-      batch:g('batch') || '',
-      cn:g('cnValue') || ''
+      batch:g('batch'),
     };
     if ([L,W,H].some(v=>!isFinite(v)||v<=0) ||
-        !vals.code || !vals.desc || !vals.ean || !vals.qty || !vals.gw || !vals.cbm){
+        !vals.code || !vals.desc || !vals.ean || !vals.qty || !vals.gw || !vals.cbm || !vals.batch){
       throw new Error('Controleer de verplichte velden.');
     }
     return vals;
@@ -68,12 +67,11 @@
     const scale=0.8;
     const fb={ w:L*scale, h:H*scale };
     const sd={ w:W*scale, h:H*scale };
-    const cnText = cn ? `C/N: ${cn}` : 'C/N: ___';
     return [
-      { idx:1, kind:'front/back', ...fb, under:'Made in China' },
-      { idx:2, kind:'front/back', ...fb, under: cnText },
-      { idx:3, kind:'side',       ...sd, under:'Made in China' },
-      { idx:4, kind:'side',       ...sd, under: cnText }
+      { idx:1, kind:'front/back', ...fb, underType:'china' },
+      { idx:2, kind:'front/back', ...fb, underType:'cn' },
+      { idx:3, kind:'side',       ...sd, underType:'china' },
+      { idx:4, kind:'side',       ...sd, underType:'cn' }
     ];
   }
 
@@ -175,8 +173,18 @@
       ...line('CBM:', values.cbm)
     ].forEach(n => grid.append(n));
     block.append(grid);
-    if (values.batch) block.append(el('div',{class:'line'}, `Batch: ${values.batch}`));
-    block.append(el('div',{class:'line'}, size.under));
+    block.append(el('div',{class:'line'}, `Batch: ${values.batch}`));
+    
+    if (size.underType === 'china'){
+      block.append(el('div',{class:'line'}, 'Made in China'));
+    } else {
+      // C/N met elastische lijn die nooit wrapt
+      const row = el('div',{class:'cn-row'},
+        el('div',{class:'lab'}, 'C/N:'),
+        el('div',{class:'cn-line'}, '')
+      );
+      block.append(row);
+    }
     return block;
   }
 
