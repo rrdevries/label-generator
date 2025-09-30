@@ -584,7 +584,7 @@
   if (btnTemplateCsv){
     btnTemplateCsv.addEventListener('click', ()=>{
       // Alleen headers — géén voorbeeldregels
-      const hdrs = ['Productcode','Omschrijving','EAN','QTY','G.W','CBM','Lengte (L)','Breedte (W)','Hoogte (H)','Batch'];
+      const hdrs = ['ERP','Omschrijving','EAN','QTY','G.W','CBM','Length (L)','Width (W)','Height (H)','Batch'];
       const blob = new Blob([hdrs.join(',') + '\n'], {type:'text/csv;charset=utf-8;'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = 'etiketten-template.csv';
@@ -595,7 +595,7 @@
   if (btnTemplateXlsx){
     btnTemplateXlsx.addEventListener('click', ()=>{
       // Alleen headers — géén voorbeeldregels
-      const hdrs = ['Productcode','Omschrijving','EAN','QTY','G.W','CBM','Lengte (L)','Breedte (W)','Hoogte (H)','Batch'];
+      const hdrs = ['ERP','Omschrijving','EAN','QTY','G.W','CBM','Length (L)','Width (W)','Height (H)','Batch'];
       const ws = XLSX.utils.aoa_to_sheet([hdrs]);
       const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Etiketten');
       const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
