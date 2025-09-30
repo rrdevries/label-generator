@@ -364,21 +364,21 @@
   }
 
   const REQUIRED_FIELDS = [
-    ['productcode','Productcode'],
+    ['productcode','ERP'],
     ['omschrijving','Omschrijving'],
     ['ean','EAN'],
     ['qty','QTY'],
     ['gw','G.W'],
     ['cbm','CBM'],
-    ['lengte','Lengte (L)'],
-    ['breedte','Breedte (W)'],
-    ['hoogte','Hoogte (H)'],
+    ['lengte','Length (L)'],
+    ['breedte','Width (W)'],
+    ['hoogte','Height (H)'],
     ['batch','Batch']
   ];
   const ALL_FIELDS = [...REQUIRED_FIELDS];
 
   const SYNONYMS = {
-    productcode: ['productcode','code','sku','artikelcode','itemcode','prodcode'],
+    productcode: ['erp','erp#','erp #','productcode','code','sku','artikelcode','itemcode','prodcode'],
     omschrijving:['omschrijving','description','product','naam','title','titel'],
     ean:         ['ean','barcode','gtin','ean13','ean_13'],
     qty:         ['qty','aantal','quantity','pcs','stuks'],
