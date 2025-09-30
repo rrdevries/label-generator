@@ -1,12 +1,3 @@
-/*
-  Etiketten Generator — app.js (PARITY FIX)
-  - Single én Batch gebruiken exact dezelfde PREVIEW → FIT → CAPTURE pipeline
-  - Fit gebeurt pas ná mount (requestAnimationFrame) voor correcte layout-meting
-  - Geen harde caps op lettergrootte: tekst groeit met het label mee
-  - C/N is altijd een vaste onderstreep op één regel (geen invoer)
-  - Batch: per rij één PDF, alles gebundeld in ZIP
-*/
-
 (() => {
   /* ====== CONSTANTS ====== */
   const PX_PER_CM = 37.7952755906; // 96dpi
