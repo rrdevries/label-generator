@@ -677,6 +677,7 @@
   if (btnPDF) btnPDF.addEventListener('click', async ()=>{ try{ await generatePDFSingle(); } catch(e){ alert(e.message||e); } });
   window.addEventListener('resize', ()=>{ renderSingle().catch(()=>{}); });
 
+  /*
   // (optioneel) demo-waarden voor snelle start
   try{
     if (document.getElementById('prodCode')){
@@ -693,4 +694,5 @@
       safeRender();
     }
   }catch(_){}
+  */
 })();
