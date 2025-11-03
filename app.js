@@ -400,7 +400,7 @@
 
   function guessMapping(hdrs){
     const m = {}; ALL_FIELDS.forEach(([key]) => m[key] = '');
-    const slugs = hdrs.map(slugify);
+    const slugs = hdrs.map(h => slugify(String(h).replace(/\([^)]*\)/g, '')));
     for (let i=0;i<hdrs.length;i++){
       const h = hdrs[i], s = slugs[i];
       for (const [key, syns] of Object.entries(SYNONYMS)){
@@ -409,7 +409,7 @@
     }
     for (const [key] of ALL_FIELDS){
       if (!m[key]) {
-        const sset = SYNONYMS[key] || [key];
+        const sset = (SYNONYMS[key] || [key]).filter(tok => tok.length >= 2);
         const idx = slugs.findIndex(s => sset.some(tok => s.includes(tok)));
         if (idx >= 0) m[key] = hdrs[idx];
       }
