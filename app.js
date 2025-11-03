@@ -78,6 +78,9 @@
   // Fit alle label-inhouden in container
   function fitAllIn(container){
     container.querySelectorAll('.label-inner').forEach(inner => {
+    // als we schaalfactor k gebruiken, sla fitting over
+    const hasK = inner.style.getPropertyValue('--k');
+    if (hasK) return;
       inner.classList.add('nowrap-mode');
       inner.classList.remove('softwrap-mode');
       fitContentToBoxConditional(inner);
@@ -239,7 +242,21 @@
     label.dataset.idx = String(size.idx);
 
     const inner = el('div', { class:'label-inner nowrap-mode' });
-    inner.style.padding = (LABEL_PADDING_CM * PX_PER_CM * previewScale) + 'px';
+    // Padding op de label-rand, niet op de content die we schalen:
+    const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
+    label.style.padding = padPx + 'px';
+
+    //  schaal de HELE content proportioneel & centreer ---
+    const REF_W = 100;                 // referentiebreedte (px in ontwerpmaat)
+    const REF_H = 60;                  // referentiehoogte (idem)
+    inner.style.setProperty('--ref-w', REF_W + 'px');
+    inner.style.setProperty('--ref-h', REF_H + 'px');
+
+    const availW = widthPx  - padPx * 2;
+    const availH = heightPx - padPx * 2;
+    const k = Math.max(0.1, Math.min(availW / REF_W, availH / REF_H)); // 0.1 als veiligheidsbodem
+    inner.style.setProperty('--k', String(k));
+
 
     const head = el('div', { class:'label-head' },
       el('div', { class:'code-box line' }, values.code),
@@ -249,9 +266,6 @@
     inner.append(head, el('div',{class:'block-spacer'}), buildLeftBlock(values, size));
     label.append(inner);
     wrap.append(label, el('div',{class:'label-num'}, `Etiket ${size.idx}`));
-
-    // Alleen startwaarde — echte fit na mount
-    applyFontSizes(inner, Math.max(10, Math.floor(heightPx * 0.06)));
 
     return wrap;
   }
