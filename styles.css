@@ -60,6 +60,18 @@ body{
   .client-logo{ height:48px; max-width:200px; }
 }
 
+.version-badge{
+  display:inline-block;
+  margin-left:.5rem;
+  padding:.15rem .45rem;
+  font-size:.8rem;
+  font-weight:600;
+  border-radius:999px;
+  background:#eef2f7;
+  color:#334155;
+  vertical-align:middle;
+}
+
 /* Form in kolommen met gelijke inputbreedtes (CSS Grid) */
 .fields-columns{
   border:1px solid var(--bd);
