@@ -27,6 +27,39 @@ body{
 .app-header h1{ margin:0 0 2px; font-size:1.4rem; }
 .subtitle{ margin:0; color:#555; }
 
+/* Header lay-out met logo rechts */
+.app-header .brand{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+}
+
+/* Tekstblok links netjes stapelen */
+.app-header .brand-text{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+/* Logo */
+.client-logo{
+  display:block;
+  height:72px;              /* visuele hoogte, pas aan naar wens */
+  max-width:280px;          /* begrens breedte */
+  object-fit:contain;
+  object-position:right center;
+}
+
+/* Logo klikbaar zonder blauwe linkstijl */
+.brand-logo-link{ display:inline-block; line-height:0; }
+.brand-logo-link:focus{ outline:2px solid #2a6df4; outline-offset:2px; }
+
+/* Kleinere schermen: logo wat compacter */
+@media (max-width: 640px){
+  .client-logo{ height:48px; max-width:200px; }
+}
+
 /* Form in kolommen met gelijke inputbreedtes (CSS Grid) */
 .fields-columns{
   border:1px solid var(--bd);
