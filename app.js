@@ -358,21 +358,20 @@ function fitContentToBoxConditional(innerEl){
   const guardX = Math.max(8, w * 0.02);
   const guardY = Math.max(8, h * 0.02);
 
-  // Basisfont ~10% van de labelhoogte (in px)
-  // → dit is onze "doelgrootte" voordat we beginnen met fitten
-  const baseFromBox = h * 0.10;          // ~10% van de hoogte
+  // Basisfont ~10% van de kleinste zijde (stabieler dan alleen hoogte)
+  const minSide     = Math.min(w, h);
+  const baseFromBox = minSide * 0.10;      // ~10% van labelmaat
   const startHi     = Math.max(16, baseFromBox);
-
-  // Bij écht grote etiketten (veel pixels) durven we nog groter te starten
-  if (minSide > 450){
-    baseFromBox = minSide * 0.24;
-  }
 
   // Fase 1: no-wrap (voorkeur)
   innerEl.classList.add('nowrap-mode');
   innerEl.classList.remove('softwrap-mode');
+
   let fs = searchBaseFontSize(innerEl, WRAP_THRESHOLD_PX, startHi, guardX, guardY);
-  if (fs >= WRAP_THRESHOLD_PX) return;  // mooi, alles past zonder extreme krimp
+  if (fs >= WRAP_THRESHOLD_PX){
+    // mooi, alles past zonder extreme krimp
+    return;
+  }
 
   // Fase 2: soft-wrap (als we kleiner dan WRAP_THRESHOLD_PX moesten)
   innerEl.classList.remove('nowrap-mode');
@@ -385,8 +384,6 @@ function fitContentToBoxConditional(innerEl){
     applyFontSizes(innerEl, fs);
   }
 }
-
-
 
   /* ====== UI OPBOUW ====== */
   function buildLeftBlock(values, size) {
