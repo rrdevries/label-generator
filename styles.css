@@ -230,8 +230,9 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   height: 90%;
   margin: 0 auto;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: flex-start;  /* rijen beginnen bovenin */
+  align-items: center;          /* >>> blok horizontaal centreren <<< */
 }
 
 /* ====== FONT-HIËRARCHIE (Stap 3A) ====== */
@@ -298,8 +299,10 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   text-overflow: ellipsis;
 }
 
-.detail-box-inner {
-  width: 100%;
+.detail-box-inner{
+  display: inline-block;
+  width: auto;        /* zo breed als inhoud */
+  max-width: 100%;    /* maar nooit breder dan de box */
 }
 
 /* Extra styling voor C/N en Made in China (Stap 2B) */
@@ -405,11 +408,6 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
 /* Klein beetje extra ruimte boven de detail-box */
 .bottom-box{
   padding-top: 0.2em;
-}
-
-/* Detail-Box: rijen vanaf boven laten starten en niet verticaal centreren */
-.detail-box{
-  align-items: flex-start;
 }
 
 /* Zorg dat de inhoud de volle breedte benut */
