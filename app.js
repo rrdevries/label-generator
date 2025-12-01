@@ -206,24 +206,37 @@ function fitsTopAndDetail(innerEl, guardX, guardY){
     return fitsWithGuard(innerEl, guardX, guardY);
   }
 
-  // Bovenste blok: iets ruimere verticale marge, zodat ERP-box
-  // nooit tegen de rand "plakt"
+  // TOP-BOX: ERP + omschrijving
+  // Minimaal ~8% verticale marge zodat het nooit tegen de rand geplakt zit
   const topGuardY = Math.max(guardY, topBox.clientHeight * 0.08);
 
   const topOk =
     topBox.scrollWidth  <= (topBox.clientWidth  - guardX) &&
     topBox.scrollHeight <= (topBox.clientHeight - topGuardY);
 
-  // Onderste detail-blok: ook een eigen verticale marge,
-  // zodat de laatste regel (Made in China) niet de onderrand raakt
+  if (!topOk) return false;
+
+  // DETAIL-BOX: EAN/QTY/.../Made in China
+  // Minimaal ~7% marge zodat de onderste regel niet de onderrand raakt
   const detailGuardY = Math.max(guardY, detailBox.clientHeight * 0.07);
 
-  const detailOk =
+  const detailOkBox =
     detailInner.scrollWidth  <= (detailBox.clientWidth  - guardX) &&
     detailInner.scrollHeight <= (detailBox.clientHeight - detailGuardY);
 
-  return topOk && detailOk;
+  if (!detailOkBox) return false;
+
+  // EXTRA: geen enkele detail-value (inclusief EAN) mag horizontaal overlopen
+  const values = detailInner.querySelectorAll('.detail-value');
+  for (const v of values){
+    if (v.scrollWidth > (v.clientWidth - guardX)){
+      return false;  // font is nog te groot → verder verkleinen
+    }
+  }
+
+  return true;
 }
+
 
 
 function updateCnLine(innerEl){
@@ -334,14 +347,21 @@ function fitContentToBoxConditional(innerEl){
   const w = innerEl.clientWidth;
   const h = innerEl.clientHeight;
 
-  // Veiligheidsmarges (px): iets minder conservatief, zeker bij grote etiketten
-  const guardX = Math.max(6, w * 0.0125);  // was 8 / 2%
+  // Veiligheidsmarges (px): nog steeds voorzichtig,
+  // maar niet zó dat grote etiketten klein blijven
+  const guardX = Math.max(6, w * 0.0125);
   const guardY = Math.max(6, h * 0.0125);
 
-  // Startschatting op basis van kleinste zijde – agressiever vergroten
-  // Bij grote etiketten proberen we duidelijk grotere fonts
-  const baseFromBox = Math.min(w, h) * 0.18; // was 0.11
-  const startHi     = Math.max(18, baseFromBox); // was 16
+  // Startschatting op basis van kleinste zijde
+  const minSide = Math.min(w, h);
+  let baseFromBox = minSide * 0.20;   // iets agressiever dan 0.18
+
+  // Bij écht grote etiketten (veel pixels) durven we nog groter te starten
+  if (minSide > 450){
+    baseFromBox = minSide * 0.24;
+  }
+
+  const startHi = Math.max(18, baseFromBox);
 
   // Fase 1: no-wrap (voorkeur)
   innerEl.classList.add('nowrap-mode');

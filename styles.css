@@ -276,10 +276,11 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
 .detail-value{
   flex: 1;
   font-weight: 400;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: nowrap;   /* altijd 1 regel */
+  overflow: visible;     /* niet afkappen */
+  text-overflow: clip;   /* geen "..." */
 }
+
 
 /* Mini extra ruimte tussen de regels, bovenop de gap */
 .detail-row + .detail-row{
