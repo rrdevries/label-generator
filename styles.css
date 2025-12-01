@@ -178,12 +178,12 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   overflow: hidden;        /* veilig bij overloop */
 }
 
-/* Inhoud van het label: gecentreerd blok, tekst links via .label-leftblock */
+/* Inhoud van het label */
 .label-inner{
   display:flex;
   flex-direction:column;
-  align-items:center;
-  justify-content:center;
+  align-items:center;      /* centreer horizontaal */
+  justify-content:flex-start; /* laat de inhoud gewoon van boven naar beneden lopen */
   text-align:center;
   gap:.9em;
 
@@ -191,8 +191,8 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   height:100%;
   overflow:hidden;
 
-  font-size: var(--fs, 14px);  /* JS zet --fs dynamisch */
-  padding: var(--inner-pad, 0);/* JS zet --inner-pad in px */
+  font-size: var(--fs, 14px);
+  padding: var(--inner-pad, 0);
 }
 
 /* optioneel: compacter bij extreem lage labels */
@@ -200,13 +200,24 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   gap:.5em;
 }
 
-/* Kop (gecentreerd) */
+/* Kop (ERP + omschrijving) gecentreerd bovenaan */
 .label-head{
   display:flex;
   flex-direction:column;
   align-items:center;
   gap:.6em;
 }
+
+/* Blok met EAN/QTY/G.W./CBM */
+.label-leftblock{
+  width: var(--specs-percent); /* bijv. 66% van de labelbreedte */
+  margin: 0 auto;              /* blok zelf horizontaal in het midden van het etiket */
+  text-align: left;            /* maar de tekst ín het blok links uitlijnen */
+  display: flex;
+  flex-direction: column;
+  gap: .6em;
+}
+
 .code-box{
   display:inline-block;
   border:var(--code-border-3px) solid #000;
@@ -214,16 +225,6 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   padding:.1em .25em;
   font-weight:700;
   line-height:1.05;
-}
-
-/* Links-blok als geheel gecentreerd (tekst in het blok blijft links) */
-.label-leftblock{
-  width: var(--specs-percent);
-  margin: 0 auto;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: .6em;
 }
 
 /* Grid labels + waarden */
