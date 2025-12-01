@@ -260,26 +260,44 @@ function fitContentToBoxConditional(innerEl){
 
   /* ====== UI OPBOUW ====== */
   function buildLeftBlock(values, size) {
-    const block = el('div', { class:'label-leftblock' });
-    const grid  = el('div', { class:'specs-grid' });
-  
-    [
-      ...line('EAN:', values.ean),
-      ...line('QTY:', `${values.qty} PCS`),
-      ...line('G.W:', `${values.gw} KGS`),
-      ...line('CBM:', values.cbm)
-    ].forEach(n => grid.append(n));
-  
-    block.append(grid);
-  
-    // Onderregel per etiket:
-    if (size.idx === 1 || size.idx === 2) {
-      block.append(el('div', { class:'line' }, 'C/N: ___________________'));
-    } else {
-      block.append(el('div', { class:'line' }, 'Made in China'));
-    }
-    return block;
+    const rowsData = [
+      { label: 'EAN:',          value: values.ean   || '' },
+      { label: 'QTY:',          value: values.qty   || '' },
+      { label: 'G.W:',          value: values.gw    || '' },
+      { label: 'CBM:',          value: values.cbm   || '' },
+      { label: 'Batch:',        value: values.batch || '' },
+      { label: 'C/N:',          value: null, kind: 'cn' },
+      { label: 'Made in China', value: '',  kind: 'made' }
+    ];
+
+    const detailBoxInner = el('div', { class: 'detail-box-inner' });
+
+    rowsData.forEach((r) => {
+      const rowClasses = ['detail-row'];
+      if (r.kind === 'cn')   rowClasses.push('cn-row');
+      if (r.kind === 'made') rowClasses.push('made-row');
+
+      const row = el('div', { class: rowClasses.join(' ') });
+
+      const labelEl = el('div', { class: 'detail-label' }, r.label);
+
+      let valueEl;
+      if (r.kind === 'cn') {
+        // C/N: lijn om op te schrijven
+        const lineEl = el('span', { class: 'cn-line' });
+        valueEl = el('div', { class: 'detail-value' }, lineEl);
+      } else {
+        // normale cases, inclusief Made in China (lege value)
+        valueEl = el('div', { class: 'detail-value' }, r.value || '');
+      }
+
+      row.append(labelEl, valueEl);
+      detailBoxInner.append(row);
+    });
+
+    return detailBoxInner;
   }
+
 
   function createLabelEl(size, values, previewScale){
   const widthPx  = Math.round(size.w * PX_PER_CM * previewScale);

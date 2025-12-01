@@ -259,6 +259,59 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   line-height:1.05;
 }
 
+/* ====== DETAIL-BOX STRUCTUUR (Stap 2A) ====== */
+.detail-box {
+  flex-direction: column;        /* stapel rijen onder elkaar */
+  justify-content: flex-start;
+  font-weight: normal;
+  text-align: left;
+  gap: 0.25em;                   /* verticale afstand tussen regels */
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0.75em;                   /* horizontale ruimte tussen label & value */
+}
+
+.detail-label {
+  font-weight: 700;              /* vet */
+  white-space: nowrap;
+}
+
+.detail-value {
+  flex: 1;
+  font-weight: 400;              /* normaal */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail-box-inner {
+  width: 100%;
+}
+
+/* Extra styling voor C/N en Made in China (Stap 2B) */
+
+.detail-row.cn-row .detail-label {
+  margin-right: 0.25em;
+}
+
+.cn-line {
+  display: inline-block;
+  border-bottom: 1px solid currentColor;
+  width: 4em;           /* vaste breedte voor nu; wordt in stap 4 dynamisch */
+  height: 0.9em;
+}
+
+/* optioneel: made-in-china iets dichter bij Batch houden */
+.detail-row.made-row .detail-label {
+  font-weight: 700;
+}
+
+
 /* Links-blok als geheel gecentreerd (tekst in het blok blijft links) */
 .label-leftblock{
   width: var(--specs-percent);
