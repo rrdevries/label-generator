@@ -203,7 +203,9 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   gap:0; /* geen ruimte tussen etiketten */
   place-content:center;
   place-items:center;
+  transform-origin: top center; /* zodat schalen netjes vanuit boven/centrum gebeurt */
 }
+
 
 /* Label + nummer (linksonder, buiten kader) */
 .label-wrap{
