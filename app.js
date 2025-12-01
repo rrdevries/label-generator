@@ -233,20 +233,28 @@
   }
 
   /* ====== UI OPBOUW ====== */
-  function buildLeftBlock(values, size){
+  function buildLeftBlock(values, size) {
     const block = el('div', { class:'label-leftblock' });
     const grid  = el('div', { class:'specs-grid' });
+  
     [
       ...line('EAN:', values.ean),
       ...line('QTY:', `${values.qty} PCS`),
       ...line('G.W:', `${values.gw} KGS`),
       ...line('CBM:', values.cbm)
     ].forEach(n => grid.append(n));
+  
     block.append(grid);
-    block.append(el('div',{class:'line'}, `Batch: ${values.batch}`));
-    block.append(el('div',{class:'line'}, size.under));
+  
+    // Onderregel per etiket:
+    if (size.idx === 1 || size.idx === 2) {
+      block.append(el('div', { class:'line' }, 'C/N: ___________________'));
+    } else {
+      block.append(el('div', { class:'line' }, 'Made in China'));
+    }
     return block;
   }
+
 
   function createLabelEl(size, values, previewScale){
     const widthPx  = Math.round(size.w * PX_PER_CM * previewScale);
