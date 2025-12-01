@@ -200,11 +200,13 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
 
 /* Bovenste 30%: ERP + productomschrijving */
 /* Top & bottom vullen altijd de volledige breedte van het label */
+/* Top & bottom vullen altijd de volledige breedte van het label */
 .top-box,
 .bottom-box{
   width: 100%;
 }
 
+/* Bovenste 30%: ERP + productomschrijving */
 .top-box{
   flex: 0 0 30%;
   display: flex;
@@ -219,48 +221,19 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   flex: 0 0 70%;
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding-top: 0.2em;
-}
-
-/* ====== FONT-HIËRARCHIE (Stap 3A) ====== */
-
-/* ERP-code: groter font */
-.erp-box .code-box{
-  font-size: var(--fs-erp, 1em);
-}
-
-/* Productomschrijving: basisfont */
-.product-desc{
-  font-size: var(--fs-base, 1em);
-}
-
-.code-box{
-  display:inline-block;
-  border:var(--code-border-3px) solid #000;
-  background:#fff;
-  padding:.1em .25em;
-  font-weight:700;
-  line-height:1.05;
-}
-
-/* Onderste deel van het etiket */
-.bottom-box{
-  flex: 0 0 70%;
-  display: flex;
-  align-items: center;
   justify-content: center;   /* centreer detail-box binnen bottom-box */
   padding-top: 0.2em;
 }
 
 /* Detail-Box: blok in het midden van het etiket */
 .detail-box{
-  width: 90%;
+  width: 90%;               /* 0,9 × etiketbreedte */
   height: 90%;
   display: flex;
-  align-items: center;       /* verticaal centreren van het blok */
-  justify-content: center;   /* horizontaal centreren van het blok */
+  align-items: center;
+  justify-content: center;
 }
+
 
 /* Het eigenlijke blok met labels + waarden */
 .detail-box-inner{
@@ -295,12 +268,10 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   text-overflow: clip;   /* geen "..." */
 }
 
-
 /* Mini extra ruimte tussen de regels, bovenop de gap */
 .detail-row + .detail-row{
   margin-top: 0.05em;
 }
-
 
 /* Extra styling voor C/N en Made in China (Stap 2B) */
 
@@ -321,6 +292,28 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
 }
 
 .line{ white-space: normal; word-break: break-word; }
+
+/* ====== FONT-HIËRARCHIE (Stap 3A) ====== */
+
+/* ERP-code: groter font */
+.erp-box .code-box{
+  font-size: var(--fs-erp, 1em);
+}
+
+/* Productomschrijving: basisfont */
+.product-desc{
+  font-size: var(--fs-base, 1em);
+}
+
+.code-box{
+  display:inline-block;
+  border:var(--code-border-3px) solid #000;
+  background:#fff;
+  padding:.1em .25em;
+  font-weight:700;
+  line-height:1.05;
+}
+
 
 /* Batch UI */
 .batch-panel{

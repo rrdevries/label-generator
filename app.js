@@ -78,17 +78,17 @@
   // Fit alle label-inhouden in container
   function fitAllIn(container){
     container.querySelectorAll('.label-inner').forEach(inner => {
-      // Geen early-return meer op --k: we willen ALTIJD font-fitting doen
       inner.classList.add('nowrap-mode');
       inner.classList.remove('softwrap-mode');
 
       // font-fit Top-Box + Detail-Box
       fitContentToBoxConditional(inner);
 
-      // nu de C/N-lijn breedte laten volgen op "IN CHINA"
+      // C/N-lijn breedte laten volgen op "IN CHINA"
       updateCnLine(inner);
     });
   }
+
 
 
 
@@ -423,47 +423,48 @@ function fitContentToBoxConditional(innerEl){
 
 
   function createLabelEl(size, values, previewScale){
-  // Echte fysieke afmeting in pixels (cm × px-per-cm)
-  const widthPx  = Math.round(size.w * PX_PER_CM);
-  const heightPx = Math.round(size.h * PX_PER_CM);
+    // Afmeting in pixels voor de PREVIEW (geschaald naar het canvas)
+    const widthPx  = Math.round(size.w * PX_PER_CM * previewScale);
+    const heightPx = Math.round(size.h * PX_PER_CM * previewScale);
 
-  const wrap  = el('div', { class:'label-wrap' });
-  const label = el('div', {
-    class:'label',
-    style:{ width: widthPx + 'px', height: heightPx + 'px' }
-  });
-  label.dataset.idx = String(size.idx);
+    const wrap  = el('div', { class:'label-wrap' });
+    const label = el('div', {
+      class:'label',
+      style:{ width: widthPx + 'px', height: heightPx + 'px' }
+    });
+    label.dataset.idx = String(size.idx);
 
-  const inner = el('div', { class:'label-inner nowrap-mode' });
+    const inner = el('div', { class:'label-inner nowrap-mode' });
 
-  // Padding op basis van cm, onafhankelijk van preview scale
-  const padPx = LABEL_PADDING_CM * PX_PER_CM;
-  label.style.padding = padPx + 'px';
+    // Padding op de label-rand, mee schalen met de preview
+    const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
+    label.style.padding = padPx + 'px';
 
-  // --- TOP-BOX: ERP-box boven, daaronder productomschrijving ---
-  const topBox = el(
-    'div',
-    { class: 'top-box' },
-    el(
+    // --- TOP-BOX: ERP-box boven, daaronder productomschrijving ---
+    const topBox = el(
       'div',
-      { class: 'erp-box' },
-      el('div', { class: 'code-box line' }, values.code)
-    ),
-    el('div', { class: 'product-desc line' }, values.desc)
-  );
+      { class: 'top-box' },
+      el(
+        'div',
+        { class: 'erp-box' },
+        el('div', { class: 'code-box line' }, values.code)
+      ),
+      el('div', { class: 'product-desc line' }, values.desc)
+    );
 
-  // --- BOTTOM-BOX: Detail-Box met de bestaande leftblock-inhoud ---
-  const detailContent = buildLeftBlock(values, size);   // bestaande functie
-  const detailBox     = el('div', { class: 'detail-box' }, detailContent);
-  const bottomBox     = el('div', { class: 'bottom-box' }, detailBox);
+    // --- BOTTOM-BOX: Detail-Box met de bestaande leftblock-inhoud ---
+    const detailContent = buildLeftBlock(values, size);
+    const detailBox     = el('div', { class: 'detail-box' }, detailContent);
+    const bottomBox     = el('div', { class: 'bottom-box' }, detailBox);
 
-  // Alles in elkaar klikken
-  inner.append(topBox, bottomBox);
-  label.append(inner);
-  wrap.append(label, el('div', { class:'label-num' }, `Etiket ${size.idx}`));
+    // Alles in elkaar klikken
+    inner.append(topBox, bottomBox);
+    label.append(inner);
+    wrap.append(label, el('div', { class:'label-num' }, `Etiket ${size.idx}`));
 
-  return wrap;
+    return wrap;
 }
+
 
 
   /* ====== PREVIEW PIPELINE (single & batch) ====== */
@@ -479,8 +480,8 @@ function fitContentToBoxConditional(innerEl){
     [0,2,1,3].forEach(i => labelsGrid.appendChild(createLabelEl(sizes[i], vals, scale)));
 
     // Visueel schalen zodat alles in het canvas past
-    labelsGrid.style.transformOrigin = 'top left';
-    labelsGrid.style.transform = `scale(${scale})`;
+    // labelsGrid.style.transformOrigin = 'top left';
+    // labelsGrid.style.transform = `scale(${scale})`;
 
     // Fit ná mount (font-fit werkt op ongeschaalde maten)
     await mountThenFit(labelsGrid);
