@@ -350,11 +350,6 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   box-sizing: border-box;
 }
 
-/* Mini extra ruimte tussen de regels, bovenop de gap */
-.detail-row + .detail-row{
-  margin-top: 0.05em;
-}
-
 /* Footer onderaan */
 .site-footer{
   display:flex; align-items:center; justify-content:center;

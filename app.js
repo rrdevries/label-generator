@@ -206,20 +206,25 @@ function fitsTopAndDetail(innerEl, guardX, guardY){
     return fitsWithGuard(innerEl, guardX, guardY);
   }
 
-  // Voor de top-box zijn we extra streng op verticale marge,
-  // zodat ERP-box + omschrijving nooit "tegen het plafond" plakken.
+  // Bovenste blok: iets ruimere verticale marge, zodat ERP-box
+  // nooit tegen de rand "plakt"
   const topGuardY = Math.max(guardY, topBox.clientHeight * 0.08);
 
   const topOk =
     topBox.scrollWidth  <= (topBox.clientWidth  - guardX) &&
     topBox.scrollHeight <= (topBox.clientHeight - topGuardY);
 
+  // Onderste detail-blok: ook een eigen verticale marge,
+  // zodat de laatste regel (Made in China) niet de onderrand raakt
+  const detailGuardY = Math.max(guardY, detailBox.clientHeight * 0.07);
+
   const detailOk =
     detailInner.scrollWidth  <= (detailBox.clientWidth  - guardX) &&
-    detailInner.scrollHeight <= (detailBox.clientHeight - guardY);
+    detailInner.scrollHeight <= (detailBox.clientHeight - detailGuardY);
 
   return topOk && detailOk;
 }
+
 
 function updateCnLine(innerEl){
   const detailInner = innerEl.querySelector('.detail-box-inner');
