@@ -191,7 +191,7 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   height:100%;
   overflow:hidden;
 
-  font-size: var(--fs, 14px);  /* JS zet --fs dynamisch */
+  font-size: var(--fs-base, var(--fs, 14px));
   padding: var(--inner-pad, 0);/* JS zet --inner-pad in px */
 }
 
@@ -234,14 +234,23 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   justify-content: center;
 }
 
-/* Klein cosmetisch: ERP-box en omschrijving */
-.erp-box{
-  margin-bottom: 0.25em;
+/* ====== FONT-HIËRARCHIE (Stap 3A) ====== */
+
+/* ERP-code: groter font */
+.erp-box .code-box{
+  font-size: var(--fs-erp, 1em);
 }
 
+/* Productomschrijving: basisfont */
 .product-desc{
-  /* kan later nog fijngetuned worden; nu gewoon overnemen van .line */
+  font-size: var(--fs-base, 1em);
 }
+
+/* Detail-tekst (EAN/QTY/…): basis of aparte detail-font */
+.detail-box-inner{
+  font-size: var(--fs-detail, var(--fs-base, 1em));
+}
+
 
 /* Kop (gecentreerd) */
 .label-head{

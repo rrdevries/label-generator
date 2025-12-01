@@ -189,14 +189,75 @@ function fitsWithGuard(innerEl, guardX, guardY){
   );
 }
 
-/** zet actuele body-font (via --fs) + code-box (1.6× body) */
-function applyFontSizes(innerEl, fsPx){
-  innerEl.style.setProperty('--fs', fsPx + 'px');
-  const codeEl = innerEl.querySelector('.code-box');
-  if (codeEl){
-    // Geen cap: mag zo groot als past; de fit stopt vanzelf bij overshoot
-    codeEl.style.fontSize = (fsPx * CODE_MULT) + 'px';
+function fitsTopAndDetail(innerEl, guardX, guardY){
+  const topBox      = innerEl.querySelector('.top-box');
+  const detailBox   = innerEl.querySelector('.detail-box');
+  const detailInner = innerEl.querySelector('.detail-box-inner');
+
+  // Als we de nieuwe structuur niet vinden, val terug op de oude check:
+  if (!topBox || !detailBox || !detailInner){
+    return fitsWithGuard(innerEl, guardX, guardY);
   }
+
+  const topOk =
+    topBox.scrollWidth  <= (topBox.clientWidth  - guardX) &&
+    topBox.scrollHeight <= (topBox.clientHeight - guardY);
+
+  const detailOk =
+    detailInner.scrollWidth  <= (detailBox.clientWidth  - guardX) &&
+    detailInner.scrollHeight <= (detailBox.clientHeight - guardY);
+
+  return topOk && detailOk;
+}
+
+function searchBaseFontSize(innerEl, minFs, startHi, guardX, guardY){
+  // 1) agressief omhoog groeien vanaf startHi
+  applyFontSizes(innerEl, startHi);
+  if (fitsTopAndDetail(innerEl, guardX, guardY)){
+    let grow = startHi;
+    for (let i = 0; i < 48; i++){
+      const next = grow * 1.08;
+      applyFontSizes(innerEl, next);
+      if (!fitsTopAndDetail(innerEl, guardX, guardY)){
+        applyFontSizes(innerEl, grow);  // stap terug naar laatste passende
+        return grow;
+      }
+      grow = next;
+    }
+    return grow; // plafond bereikt zonder clip
+  }
+
+  // 2) startHi paste al niet → binair omlaag tussen [minFs, startHi]
+  let lo = minFs, hi = startHi, best = lo;
+  while (hi - lo > 0.5){
+    const mid = (lo + hi) / 2;
+    applyFontSizes(innerEl, mid);
+    if (fitsTopAndDetail(innerEl, guardX, guardY)){
+      best = mid;
+      lo   = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  applyFontSizes(innerEl, best);
+  return best;
+}
+
+
+const FONT_STEP_PX = 4;  // 1 stap = 4px, ERP = basis + 2 stappen
+
+function applyFontSizes(innerEl, fsPx){
+  const base   = fsPx;
+  const erp    = base + 2 * FONT_STEP_PX;  // ERP = basis + 8px
+  const detail = base;                      // voorlopig gelijk aan basis
+
+  // Nieuwe variabelen voor hiërarchie
+  innerEl.style.setProperty('--fs-base',   base   + 'px');
+  innerEl.style.setProperty('--fs-erp',    erp    + 'px');
+  innerEl.style.setProperty('--fs-detail', detail + 'px');
+
+  // Backwards compatibiliteit met bestaande CSS
+  innerEl.style.setProperty('--fs', base + 'px');
 }
 
 /** zoek een passende fontgrootte (eerst groeien, daarna finetunen naar beneden) */
@@ -230,7 +291,7 @@ function searchFontSize(innerEl, minFs, startHi, guardX, guardY){
 
 /** hoofd-fit: eerst no-wrap ≥ WRAP_THRESHOLD_PX, anders soft-wrap ≥ MIN_FS_PX */
 function fitContentToBoxConditional(innerEl){
-  // Effectieve box (na padding) → we vertrouwen op clientWidth/Height
+  // Effectieve box (na padding)
   const w = innerEl.clientWidth;
   const h = innerEl.clientHeight;
 
@@ -238,24 +299,28 @@ function fitContentToBoxConditional(innerEl){
   const guardX = Math.max(8, w * 0.02);
   const guardY = Math.max(8, h * 0.02);
 
-  // Startschatting agressiever: proportioneel op de KLEINSTE zijde
-  // → zo schaal je in grote etiketten duidelijk omhoog
-  const baseFromBox = Math.min(w, h) * 0.11;     // was ~0.06–0.085; nu forser
-  const startHi     = Math.max(16, baseFromBox);  // ondergrens redelijke leesbaarheid
+  // Startschatting op basis van kleinste zijde
+  const baseFromBox = Math.min(w, h) * 0.11;
+  const startHi     = Math.max(16, baseFromBox);
 
   // Fase 1: no-wrap (voorkeur)
   innerEl.classList.add('nowrap-mode');
   innerEl.classList.remove('softwrap-mode');
-  let fs = searchFontSize(innerEl, WRAP_THRESHOLD_PX, startHi, guardX, guardY);
-  if (fs >= WRAP_THRESHOLD_PX) return;
+  let fs = searchBaseFontSize(innerEl, WRAP_THRESHOLD_PX, startHi, guardX, guardY);
+  if (fs >= WRAP_THRESHOLD_PX) return;  // mooi, alles past zonder extreme krimp
 
-  // Fase 2: soft-wrap (alleen als echt nodig)
+  // Fase 2: soft-wrap (als we kleiner dan WRAP_THRESHOLD_PX moesten)
   innerEl.classList.remove('nowrap-mode');
   innerEl.classList.add('softwrap-mode');
+  fs = searchBaseFontSize(innerEl, MIN_FS_PX, fs, guardX, guardY);
 
-  // Zelfde startHi gebruiken (nu mag het beter passen dankzij wrap)
-  searchFontSize(innerEl, MIN_FS_PX, startHi, guardX, guardY);
+  // Noodrem
+  if (fs < MIN_FS_PX){
+    fs = MIN_FS_PX;
+    applyFontSizes(innerEl, fs);
+  }
 }
+
 
 
   /* ====== UI OPBOUW ====== */
