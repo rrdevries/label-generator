@@ -24,7 +24,7 @@
     { key: 'boxWidth',  label: 'Breedte (W) [cm]', required: true },
     { key: 'boxHeight', label: 'Hoogte (H) [cm]', required: true },
     { key: 'prodCode',  label: 'Productcode (ERP)', required: true },
-    { key: 'prodDesc',  label: 'Productomschrijving', required: true },
+    { key: 'prodDesc',  label: 'Productnaam', required: true },
     { key: 'ean',       label: 'EAN', required: true },
     { key: 'qty',       label: 'QTY (PCS)', required: true },
     { key: 'gw',        label: 'G.W (KGS)', required: false },
