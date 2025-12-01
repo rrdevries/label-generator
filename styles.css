@@ -1,5 +1,5 @@
 :root{
-  --px-per-cm: 37.7952755906;4
+  --px-per-cm: 37.7952755906;
   --ui-radius: 12px;
   --border-1px: 1px;
   --code-border-3px: 3px;
@@ -198,6 +198,49 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
 /* optioneel: compacter bij extreem lage labels */
 .label-inner.compact{
   gap:.5em;
+}
+
+/* Verdeling binnen het label: Top-Box (30%) en Bottom-Box (70%) */
+.top-box,
+.bottom-box{
+  width: 100%;
+}
+
+/* Bovenste 30%: ERP + productomschrijving */
+.top-box{
+  flex: 0 0 30%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* Onderste 70%: Detail-Box */
+.bottom-box{
+  flex: 0 0 70%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Detail-Box binnen de Bottom-Box (0,9 × breedte/hoogte, gecentreerd) */
+.detail-box{
+  width: 90%;
+  height: 90%;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Klein cosmetisch: ERP-box en omschrijving */
+.erp-box{
+  margin-bottom: 0.25em;
+}
+
+.product-desc{
+  /* kan later nog fijngetuned worden; nu gewoon overnemen van .line */
 }
 
 /* Kop (gecentreerd) */

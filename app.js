@@ -281,43 +281,59 @@ function fitContentToBoxConditional(innerEl){
     return block;
   }
 
-
   function createLabelEl(size, values, previewScale){
-    const widthPx  = Math.round(size.w * PX_PER_CM * previewScale);
-    const heightPx = Math.round(size.h * PX_PER_CM * previewScale);
+  const widthPx  = Math.round(size.w * PX_PER_CM * previewScale);
+  const heightPx = Math.round(size.h * PX_PER_CM * previewScale);
 
-    const wrap  = el('div', { class:'label-wrap' });
-    const label = el('div', { class:'label', style:{ width:widthPx+'px', height:heightPx+'px' }});
-    label.dataset.idx = String(size.idx);
+  const wrap  = el('div', { class:'label-wrap' });
+  const label = el('div', {
+    class:'label',
+    style:{ width: widthPx + 'px', height: heightPx + 'px' }
+  });
+  label.dataset.idx = String(size.idx);
 
-    const inner = el('div', { class:'label-inner nowrap-mode' });
-    // Padding op de label-rand, niet op de content die we schalen:
-    const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
-    label.style.padding = padPx + 'px';
+  const inner = el('div', { class:'label-inner nowrap-mode' });
 
-    //  schaal de HELE content proportioneel & centreer ---
-    const REF_W = 100;                 // referentiebreedte (px in ontwerpmaat)
-    const REF_H = 60;                  // referentiehoogte (idem)
-    inner.style.setProperty('--ref-w', REF_W + 'px');
-    inner.style.setProperty('--ref-h', REF_H + 'px');
+  // Padding op de label-rand, niet op de content die we schalen
+  const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
+  label.style.padding = padPx + 'px';
 
-    const availW = widthPx  - padPx * 2;
-    const availH = heightPx - padPx * 2;
-    const k = Math.max(0.1, Math.min(availW / REF_W, availH / REF_H)); // 0.1 als veiligheidsbodem
-    inner.style.setProperty('--k', String(k));
+  // (Bestaande) referentiematen voor evt. schaal-functies
+  const REF_W = 100;
+  const REF_H = 60;
+  inner.style.setProperty('--ref-w', REF_W + 'px');
+  inner.style.setProperty('--ref-h', REF_H + 'px');
 
+  const availW = widthPx  - padPx * 2;
+  const availH = heightPx - padPx * 2;
+  const k = Math.max(0.1, Math.min(availW / REF_W, availH / REF_H)); // veiligheidsbodem
+  inner.style.setProperty('--k', String(k));
 
-    const head = el('div', { class:'label-head' },
-      el('div', { class:'code-box line' }, values.code),
-      el('div', { class:'line' }, values.desc)
-    );
+  // --- TOP-BOX: ERP-box boven, daaronder productomschrijving ---
+  const topBox = el(
+    'div',
+    { class: 'top-box' },
+    el(
+      'div',
+      { class: 'erp-box' },
+      el('div', { class: 'code-box line' }, values.code)
+    ),
+    el('div', { class: 'product-desc line' }, values.desc)
+  );
 
-    inner.append(head, el('div',{class:'block-spacer'}), buildLeftBlock(values, size));
-    label.append(inner);
-    wrap.append(label, el('div',{class:'label-num'}, `Etiket ${size.idx}`));
+  // --- BOTTOM-BOX: Detail-Box met de bestaande leftblock-inhoud ---
+  const detailContent = buildLeftBlock(values, size);   // bestaande functie
+  const detailBox     = el('div', { class: 'detail-box' }, detailContent);
+  const bottomBox     = el('div', { class: 'bottom-box' }, detailBox);
 
-    return wrap;
-  }
+  // Alles in elkaar klikken
+  inner.append(topBox, bottomBox);
+  label.append(inner);
+  wrap.append(label, el('div', { class:'label-num' }, `Etiket ${size.idx}`));
+
+  return wrap;
+}
+
 
   /* ====== PREVIEW PIPELINE (single & batch) ====== */
   async function renderPreviewFor(vals){
