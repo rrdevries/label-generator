@@ -199,6 +199,12 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
 }
 
 /* Bovenste 30%: ERP + productomschrijving */
+/* Top & bottom vullen altijd de volledige breedte van het label */
+.top-box,
+.bottom-box{
+  width: 100%;
+}
+
 .top-box{
   flex: 0 0 30%;
   display: flex;
@@ -208,6 +214,14 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   text-align: center;
 }
 
+/* Onderste deel van het etiket */
+.bottom-box{
+  flex: 0 0 70%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0.2em;
+}
 
 /* ====== FONT-HIËRARCHIE (Stap 3A) ====== */
 

@@ -423,8 +423,9 @@ function fitContentToBoxConditional(innerEl){
 
 
   function createLabelEl(size, values, previewScale){
-  const widthPx  = Math.round(size.w * PX_PER_CM * previewScale);
-  const heightPx = Math.round(size.h * PX_PER_CM * previewScale);
+  // Echte fysieke afmeting in pixels (cm × px-per-cm)
+  const widthPx  = Math.round(size.w * PX_PER_CM);
+  const heightPx = Math.round(size.h * PX_PER_CM);
 
   const wrap  = el('div', { class:'label-wrap' });
   const label = el('div', {
@@ -435,8 +436,8 @@ function fitContentToBoxConditional(innerEl){
 
   const inner = el('div', { class:'label-inner nowrap-mode' });
 
-  // Padding op de label-rand, niet op de content die we schalen
-  const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
+  // Padding op basis van cm, onafhankelijk van preview scale
+  const padPx = LABEL_PADDING_CM * PX_PER_CM;
   label.style.padding = padPx + 'px';
 
   // --- TOP-BOX: ERP-box boven, daaronder productomschrijving ---
@@ -472,17 +473,21 @@ function fitContentToBoxConditional(innerEl){
     currentPreviewScale = scale;
 
     updateControlInfo(sizes);
-    labelsGrid.style.gap = '0'; // géén witruimte tussen etiketten
+    labelsGrid.style.gap = '0';
     labelsGrid.innerHTML = '';
 
-    // Volgorde: 1 & 3 boven, 2 & 4 onder
     [0,2,1,3].forEach(i => labelsGrid.appendChild(createLabelEl(sizes[i], vals, scale)));
 
-    // Fit ná mount (twee frames voor robuustheid)
+    // Visueel schalen zodat alles in het canvas past
+    labelsGrid.style.transformOrigin = 'top left';
+    labelsGrid.style.transform = `scale(${scale})`;
+
+    // Fit ná mount (font-fit werkt op ongeschaalde maten)
     await mountThenFit(labelsGrid);
 
     return { sizes, scale };
   }
+
 
   async function renderSingle(){
     const vals = getFormValues();
