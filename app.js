@@ -96,44 +96,59 @@
   }
 
   /* ====== ENKELVOUDIG INLEZEN ====== */
-  function readValuesSingle(){
-    const g = id => document.getElementById(id).value.trim();
-    const L = parseFloat(g('boxLength'));
-    const W = parseFloat(g('boxWidth'));
-    const H = parseFloat(g('boxHeight'));
-
+  function readValuesSingle() {
+    const get = id => document.getElementById(id).value.trim();
+  
+    const L = parseFloat(get('boxLength'));
+    const W = parseFloat(get('boxWidth'));
+    const H = parseFloat(get('boxHeight'));
+  
     const vals = {
-      L,W,H,
-      code:g('prodCode'),
-      desc:g('prodDesc'),
-      ean:g('ean'),
-      qty:String(Math.max(0, Math.floor(Number(g('qty'))||0))),
-      gw:(v=>isFinite(+v)?(+v).toFixed(2):v)(g('gw')),
-      cbm:g('cbm'),
-      batch:g('batch') // verplicht
+      L, W, H,
+      code:  get('prodCode'),
+      desc:  get('prodDesc'),
+      ean:   get('ean'),
+      qty:   String(Math.max(0, Math.floor(Number(get('qty')) || 0))),
+      gw:    (v => isFinite(+v) ? (+v).toFixed(2) : v)(get('gw')),
+      cbm:   get('cbm'),
+      batch: get('batch') // VERPLICHT
     };
-
-    if ([L,W,H].some(v=>!isFinite(v)||v<=0) ||
-        !vals.code || !vals.desc || !vals.ean || !vals.qty || !vals.gw || !vals.cbm || !vals.batch){
-      throw new Error('Controleer de verplichte velden (incl. Batch).');
+  
+    // Verplichte velden check
+    if (!vals.code || !vals.desc || !vals.ean || !vals.qty || !vals.gw || !vals.cbm || !vals.batch) {
+      throw new Error('Vul alle verplichte velden in (inclusief Batch).');
     }
+  
+    // Maatvalidatie: 5–100 cm
+    ['L','W','H'].forEach(k => {
+      const v = vals[k];
+      if (!isFinite(v) || v < 5 || v > 100) {
+        throw new Error('Lengte (L), Breedte (W) en Hoogte (H) moeten tussen 5 en 100 cm liggen (5–100).');
+      }
+    });
+  
     return vals;
   }
 
+
   /* ====== LABELMATEN & PREVIEW SCALE ====== */
-  function computeLabelSizes({ L, W, H }){
-    // Etiket = 80% van respectievelijk L×H (1&2) en W×H (3&4) → 10% marge rondom
-    const scale=0.8;
-    const fb={ w:L*scale, h:H*scale };
-    const sd={ w:W*scale, h:H*scale };
-    const cnText = 'C/N: ___________________';
+  function computeLabelSizes({ L, W, H }) {
+    // 10% kleiner aan elke zijde
+    const lw = Math.max(5, Math.min(100, L));
+    const ww = Math.max(5, Math.min(100, W));
+    const hh = Math.max(5, Math.min(100, H));
+  
+    const fb = { w: lw * 0.9, h: hh * 0.9 }; // front/back = L × H
+    const sd = { w: ww * 0.9, h: hh * 0.9 }; // side       = W × H
+  
     return [
-      { idx:1, kind:'front/back', ...fb, under:'Made in China' },
-      { idx:2, kind:'front/back', ...fb, under: cnText },
-      { idx:3, kind:'side',       ...sd, under:'Made in China' },
-      { idx:4, kind:'side',       ...sd, under: cnText }
+      { idx: 1, kind: 'front/back', ...fb }, // C/N straks hier
+      { idx: 2, kind: 'front/back', ...fb }, // C/N straks hier
+      { idx: 3, kind: 'side',       ...sd }, // Made in China hier
+      { idx: 4, kind: 'side',       ...sd }  // Made in China hier
     ];
   }
+
 
   function updateControlInfo(sizes){
     const n2=x=>(Math.round(x*100)/100).toFixed(2);
