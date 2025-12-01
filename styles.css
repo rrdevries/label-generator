@@ -1,5 +1,5 @@
 :root{
-  --px-per-cm: 37.7952755906;
+  --px-per-cm: 37.7952755906;4
   --ui-radius: 12px;
   --border-1px: 1px;
   --code-border-3px: 3px;
@@ -10,125 +10,94 @@
   --label-w: 140px;           /* vaste labelkolom; pas aan naar smaak (120-160px) */
 }
 
-* { 
-  box-sizing:border-box; 
-}
-
+* { box-sizing: border-box; }
+html, body { height: 100%; }
 body{
-  margin:0;
-  padding:0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background:#f3f4f6;
-  color:#111827;
+  margin:0; font-family: Arial, Helvetica, sans-serif; line-height:1.25; color:#111;
+  background:#f5f6f8;
+  overflow-x:hidden; overflow-y:auto;
 }
 
-/* Layout container */
-.app-shell{
-  max-width:1200px;
-  margin:24px auto;
-  padding:0 16px 32px;
+.app{
+  max-width:1200px; margin:0 auto; padding:10px 16px 20px;
+  display:grid; grid-template-rows:auto auto auto; gap:12px;
+  min-height:calc(100vh - 48px);
 }
 
-/* Header */
-.app-header{
+.app-header h1{ margin:0 0 2px; font-size:1.4rem; }
+.subtitle{ margin:0; color:#555; }
+
+/* Header lay-out met logo rechts */
+.app-header .brand{
   display:flex;
   align-items:flex-start;
   justify-content:space-between;
   gap:16px;
-  margin-bottom:16px;
 }
-.brand-text h1{
-  margin:0 0 4px;
-  font-size:1.4rem;
-  font-weight:700;
+
+/* Tekstblok links netjes stapelen */
+.app-header .brand-text{
   display:flex;
-  align-items:center;
-  gap:8px;
+  flex-direction:column;
+  gap:2px;
 }
+
+/* Logo */
+.client-logo{
+  display:block;
+  height:72px;              /* visuele hoogte, pas aan naar wens */
+  max-width:280px;          /* begrens breedte */
+  object-fit:contain;
+  object-position:right center;
+}
+
+/* Logo klikbaar zonder blauwe linkstijl */
+.brand-logo-link{ display:inline-block; line-height:0; }
+.brand-logo-link:focus{ outline:2px solid #2a6df4; outline-offset:2px; }
+
+/* Kleinere schermen: logo wat compacter */
+@media (max-width: 640px){
+  .client-logo{ height:48px; max-width:200px; }
+}
+
 .version-badge{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:2px 8px;
-  border-radius:999px;
-  background:#e5e7eb;
-  font-size:.75rem;
+  display:inline-block;
+  margin-left:.5rem;
+  padding:.15rem .45rem;
+  font-size:.8rem;
   font-weight:600;
-  color:#374151;
-}
-.subtitle{
-  margin:0;
-  font-size:.9rem;
-  color:#4b5563;
-}
-.logo-mark{
-  width:40px;
-  height:40px;
-  border-radius:12px;
-  background:#111827;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#f9fafb;
-  font-size:.9rem;
-  font-weight:700;
+  border-radius:999px;
+  background:#eef2f7;
+  color:#334155;
+  vertical-align:middle;
 }
 
-/* Panels */
-/* Top-sectie: kaarten onder elkaar, full-width */
-.main-grid{
-  display:flex;
-  flex-direction:column;
-  gap:18px;
-}
-
-@media (max-width:960px){
-  .main-grid{
-    flex-direction:column; /* expliciet, maar zelfde gedrag */
-  }
-}
-
-
-.card{
-  background:#fff;
-  border-radius:12px;
-  box-shadow:0 10px 25px rgba(15,23,42,.06);
-  padding:16px 16px 18px;
-}
-.card h2{
-  margin:0 0 10px;
-  font-size:1.1rem;
-}
-.card small{
-  color:#6b7280;
-}
-
-/* Form grid */
-.form-grid{
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-}
+/* Form in kolommen met gelijke inputbreedtes (CSS Grid) */
 .fields-columns{
+  border:1px solid var(--bd);
+  padding:10px;
+  border-radius:var(--ui-radius);
+  background:#fff;
+
+  /* i.p.v. column-count ⇒ echte grid met 3 gelijke kolommen */
   display:grid;
-  grid-template-columns:1.1fr 1.1fr;
-  gap:0 24px;
-}
-@media (max-width:800px){
-  .fields-columns{
-    grid-template-columns:1fr;
-  }
-}
-.fields-columns legend{
-  padding:0 6px;
-  color:#333;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 16px; /* rij- en kolomafstand */
 }
 
+@media (max-width:1100px){
+  .fields-columns{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width:720px){
+  .fields-columns{ grid-template-columns: 1fr; }
+}
+
+.fields-columns legend{ padding:0 6px; color:#333; }
 /* Elke rij: vaste labelkolom + 1fr inputkolom → gelijke inputbreedtes */
 .field-row{
   break-inside: avoid;
   display:grid;
-  grid-template-columns: var(--label-w) 1fr;
+  grid-template-columns: var(--label-w) 1fr;  /* <<< vaste label-breedte */
   align-items:center;
   gap:6px 10px;
   width:100%;
@@ -163,49 +132,27 @@ button.secondary{ background:#0b8f4d; color:#fff; }
 button:disabled{ opacity:.6; cursor:not-allowed; }
 
 /* Preview canvas */
-.canvas{
-  background:#fff;
-  border:1px solid #e7e7e7;
-  border-radius:var(--ui-radius);
-  padding:2cm;
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-}
+.canvas{ background:#fff; border:1px solid #e7e7e7; border-radius:var(--ui-radius);
+  padding:2cm; display:flex; flex-direction:column; gap:16px; }
 
 /* Controlekader */
-.control-card{
-  border:1px solid #e5e7eb;
-  background:#f9fafb;
-  border-radius:10px;
-  padding:10px 12px;
-  font-size:.92rem;
-  color:#333;
-}
+.control-card{ border:1px solid #e5e7eb; background:#f9fafb; border-radius:10px; padding:10px 12px; font-size:.92rem; color:#333; }
 .control-card h3{ margin:0 0 8px; font-size:1rem; }
-.control-grid-2x2{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:6px 14px;
-}
+.control-grid-2x2{ display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; }
 .control-item{
-  background:#eef2f7;
-  border:1px solid #dde3ea;
-  border-radius:8px;
-  padding:6px 8px;
+  background:#eef2f7; border:1px solid #dde3ea; border-radius:8px; padding:6px 8px;
   font-family: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 /* Preview 2×2: boven (1,3), onder (2,4) */
+/* Geen ruimte tussen labels in preview? Gebruik gap: 0; */
 .labels-grid{
   display:grid;
   grid-template-columns:auto auto;
-  gap:0; /* geen ruimte tussen etiketten */
+  gap: 0; /* was: var(--preview-gap-cm) */
   place-content:center;
   place-items:center;
-  transform-origin: top center; /* zodat schalen netjes vanuit boven/centrum gebeurt */
 }
-
 
 /* Label + nummer (linksonder, buiten kader) */
 .label-wrap{
@@ -226,47 +173,31 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   background:#fff;
   width:100px;
   height:100px;
-  display:flex;
-  position:relative;
-  overflow:hidden;
+  display:flex;            /* mag blijven; schaadt niet */
+  position: relative;      /* voor interne positionering indien nodig */
+  overflow: hidden;        /* veilig bij overloop */
 }
 
-/* Inhoud van het label:
-   - Top-box (30%): ERP-box + productomschrijving
-   - Bottom-box (70%): gecentreerde detail-box met twee kolommen
-*/
+/* Inhoud van het label: gecentreerd blok, tekst links via .label-leftblock */
 .label-inner{
   display:flex;
   flex-direction:column;
-  align-items:stretch;
-  justify-content:flex-start;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  gap:.9em;
+
   width:100%;
   height:100%;
   overflow:hidden;
-  font-size:var(--fs,14px);     /* JS zet --fs dynamisch */
-  padding:var(--inner-pad,0);   /* gereserveerd indien nodig */
+
+  font-size: var(--fs, 14px);  /* JS zet --fs dynamisch */
+  padding: var(--inner-pad, 0);/* JS zet --inner-pad in px */
 }
 
 /* optioneel: compacter bij extreem lage labels */
 .label-inner.compact{
-  row-gap:.5em;
-}
-
-/* Top & bottom verdeling */
-.top-box{
-  flex:0 0 30%;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:flex-start;
-  padding-bottom:.3em;
-}
-
-.bottom-box{
-  flex:1 1 0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  gap:.5em;
 }
 
 /* Kop (gecentreerd) */
@@ -274,10 +205,8 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   display:flex;
   flex-direction:column;
   align-items:center;
-  text-align:center;
-  row-gap:.6em;
+  gap:.6em;
 }
-
 .code-box{
   display:inline-block;
   border:var(--code-border-3px) solid #000;
@@ -287,181 +216,82 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   line-height:1.05;
 }
 
-/* Productomschrijving onder de code-box, mag afbreken op meerdere regels */
-.product-desc{
-  max-width:100%;
-  white-space:normal;
-  word-break:break-word;
-}
-
-/* Detail-box in de bottom-box:
-   - altijd 90% van breedte/hoogte bottom-box
-   - horizontaal én verticaal gecentreerd
-   - tekst links uitgelijnd
-*/
-.detail-box{
-  width:90%;
-  height:90%;
-  display:flex;
-  align-items:flex-start;
-  justify-content:center;
-  text-align:left;
+/* Links-blok als geheel gecentreerd (tekst in het blok blijft links) */
+.label-leftblock{
+  width: var(--specs-percent);
+  margin: 0 auto;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: .6em;
 }
 
 /* Grid labels + waarden */
 .specs-grid{
-  display:grid;
-  grid-template-columns:max-content 1fr;
-  column-gap:var(--tab-gap);
-  row-gap:.35em;
-  min-width:0;
+  display:grid; grid-template-columns:max-content 1fr; column-gap:var(--tab-gap); row-gap:.35em;
+  min-width: 0;
 }
-.specs-grid .lab{
-  font-weight:700;
-}
-.specs-grid .val{
-  min-width:0;
-}
+.specs-grid .lab{ font-weight:700; }
+.specs-grid .val{ min-width:0; }
 
 /* Fase 1: no-wrap (voorkeur) */
 .nowrap-mode .specs-grid .val{
-  white-space:nowrap;
-  overflow-wrap:normal;
-  word-break:normal;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
 }
-
 /* Fase 2: soft-wrap (alleen als font < 10px nodig is) */
 .softwrap-mode .specs-grid .val{
-  white-space:normal;
-  overflow-wrap:anywhere;
-  word-break:break-word;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-/* C/N speciale regel: label links, lijn rechts; lengte relatief aan font */
-.cn-line{
-  display:inline-block;
-  border-bottom:1.5px solid #000;
-  height:0;
-  width:7ch;          /* ongeveer breedte 'IN CHINA' in huidige fontgrootte */
-}
+.cn-row{ display:flex; align-items:center; column-gap:var(--tab-gap); white-space:nowrap; }
+.cn-row .lab{ font-weight:700; }
+.cn-row .cn-line{ border-bottom:1.5px solid #000; height:0; flex:1 1 12em; min-width:3em; }
 
-/* Algemene tekstregel (word-wrap veilig) */
-.line{
-  white-space:normal;
-  word-break:break-word;
-}
+.line{ white-space: normal; word-break: break-word; }
+.block-spacer{ height:.4em; }
 
 /* Batch UI */
 .batch-panel{
-  background:#f9fafb;
-  border:1px solid #e5e7eb;
-  border-radius:var(--ui-radius);
-  padding:12px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
+  background:var(--panel); border:1px solid var(--bd); border-radius:var(--ui-radius);
+  padding:12px; display:flex; flex-direction:column; gap:12px;
 }
 .batch-panel h2{ margin:0; }
-.upload-row{
-  display:flex;
-  gap:12px;
-  align-items:center;
-  flex-wrap:wrap;
-}
+.upload-row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
 .dropzone{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  min-height:56px;
-  padding:10px 14px;
-  border:2px dashed #cbd5e1;
-  border-radius:10px;
-  font-size:.9rem;
-  color:#64748b;
+  display:flex; align-items:center; justify-content:center;
+  min-height:56px; padding:10px 14px; border:2px dashed #cbd5e1; border-radius:12px; background:#f8fafc;
+  color:#334155; cursor:pointer; flex:1;
 }
-.dropzone.dragover{
-  background:#eff6ff;
-  border-color:#3b82f6;
-}
-.hidden{ display:none !important; }
+.dropzone.dragover{ background:#eef2ff; border-color:#6366f1; }
+.batch-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+.mapping.hidden, .table-wrap.hidden, .norms.hidden, .batch-controls.hidden, .progress-wrap.hidden, .log-wrap.hidden{ display:none; }
+.mapping-grid{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px 16px; }
+.mapping-grid .map-row{ display:grid; grid-template-columns:180px 1fr; gap:6px; align-items:center; }
+.mapping-grid label{ color:#374151; }
+.mapping-grid select{ padding:8px 10px; border:1px solid #cbd5e1; border-radius:8px; background:#fff; }
+.table-wrap{ background:#fff; border:1px solid var(--bd); border-radius:10px; padding:8px; }
+.table-scroller{ overflow:auto; max-height:260px; border-radius:8px; }
+.table-scroller table{ width:100%; border-collapse:collapse; font-size:.95rem; }
+.table-scroller th, .table-scroller td{ border-bottom:1px solid #eee; padding:6px 8px; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; }
+.table-scroller th{ background:#f8fafc; position:sticky; top:0; z-index:1; }
+.norms label{ display:block; color:#374151; margin-bottom:4px; }
+.batch-controls{ display:flex; gap:8px; }
+.progress-wrap{ display:flex; flex-direction:column; gap:6px; }
+.progress-bar{ height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden; }
+.progress-bar .bar{ height:100%; width:0%; background:linear-gradient(90deg, #60a5fa, #2a6df4); transition:width .2s; }
+.progress-text{ display:flex; gap:10px; color:#374151; font-size:.92rem; }
+.log-wrap{ background:#fff; border:1px solid var(--bd); border-radius:10px; padding:8px; }
+.log-list{ font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.9rem; white-space:pre-wrap; color:#111; }
+.log-list .err{ color:#b91c1c; }
+.log-list .ok{ color:#065f46; }
 
-.map-grid{
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  margin-top:8px;
+/* Footer onderaan */
+.site-footer{
+  display:flex; align-items:center; justify-content:center;
+  padding:12px 16px; border-top:1px solid #e7e7e7; background:#fff; color:#444;
 }
-.map-row{
-  display:grid;
-  grid-template-columns:200px 1fr;
-  gap:6px 10px;
-}
-.map-row label{
-  font-size:.88rem;
-}
-.map-row select{
-  width:100%;
-  padding:6px 8px;
-  border-radius:8px;
-  border:1px solid #d1d5db;
-}
-.table-preview{
-  width:100%;
-  max-height:160px;
-  overflow:auto;
-  border:1px solid #e5e7eb;
-  border-radius:8px;
-  padding:6px;
-  font-family: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
-  font-size:.8rem;
-  background:#f9fafb;
-}
-.table-preview table{
-  border-collapse:collapse;
-  width:100%;
-}
-.table-preview th,
-.table-preview td{
-  border:1px solid #e5e7eb;
-  padding:2px 4px;
-}
-.table-preview th{
-  background:#e5e7eb;
-}
-.progress-wrap{
-  margin-top:8px;
-  border:1px solid #e5e7eb;
-  border-radius:8px;
-  padding:8px 10px;
-  font-size:.85rem;
-}
-.progress-bar-outer{
-  width:100%;
-  height:8px;
-  border-radius:999px;
-  background:#e5e7eb;
-  overflow:hidden;
-  margin:4px 0 6px;
-}
-.progress-bar-inner{
-  height:100%;
-  width:0%;
-  background:#3b82f6;
-  transition:width .15s linear;
-}
-.log-list{
-  max-height:160px;
-  overflow:auto;
-  margin-top:8px;
-  padding:6px;
-  border-radius:6px;
-  background:#f9fafb;
-  font-size:.8rem;
-  font-family: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
-}
-.log-list .err{
-  color:#b91c1c;
-}
-.log-list .ok{
-  color:#15803d;
-}
+.site-footer small{ font-size:.85rem; }
