@@ -242,6 +242,8 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   gap: 0.25em;               /* verticale afstand tussen regels */
   font-weight: normal;
   text-align: left;          /* inhoud links uitgelijnd */
+
+  width: 100%;               /* <<< gebruik hele Detail-Box breedte */
   max-width: 100%;
 }
 
