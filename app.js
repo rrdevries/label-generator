@@ -325,13 +325,14 @@ function fitContentToBoxConditional(innerEl){
   const w = innerEl.clientWidth;
   const h = innerEl.clientHeight;
 
-  // Veiligheidsmarges (px): 2% van kant + absolute ondergrens
-  const guardX = Math.max(8, w * 0.02);
-  const guardY = Math.max(8, h * 0.02);
+  // Veiligheidsmarges (px): iets minder conservatief, zeker bij grote etiketten
+  const guardX = Math.max(6, w * 0.0125);  // was 8 / 2%
+  const guardY = Math.max(6, h * 0.0125);
 
-  // Startschatting op basis van kleinste zijde
-  const baseFromBox = Math.min(w, h) * 0.11;
-  const startHi     = Math.max(16, baseFromBox);
+  // Startschatting op basis van kleinste zijde – agressiever vergroten
+  // Bij grote etiketten proberen we duidelijk grotere fonts
+  const baseFromBox = Math.min(w, h) * 0.18; // was 0.11
+  const startHi     = Math.max(18, baseFromBox); // was 16
 
   // Fase 1: no-wrap (voorkeur)
   innerEl.classList.add('nowrap-mode');
