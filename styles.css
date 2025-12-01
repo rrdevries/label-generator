@@ -5,8 +5,6 @@
   --code-border-3px: 3px;
 
   --preview-gap-cm: 0.5cm;    /* ruimte tussen labels in preview */
-  --specs-percent: 66%;       /* breedte links-blok t.o.v. label */
-  --tab-gap: 2.4em;           /* “tab” tussen label en waarde */
   --label-w: 140px;           /* vaste labelkolom; pas aan naar smaak (120-160px) */
 }
 
@@ -178,7 +176,7 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   overflow: hidden;        /* veilig bij overloop */
 }
 
-/* Inhoud van het label: gecentreerd blok, tekst links via .label-leftblock */
+/* Inhoud van het label: gecentreerd blok */
 .label-inner{
   display:flex;
   flex-direction:column;
@@ -200,12 +198,6 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   gap:.5em;
 }
 
-/* Verdeling binnen het label: Top-Box (30%) en Bottom-Box (70%) */
-.top-box,
-.bottom-box{
-  width: 100%;
-}
-
 /* Bovenste 30%: ERP + productomschrijving */
 .top-box{
   flex: 0 0 30%;
@@ -216,24 +208,6 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   text-align: center;
 }
 
-/* Onderste 70%: Detail-Box */
-.bottom-box{
-  flex: 0 0 70%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Detail-Box binnen de Bottom-Box (0,9 × breedte/hoogte, gecentreerd) */
-.detail-box{
-  width: 90%;
-  height: 90%;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;  /* rijen beginnen bovenin */
-  align-items: center;          /* >>> blok horizontaal centreren <<< */
-}
 
 /* ====== FONT-HIËRARCHIE (Stap 3A) ====== */
 
@@ -247,19 +221,6 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   font-size: var(--fs-base, 1em);
 }
 
-/* Detail-tekst (EAN/QTY/…): basis of aparte detail-font */
-.detail-box-inner{
-  font-size: var(--fs-detail, var(--fs-base, 1em));
-}
-
-
-/* Kop (gecentreerd) */
-.label-head{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:.6em;
-}
 .code-box{
   display:inline-block;
   border:var(--code-border-3px) solid #000;
@@ -269,41 +230,62 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   line-height:1.05;
 }
 
-/* ====== DETAIL-BOX STRUCTUUR (Stap 2A) ====== */
-.detail-box {
-  flex-direction: column;        /* stapel rijen onder elkaar */
-  justify-content: flex-start;
-  font-weight: normal;
-  text-align: left;
-  gap: 0.25em;                   /* verticale afstand tussen regels */
+/* Onderste deel van het etiket */
+.bottom-box{
+  flex: 0 0 70%;
+  display: flex;
+  align-items: center;
+  justify-content: center;   /* centreer detail-box binnen bottom-box */
+  padding-top: 0.2em;
 }
 
-.detail-row {
+/* Detail-Box: blok in het midden van het etiket */
+.detail-box{
+  width: 90%;
+  height: 90%;
+  display: flex;
+  align-items: center;       /* verticaal centreren van het blok */
+  justify-content: center;   /* horizontaal centreren van het blok */
+}
+
+/* Het eigenlijke blok met labels + waarden */
+.detail-box-inner{
+  display: flex;
+  flex-direction: column;    /* rijen onder elkaar */
+  gap: 0.25em;               /* verticale afstand tussen regels */
+  font-weight: normal;
+  text-align: left;          /* inhoud links uitgelijnd */
+  max-width: 100%;
+}
+
+/* Rijen in de detail-box */
+.detail-row{
   display: flex;
   flex-direction: row;
   align-items: baseline;
   justify-content: flex-start;
-  gap: 0.75em;                   /* horizontale ruimte tussen label & value */
+  gap: 0.75em;               /* horizontale ruimte tussen label & value */
 }
 
-.detail-label {
-  font-weight: 700;              /* vet */
+/* Label- en waarde-kolom */
+.detail-label{
+  font-weight: 700;
   white-space: nowrap;
 }
 
-.detail-value {
+.detail-value{
   flex: 1;
-  font-weight: 400;              /* normaal */
+  font-weight: 400;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.detail-box-inner{
-  display: inline-block;
-  width: auto;        /* zo breed als inhoud */
-  max-width: 100%;    /* maar nooit breder dan de box */
+/* Mini extra ruimte tussen de regels, bovenop de gap */
+.detail-row + .detail-row{
+  margin-top: 0.05em;
 }
+
 
 /* Extra styling voor C/N en Made in China (Stap 2B) */
 
@@ -323,44 +305,7 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   font-weight: 700;
 }
 
-
-/* Links-blok als geheel gecentreerd (tekst in het blok blijft links) */
-.label-leftblock{
-  width: var(--specs-percent);
-  margin: 0 auto;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: .6em;
-}
-
-/* Grid labels + waarden */
-.specs-grid{
-  display:grid; grid-template-columns:max-content 1fr; column-gap:var(--tab-gap); row-gap:.35em;
-  min-width: 0;
-}
-.specs-grid .lab{ font-weight:700; }
-.specs-grid .val{ min-width:0; }
-
-/* Fase 1: no-wrap (voorkeur) */
-.nowrap-mode .specs-grid .val{
-  white-space: nowrap;
-  overflow-wrap: normal;
-  word-break: normal;
-}
-/* Fase 2: soft-wrap (alleen als font < 10px nodig is) */
-.softwrap-mode .specs-grid .val{
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.cn-row{ display:flex; align-items:center; column-gap:var(--tab-gap); white-space:nowrap; }
-.cn-row .lab{ font-weight:700; }
-.cn-row .cn-line{ border-bottom:1.5px solid #000; height:0; flex:1 1 12em; min-width:3em; }
-
 .line{ white-space: normal; word-break: break-word; }
-.block-spacer{ height:.4em; }
 
 /* Batch UI */
 .batch-panel{
@@ -403,16 +348,6 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
 .top-box{
   padding: 0.3em 0.8em;
   box-sizing: border-box;
-}
-
-/* Klein beetje extra ruimte boven de detail-box */
-.bottom-box{
-  padding-top: 0.2em;
-}
-
-/* Zorg dat de inhoud de volle breedte benut */
-.detail-box-inner{
-  width: 100%;
 }
 
 /* Mini extra ruimte tussen de regels, bovenop de gap */

@@ -206,9 +206,13 @@ function fitsTopAndDetail(innerEl, guardX, guardY){
     return fitsWithGuard(innerEl, guardX, guardY);
   }
 
+  // Voor de top-box zijn we extra streng op verticale marge,
+  // zodat ERP-box + omschrijving nooit "tegen het plafond" plakken.
+  const topGuardY = Math.max(guardY, topBox.clientHeight * 0.08);
+
   const topOk =
     topBox.scrollWidth  <= (topBox.clientWidth  - guardX) &&
-    topBox.scrollHeight <= (topBox.clientHeight - guardY);
+    topBox.scrollHeight <= (topBox.clientHeight - topGuardY);
 
   const detailOk =
     detailInner.scrollWidth  <= (detailBox.clientWidth  - guardX) &&
