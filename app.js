@@ -77,21 +77,19 @@
 
   // Fit alle label-inhouden in container
   function fitAllIn(container){
-  container.querySelectorAll('.label-inner').forEach(inner => {
-    // als we schaalfactor k gebruiken, sla fitting over
-    const hasK = inner.style.getPropertyValue('--k');
-    if (hasK) return;
+    container.querySelectorAll('.label-inner').forEach(inner => {
+      // Geen early-return meer op --k: we willen ALTIJD font-fitting doen
+      inner.classList.add('nowrap-mode');
+      inner.classList.remove('softwrap-mode');
 
-    inner.classList.add('nowrap-mode');
-    inner.classList.remove('softwrap-mode');
+      // font-fit Top-Box + Detail-Box
+      fitContentToBoxConditional(inner);
 
-    // font-fit Top-Box + Detail-Box
-    fitContentToBoxConditional(inner);
+      // nu de C/N-lijn breedte laten volgen op "IN CHINA"
+      updateCnLine(inner);
+    });
+  }
 
-    // nu de C/N-lijn breedte laten volgen op "IN CHINA"
-    updateCnLine(inner);
-  });
-}
 
 
   // Extra robuust: twee fit-rondes met tussentijds frame
@@ -440,17 +438,6 @@ function fitContentToBoxConditional(innerEl){
   // Padding op de label-rand, niet op de content die we schalen
   const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
   label.style.padding = padPx + 'px';
-
-  // (Bestaande) referentiematen voor evt. schaal-functies
-  const REF_W = 100;
-  const REF_H = 60;
-  inner.style.setProperty('--ref-w', REF_W + 'px');
-  inner.style.setProperty('--ref-h', REF_H + 'px');
-
-  const availW = widthPx  - padPx * 2;
-  const availH = heightPx - padPx * 2;
-  const k = Math.max(0.1, Math.min(availW / REF_W, availH / REF_H)); // veiligheidsbodem
-  inner.style.setProperty('--k', String(k));
 
   // --- TOP-BOX: ERP-box boven, daaronder productomschrijving ---
   const topBox = el(
