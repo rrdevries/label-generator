@@ -294,21 +294,30 @@ function searchBaseFontSize(innerEl, minFs, startHi, guardX, guardY){
 }
 
 
-const FONT_STEP_PX = 4;  // 1 stap = 4px, ERP = basis + 2 stappen
+//const FONT_STEP_PX = 4;  // 1 stap = 4px, ERP = basis + 2 stappen
 
 function applyFontSizes(innerEl, fsPx){
-  const base   = fsPx;
-  const erp    = base + 2 * FONT_STEP_PX;  // ERP = basis + 8px
-  const detail = base;                      // voorlopig gelijk aan basis
+  // Bodytekst (details, productomschrijving) = basis
+  const base = fsPx;
 
-  // Nieuwe variabelen voor hiërarchie
+  // ERP/productnaam: ~1,4 × basis (tussen 1,3 en 1,6)
+  const erp = base * 1.4;
+
+  // Detailtekst: gelijk aan basis
+  const detail = base;
+
+  // Kleinere details (bijv. batch/datum): ~0,75 × basis
+  const small = base * 0.75;
+
   innerEl.style.setProperty('--fs-base',   base   + 'px');
   innerEl.style.setProperty('--fs-erp',    erp    + 'px');
   innerEl.style.setProperty('--fs-detail', detail + 'px');
+  innerEl.style.setProperty('--fs-small',  small  + 'px');
 
-  // Backwards compatibiliteit met bestaande CSS
+  // Backwards compatibiliteit
   innerEl.style.setProperty('--fs', base + 'px');
 }
+
 
 /** zoek een passende fontgrootte (eerst groeien, daarna finetunen naar beneden) */
 function searchFontSize(innerEl, minFs, startHi, guardX, guardY){
@@ -345,21 +354,19 @@ function fitContentToBoxConditional(innerEl){
   const w = innerEl.clientWidth;
   const h = innerEl.clientHeight;
 
-  // Veiligheidsmarges (px): nog steeds voorzichtig,
-  // maar niet zó dat grote etiketten klein blijven
-  const guardX = Math.max(6, w * 0.0125);
-  const guardY = Math.max(6, h * 0.0125);
+  // Veiligheidsmarges (px): 2% van kant + absolute ondergrens
+  const guardX = Math.max(8, w * 0.02);
+  const guardY = Math.max(8, h * 0.02);
 
-  // Startschatting op basis van kleinste zijde
-  const minSide = Math.min(w, h);
-  let baseFromBox = minSide * 0.20;   // iets agressiever dan 0.18
+  // Basisfont ~10% van de labelhoogte (in px)
+  // → dit is onze "doelgrootte" voordat we beginnen met fitten
+  const baseFromBox = h * 0.10;          // ~10% van de hoogte
+  const startHi     = Math.max(16, baseFromBox);
 
   // Bij écht grote etiketten (veel pixels) durven we nog groter te starten
   if (minSide > 450){
     baseFromBox = minSide * 0.24;
   }
-
-  const startHi = Math.max(18, baseFromBox);
 
   // Fase 1: no-wrap (voorkeur)
   innerEl.classList.add('nowrap-mode');
