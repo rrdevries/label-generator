@@ -77,15 +77,22 @@
 
   // Fit alle label-inhouden in container
   function fitAllIn(container){
-    container.querySelectorAll('.label-inner').forEach(inner => {
+  container.querySelectorAll('.label-inner').forEach(inner => {
     // als we schaalfactor k gebruiken, sla fitting over
     const hasK = inner.style.getPropertyValue('--k');
     if (hasK) return;
-      inner.classList.add('nowrap-mode');
-      inner.classList.remove('softwrap-mode');
-      fitContentToBoxConditional(inner);
-    });
-  }
+
+    inner.classList.add('nowrap-mode');
+    inner.classList.remove('softwrap-mode');
+
+    // font-fit Top-Box + Detail-Box
+    fitContentToBoxConditional(inner);
+
+    // nu de C/N-lijn breedte laten volgen op "IN CHINA"
+    updateCnLine(inner);
+  });
+}
+
 
   // Extra robuust: twee fit-rondes met tussentijds frame
   async function mountThenFit(container){
@@ -209,6 +216,29 @@ function fitsTopAndDetail(innerEl, guardX, guardY){
 
   return topOk && detailOk;
 }
+
+function updateCnLine(innerEl){
+  const detailInner = innerEl.querySelector('.detail-box-inner');
+  const cnLine      = innerEl.querySelector('.cn-line');
+
+  if (!detailInner || !cnLine) return;
+
+  // Meet-probe met tekst "IN CHINA" in dezelfde context als de details
+  const probe = document.createElement('span');
+  probe.textContent = 'IN CHINA';
+  probe.style.visibility = 'hidden';
+  probe.style.position   = 'absolute';
+  probe.style.whiteSpace = 'nowrap';
+
+  detailInner.appendChild(probe);
+  const width = probe.getBoundingClientRect().width;
+  detailInner.removeChild(probe);
+
+  if (width > 0){
+    cnLine.style.width = width + 'px';
+  }
+}
+
 
 function searchBaseFontSize(innerEl, minFs, startHi, guardX, guardY){
   // 1) agressief omhoog groeien vanaf startHi

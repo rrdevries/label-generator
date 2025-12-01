@@ -311,7 +311,7 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
 .cn-line {
   display: inline-block;
   border-bottom: 1px solid currentColor;
-  width: 4em;           /* vaste breedte voor nu; wordt in stap 4 dynamisch */
+  /* width wordt nu door JS gezet op basis van "IN CHINA" */
   height: 0.9em;
 }
 
@@ -393,6 +393,34 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
 .log-list{ font-family:ui-monospace, Menlo, Consolas, monospace; font-size:.9rem; white-space:pre-wrap; color:#111; }
 .log-list .err{ color:#b91c1c; }
 .log-list .ok{ color:#065f46; }
+
+/* ====== FINE-TUNING TOP/BOTTOM LAYOUT (Stap 4B) ====== */
+
+/* Iets meer lucht rondom ERP + omschrijving */
+.top-box{
+  padding: 0.3em 0.8em;
+  box-sizing: border-box;
+}
+
+/* Klein beetje extra ruimte boven de detail-box */
+.bottom-box{
+  padding-top: 0.2em;
+}
+
+/* Detail-Box: rijen vanaf boven laten starten en niet verticaal centreren */
+.detail-box{
+  align-items: flex-start;
+}
+
+/* Zorg dat de inhoud de volle breedte benut */
+.detail-box-inner{
+  width: 100%;
+}
+
+/* Mini extra ruimte tussen de regels, bovenop de gap */
+.detail-row + .detail-row{
+  margin-top: 0.05em;
+}
 
 /* Footer onderaan */
 .site-footer{
