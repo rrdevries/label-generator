@@ -275,98 +275,101 @@
   }
 
   // ====== LABEL DOM-STRUCTUUR ======
-
-  function createLabelElement(widthCm, heightCm, labelTitle, data) {
-    const wrap = DOC.createElement('div');
-    wrap.className = 'label-wrap';
-
-    const frame = DOC.createElement('div');
-    frame.className = 'label';
-    // fysieke maat via cm (browser rekent px)
-    frame.style.width = `${widthCm}cm`;
-    frame.style.height = `${heightCm}cm`;
-
-    const inner = DOC.createElement('div');
-    inner.className = 'label-inner nowrap-mode'; // start in nowrap-mode
-
-    // Top-box: ERP + productomschrijving
-    const topBox = DOC.createElement('div');
-    topBox.className = 'top-box';
-
-    const head = DOC.createElement('div');
-    head.className = 'label-head';
-
-    const codeBox = DOC.createElement('div');
-    codeBox.className = 'code-box';
-    codeBox.textContent = data.prodCode || '';
-
-    const prodDesc = DOC.createElement('div');
-    prodDesc.className = 'product-desc';
-    prodDesc.textContent = data.prodDesc || '';
-
-    head.appendChild(codeBox);
-    head.appendChild(prodDesc);
-    topBox.appendChild(head);
-
-    // Bottom-box: Detail-box met specs-grid
-    const bottomBox = DOC.createElement('div');
-    bottomBox.className = 'bottom-box';
-
-    const detailBox = DOC.createElement('div');
-    detailBox.className = 'detail-box';
-
-    const specsGrid = DOC.createElement('div');
-    specsGrid.className = 'specs-grid';
-
-    function addRow(label, valueNodeOrStr) {
-      const lab = DOC.createElement('div');
-      lab.className = 'lab';
-      lab.textContent = label;
-
-      const val = DOC.createElement('div');
-      val.className = 'val';
-
-      if (valueNodeOrStr instanceof Node) {
-        val.appendChild(valueNodeOrStr);
-      } else {
-        val.textContent = valueNodeOrStr || '';
+    function createLabelElement(widthCm, heightCm, labelTitle, data) {
+      const wrap = DOC.createElement('div');
+      wrap.className = 'label-wrap';
+  
+      const frame = DOC.createElement('div');
+      frame.className = 'label';
+  
+      // Echte maat in px o.b.v. cm → wordt gebruikt voor PDF
+      const wPx = cmToPx(widthCm);
+      const hPx = cmToPx(heightCm);
+      frame.style.width = `${wPx}px`;
+      frame.style.height = `${hPx}px`;
+  
+      const inner = DOC.createElement('div');
+      inner.className = 'label-inner nowrap-mode'; // start in nowrap-mode
+  
+      // Top-box: ERP + productnaam
+      const topBox = DOC.createElement('div');
+      topBox.className = 'top-box';
+  
+      const head = DOC.createElement('div');
+      head.className = 'label-head';
+  
+      const codeBox = DOC.createElement('div');
+      codeBox.className = 'code-box';
+      codeBox.textContent = data.prodCode || '';
+  
+      const prodDesc = DOC.createElement('div');
+      prodDesc.className = 'product-desc';
+      prodDesc.textContent = data.prodDesc || '';
+  
+      head.appendChild(codeBox);
+      head.appendChild(prodDesc);
+      topBox.appendChild(head);
+  
+      // Bottom-box: detail-box met specs-grid
+      const bottomBox = DOC.createElement('div');
+      bottomBox.className = 'bottom-box';
+  
+      const detailBox = DOC.createElement('div');
+      detailBox.className = 'detail-box';
+  
+      const specsGrid = DOC.createElement('div');
+      specsGrid.className = 'specs-grid';
+  
+      function addRow(label, valueNodeOrStr) {
+        const lab = DOC.createElement('div');
+        lab.className = 'lab';
+        lab.textContent = label;
+  
+        const val = DOC.createElement('div');
+        val.className = 'val';
+  
+        if (valueNodeOrStr instanceof Node) {
+          val.appendChild(valueNodeOrStr);
+        } else {
+          val.textContent = valueNodeOrStr || '';
+        }
+  
+        specsGrid.appendChild(lab);
+        specsGrid.appendChild(val);
       }
-
-      specsGrid.appendChild(lab);
-      specsGrid.appendChild(val);
+  
+      addRow('EAN:',   data.ean   || '');
+      addRow('QTY:',   data.qty   || '');
+      addRow('G.W:',   data.gw    || '');
+      addRow('CBM:',   data.cbm   || '');
+      addRow('Batch:', data.batch || '');
+  
+      // C/N met lijn
+      const cnLine = DOC.createElement('span');
+      cnLine.className = 'cn-line';
+      addRow('C/N:', cnLine);
+  
+      // MADE IN: CHINA
+      addRow('MADE IN:', 'CHINA');
+  
+      detailBox.appendChild(specsGrid);
+      bottomBox.appendChild(detailBox);
+  
+      inner.appendChild(topBox);
+      inner.appendChild(bottomBox);
+  
+      frame.appendChild(inner);
+  
+      const num = DOC.createElement('div');
+      num.className = 'label-num';
+      num.textContent = labelTitle;
+  
+      wrap.appendChild(frame);
+      wrap.appendChild(num);
+  
+      return { wrap, inner };
     }
 
-    addRow('EAN:',   data.ean || '');
-    addRow('QTY:',   data.qty || '');
-    addRow('G.W:',   data.gw  || '');
-    addRow('CBM:',   data.cbm || '');
-    addRow('Batch:', data.batch || '');
-
-    // C/N speciale lijn (breedte ~ "IN CHINA")
-    const cnLine = DOC.createElement('span');
-    cnLine.className = 'cn-line';
-    addRow('C/N:', cnLine);
-
-    // "MADE IN: CHINA"
-    addRow('MADE IN:', 'CHINA');
-
-    detailBox.appendChild(specsGrid);
-    bottomBox.appendChild(detailBox);
-
-    inner.appendChild(topBox);
-    inner.appendChild(bottomBox);
-
-    frame.appendChild(inner);
-
-    const num = DOC.createElement('div');
-    num.className = 'label-num';
-    num.textContent = labelTitle;
-
-    wrap.appendChild(frame);
-    wrap.appendChild(num);
-
-    return { wrap, inner };
-  }
 
   function buildLabelsInContainer(data, gridEl) {
     const dims = computeLabelDims(data);
@@ -494,74 +497,116 @@
     updateControlInfoFont(chosen.fs, chosen.softwrap);
   }
 
+  // Schaal de preview in de kaart zodat alle labels binnen de breedte passen
+  function scaleLabelsPreviewToCanvas() {
+    if (!labelsGrid) return;
+    const canvasEl = DOC.getElementById('canvas');
+    if (!canvasEl) return;
+
+    if (!labelsGrid.firstElementChild) {
+      labelsGrid.style.transform = 'none';
+      return;
+    }
+
+    // Reset eerdere schaal om correcte maat te meten
+    labelsGrid.style.transform = 'none';
+
+    const canvasWidth = canvasEl.clientWidth;
+    if (!canvasWidth) return;
+
+    const gridRect = labelsGrid.getBoundingClientRect();
+    if (!gridRect.width) return;
+
+    // Alleen verkleinen: nooit groter maken dan 1:1
+    let scale = canvasWidth / gridRect.width;
+    if (!Number.isFinite(scale) || scale <= 0) scale = 1;
+    if (scale > 1) scale = 1;
+
+    labelsGrid.style.transformOrigin = 'top center';
+    labelsGrid.style.transform = `scale(${scale})`;
+  }
+
   // ====== PREVIEW RENDERING ======
 
-  function renderPreview() {
-    const data = collectFormData();
-    if (!data) return;
+    function renderPreview() {
+      const data = collectFormData();
+      if (!data) return;
+  
+      labelsGrid.innerHTML = '';
+  
+      updateControlInfoDims(data);
+  
+      const innerEls = buildLabelsInContainer(data, labelsGrid);
+  
+      // Fonts passend maken binnen de echte labelmaten
+      fitFontsForLabels(innerEls);
+  
+      // En dan de hele preview schalen zodat het in de kaart past
+      scaleLabelsPreviewToCanvas();
+    }
 
-    labelsGrid.innerHTML = '';
-
-    updateControlInfoDims(data);
-
-    const innerEls = buildLabelsInContainer(data, labelsGrid);
-
-    // na DOM-insertie font-fitting uitvoeren
-    fitFontsForLabels(innerEls);
-  }
 
   // ====== SINGLE PDF ======
 
   async function generateSinglePdf() {
     const data = collectFormData();
     if (!data) return;
-
-    // Preview eerst updaten zodat PDF hetzelfde gebruikt
-    renderPreview();
-
-    if (!labelsGrid || !labelsGrid.firstElementChild) {
-      alert('Er is geen voorbeeld om naar PDF te schrijven.');
-      return;
-    }
-
+  
     try {
       const [jsPDF, html2canvas] = await Promise.all([
         ensureJsPdfLoaded(),
         ensureHtml2canvasLoaded()
       ]);
-
-      await delay(30); // kleine pauze voor layout
-
-      const canvas = await html2canvas(labelsGrid, {
+  
+      // Verborgen container met echte maten, zonder schaal / transform
+      const tmpContainer = DOC.createElement('div');
+      tmpContainer.style.position = 'fixed';
+      tmpContainer.style.left = '-9999px';
+      tmpContainer.style.top = '-9999px';
+      tmpContainer.style.background = '#ffffff';
+      tmpContainer.style.padding = '2cm';
+      DOC.body.appendChild(tmpContainer);
+  
+      const localGrid = DOC.createElement('div');
+      localGrid.className = 'labels-grid';
+      tmpContainer.appendChild(localGrid);
+  
+      const innerEls = buildLabelsInContainer(data, localGrid);
+      fitFontsForLabels(innerEls);
+  
+      await delay(20); // even ademhalen voor layout
+  
+      const canvas = await html2canvas(tmpContainer, {
         scale: 2,
         backgroundColor: '#ffffff'
       });
-
+  
+      DOC.body.removeChild(tmpContainer);
+  
       const imgData = canvas.toDataURL('image/png');
-
+  
       const doc = new jsPDF({
         orientation: 'landscape',
         unit: 'mm',
         format: 'a4'
       });
-
+  
       const pageW = doc.internal.pageSize.getWidth();
       const pageH = doc.internal.pageSize.getHeight();
-
       const imgRatio = canvas.width / canvas.height;
-      let renderW = pageW - 20; // 10mm marge links/rechts
+  
+      let renderW = pageW - 20;       // 10mm marge links/rechts
       let renderH = renderW / imgRatio;
-
-      if (renderH > pageH - 20) {
+      if (renderH > pageH - 20) {     // indien te hoog, adjust
         renderH = pageH - 20;
         renderW = renderH * imgRatio;
       }
-
+  
       const x = (pageW - renderW) / 2;
       const y = (pageH - renderH) / 2;
-
+  
       doc.addImage(imgData, 'PNG', x, y, renderW, renderH);
-
+  
       const fileName = buildFileName(data);
       doc.save(fileName);
     } catch (err) {
@@ -569,6 +614,7 @@
       alert('Er ging iets mis bij het genereren van de PDF: ' + (err.message || err));
     }
   }
+
 
   // ====== BATCH: TEMPLATES ======
 
@@ -1123,7 +1169,6 @@
       btnPDF.addEventListener('click', generateSinglePdf);
     }
 
-    // Enter in form → preview
     if (form) {
       form.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -1132,7 +1177,13 @@
     }
 
     setupBatchEvents();
+
+    // Bij resize: preview opnieuw passend maken
+    window.addEventListener('resize', () => {
+      scaleLabelsPreviewToCanvas();
+    });
   }
+
 
   if (DOC.readyState === 'loading') {
     DOC.addEventListener('DOMContentLoaded', init);
