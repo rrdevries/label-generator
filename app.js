@@ -605,23 +605,34 @@
 
     updateControlInfo(sizes);
 
-    // Reset preview-grid
     labelsGrid.style.gap = "0";
     labelsGrid.style.transformOrigin = "top left";
-    labelsGrid.style.transform = "none"; // eerst op echte maat fitten
+    labelsGrid.style.transform = "none";
     labelsGrid.innerHTML = "";
 
-    // Etiketten in logische volgorde: 1,3 boven / 2,4 onder
+    // 1 & 3 boven, 2 & 4 onder
     [0, 2, 1, 3].forEach((i) => {
-      labelsGrid.appendChild(createLabelEl(sizes[i], vals));
+      labelsGrid.appendChild(createLabelEl(sizes[i], vals)); // 1:1 labels
     });
 
-    // Font-fit op 1:1 labels
+    // Eerst op 1:1 grootte font-fitten
     await mountThenFit(labelsGrid);
 
-    // Dán pas visueel schalen voor de preview
+    // Hoogte van het ongeschaalde grid meten
+    const rect = labelsGrid.getBoundingClientRect();
+    const baseHeight = rect.height;
+
+    // Preview schalen
     if (scale < 1) {
       labelsGrid.style.transform = `scale(${scale})`;
+
+      // Canvashoogte aanpassen aan geschaalde content,
+      // zodat het “kader” niet gigantisch wordt
+      const scaledHeight = baseHeight * scale;
+      canvasEl.style.height = scaledHeight + 32 + "px"; // + beetje marge
+    } else {
+      labelsGrid.style.transform = "none";
+      canvasEl.style.height = baseHeight + 32 + "px";
     }
 
     return { sizes, scale };
