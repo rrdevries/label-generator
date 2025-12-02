@@ -387,43 +387,50 @@
 
   /** hoofd-fit: eerst no-wrap ≥ WRAP_THRESHOLD_PX, anders soft-wrap ≥ MIN_FS_PX */
   function fitContentToBoxConditional(innerEl) {
-    // Effectieve box (na padding)
+    // Beschikbare ruimte in de label-inner
     const w = innerEl.clientWidth;
     const h = innerEl.clientHeight;
+    const minSide = Math.min(w, h);
 
-    // Veiligheidsmarges (px): 2% van kant + absolute ondergrens
-    const guardX = Math.max(8, w * 0.02);
-    const guardY = Math.max(8, h * 0.02);
+    // Guards: minimaal ±4px marge, of 1% van de afmeting
+    const guardX = Math.max(4, w * 0.01);
+    const guardY = Math.max(4, h * 0.01);
 
-    // BASIS FONTGROOTTE OP BASIS VAN HOOGTE:
-    // Bodytekst ≈ 10% van de label-hoogte (in px)
-    const baseFromBox = h * 0.1; // jouw "labelHeightPx * 0.10"
+    // Basisfont: ongeveer 10% van de kortste zijde van het label
+    // (grote dozen ⇒ grotere basis-font, kleine dozen ⇒ kleinere basis-font)
+    const baseFromBox = minSide * 0.1;
     const startHi = Math.max(16, baseFromBox);
 
-    // Fase 1: no-wrap (voorkeur)
+    // Fase 1: harde no-wrap modus
     innerEl.classList.add("nowrap-mode");
     innerEl.classList.remove("softwrap-mode");
 
     let fs = searchBaseFontSize(
       innerEl,
-      WRAP_THRESHOLD_PX, // ondergrens voor no-wrap
+      WRAP_THRESHOLD_PX, // onder deze grens mogen we soft-wrap overwegen
       startHi,
       guardX,
       guardY
     );
 
-    // Als we boven de wrap-drempel blijven is dit prima
+    // Als we met no-wrap al boven de wrap-drempel blijven, is het goed zo
     if (fs >= WRAP_THRESHOLD_PX) {
       return;
     }
 
-    // Fase 2: soft-wrap (als we kleiner dan WRAP_THRESHOLD_PX moesten)
+    // Fase 2: zachte wrap toestaan om iets groter te kunnen blijven
     innerEl.classList.remove("nowrap-mode");
     innerEl.classList.add("softwrap-mode");
 
-    fs = searchBaseFontSize(innerEl, MIN_FS_PX, fs, guardX, guardY);
+    fs = searchBaseFontSize(
+      innerEl,
+      MIN_FS_PX,
+      fs, // start iets onder de gevonden waarde
+      guardX,
+      guardY
+    );
 
-    // Noodrem
+    // Absolute ondergrens forceren als het écht krap is
     if (fs < MIN_FS_PX) {
       fs = MIN_FS_PX;
       applyFontSizes(innerEl, fs);
