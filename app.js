@@ -472,20 +472,23 @@
 
   function createLabelEl(size, values, previewScale) {
     // Afmeting in pixels voor de PREVIEW (geschaald naar het canvas)
-    const widthPx = Math.round(size.w * PX_PER_CM * previewScale);
-    const heightPx = Math.round(size.h * PX_PER_CM * previewScale);
+    const widthPx = Math.round(size.w * PX_PER_CM);
+    const heightPx = Math.round(size.h * PX_PER_CM);
 
     const wrap = el("div", { class: "label-wrap" });
     const label = el("div", {
       class: "label",
-      style: { width: widthPx + "px", height: heightPx + "px" },
+      "data-idx": String(size.idx),
+      style: {
+        width: widthPx + "px",
+        height: heightPx + "px",
+      },
     });
-    label.dataset.idx = String(size.idx);
 
     const inner = el("div", { class: "label-inner nowrap-mode" });
 
-    // Padding op de label-rand, mee schalen met de preview
-    const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
+    // Padding op de label-rand
+    const padPx = LABEL_PADDING_CM * PX_PER_CM;
     label.style.padding = padPx + "px";
 
     // --- TOP-BOX: ERP-box boven, daaronder productomschrijving ---
@@ -500,14 +503,14 @@
       el("div", { class: "product-desc line" }, values.desc)
     );
 
-    // --- BOTTOM-BOX: Detail-Box met de bestaande leftblock-inhoud ---
+    // BOTTOM-BOX (detail-box met links/rechts)
     const detailContent = buildLeftBlock(values, size);
     const detailBox = el("div", { class: "detail-box" }, detailContent);
     const bottomBox = el("div", { class: "bottom-box" }, detailBox);
 
-    // Alles in elkaar klikken
     inner.append(topBox, bottomBox);
     label.append(inner);
+
     wrap.append(label, el("div", { class: "label-num" }, `Etiket ${size.idx}`));
 
     return wrap;
@@ -597,49 +600,29 @@
   /* ====== PREVIEW PIPELINE (single & batch) ====== */
   async function renderPreviewFor(vals) {
     const sizes = computeLabelSizes(vals);
-
-    // 1. Maak 1:1 masterlabels in de factory
-    if (labelFactory) {
-      labelFactory.innerHTML = "";
-      // volgorde is hier nog gewoon 1,2,3,4
-      sizes.forEach((size) => {
-        const masterWrap = createMasterLabelEl(size, vals);
-        labelFactory.appendChild(masterWrap);
-      });
-
-      // Font-fit + C/N op de masterlabels
-      await mountThenFit(labelFactory);
-    }
-
-    // 2. Preview-schaalfactor op basis van echte cm-afmetingen
     const scale = computePreviewScale(sizes);
     currentPreviewScale = scale;
 
     updateControlInfo(sizes);
+
+    // Reset preview-grid
     labelsGrid.style.gap = "0";
+    labelsGrid.style.transformOrigin = "top left";
+    labelsGrid.style.transform = "none"; // eerst op echte maat fitten
     labelsGrid.innerHTML = "";
 
-    // 3. Maak geschaalde previews op basis van de masterlabels
-    // Volgorde: 1 & 3 boven, 2 & 4 onder (zoals je had)
-    const order = [0, 2, 1, 3];
-    order.forEach((i) => {
-      const size = sizes[i];
-      const masterWrap = labelFactory
-        ? labelFactory
-            .querySelector(`.label-wrap .label[data-idx="${size.idx}"]`)
-            ?.closest(".label-wrap")
-        : null;
-
-      // safety: als er geen factory is, val terug op oude createLabelEl
-      let previewWrap;
-      if (masterWrap) {
-        previewWrap = createPreviewFromMaster(masterWrap, size, scale);
-      } else {
-        // fallback naar oude gedrag (voor het geval)
-        previewWrap = createLabelEl(size, vals, scale);
-      }
-      labelsGrid.appendChild(previewWrap);
+    // Etiketten in logische volgorde: 1,3 boven / 2,4 onder
+    [0, 2, 1, 3].forEach((i) => {
+      labelsGrid.appendChild(createLabelEl(sizes[i], vals));
     });
+
+    // Font-fit op 1:1 labels
+    await mountThenFit(labelsGrid);
+
+    // Dán pas visueel schalen voor de preview
+    if (scale < 1) {
+      labelsGrid.style.transform = `scale(${scale})`;
+    }
 
     return { sizes, scale };
   }
