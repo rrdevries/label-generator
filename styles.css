@@ -235,17 +235,27 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
 }
 
 
-/* Het eigenlijke blok met labels + waarden */
+/* Het eigenlijke blok met labels + waarden: smal en gecentreerd */
 .detail-box-inner{
-  display: flex;
-  flex-direction: column;    /* rijen onder elkaar */
-  gap: 0.25em;               /* verticale afstand tussen regels */
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.25em;
   font-weight: normal;
-  text-align: left;          /* inhoud links uitgelijnd */
-
-  width: 100%;               /* <<< gebruik hele Detail-Box breedte */
+  text-align: left;
   max-width: 100%;
+  width: auto;          /* alleen zo breed als nodig */
+  margin: 0 auto;       /* blok als geheel centreren in Detail-Box */
 }
+
+/* Waarde-kolom: niet forceren tot volle breedte */
+.detail-value{
+  flex: 0 1 auto;       /* neemt alleen de ruimte in die nodig is */
+  font-weight: 400;
+  white-space: nowrap;  /* altijd 1 regel */
+  overflow: visible;
+  text-overflow: clip;
+}
+
 
 /* Rijen in de detail-box */
 .detail-row{
@@ -260,14 +270,6 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
 .detail-label{
   font-weight: 700;
   white-space: nowrap;
-}
-
-.detail-value{
-  flex: 1;
-  font-weight: 400;
-  white-space: nowrap;   /* altijd 1 regel */
-  overflow: visible;     /* niet afkappen */
-  text-overflow: clip;   /* geen "..." */
 }
 
 /* Mini extra ruimte tussen de regels, bovenop de gap */

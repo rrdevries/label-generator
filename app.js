@@ -358,25 +358,39 @@ function fitContentToBoxConditional(innerEl){
   const guardX = Math.max(8, w * 0.02);
   const guardY = Math.max(8, h * 0.02);
 
-  // Basisfont ~10% van de kleinste zijde (stabieler dan alleen hoogte)
-  const minSide     = Math.min(w, h);
-  const baseFromBox = minSide * 0.10;      // ~10% van labelmaat
+  // BASIS FONTGROOTTE OP BASIS VAN HOOGTE:
+  // Bodytekst ≈ 10% van de label-hoogte (in px)
+  const baseFromBox = h * 0.10;        // jouw "labelHeightPx * 0.10"
   const startHi     = Math.max(16, baseFromBox);
 
   // Fase 1: no-wrap (voorkeur)
   innerEl.classList.add('nowrap-mode');
   innerEl.classList.remove('softwrap-mode');
 
-  let fs = searchBaseFontSize(innerEl, WRAP_THRESHOLD_PX, startHi, guardX, guardY);
-  if (fs >= WRAP_THRESHOLD_PX){
-    // mooi, alles past zonder extreme krimp
+  let fs = searchBaseFontSize(
+    innerEl,
+    WRAP_THRESHOLD_PX,  // ondergrens voor no-wrap
+    startHi,
+    guardX,
+    guardY
+  );
+
+  // Als we boven de wrap-drempel blijven is dit prima
+  if (fs >= WRAP_THRESHOLD_PX) {
     return;
   }
 
   // Fase 2: soft-wrap (als we kleiner dan WRAP_THRESHOLD_PX moesten)
   innerEl.classList.remove('nowrap-mode');
   innerEl.classList.add('softwrap-mode');
-  fs = searchBaseFontSize(innerEl, MIN_FS_PX, fs, guardX, guardY);
+
+  fs = searchBaseFontSize(
+    innerEl,
+    MIN_FS_PX,
+    fs,
+    guardX,
+    guardY
+  );
 
   // Noodrem
   if (fs < MIN_FS_PX){
