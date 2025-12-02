@@ -1,129 +1,205 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="nl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Etiketten Generator</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <script>document.title = "Etiketten Generator";</script>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Etiketten Generator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <script>
+      document.title = "Etiketten Generator";
+    </script>
 
-<div class="app">
-  <header class="app-header">
-  <div class="brand">
-    <div class="brand-text">
-      <h1>Etiketten Generator<span class="version-badge">v0.56</span></h1>
-      <p class="subtitle">Vul de gegevens in en klik op <strong>“Genereer etiketten”</strong>. Voor PDF: <strong>“PDF genereren”</strong>.</p>
+    <div class="app">
+      <header class="app-header">
+        <div class="brand">
+          <div class="brand-text">
+            <h1>Etiketten Generator<span class="version-badge">v0.57</span></h1>
+            <p class="subtitle">
+              Vul de gegevens in en klik op
+              <strong>“Genereer etiketten”</strong>. Voor PDF:
+              <strong>“PDF genereren”</strong>.
+            </p>
+          </div>
+
+          <a href="#" class="brand-logo-link" aria-label="LifeGoods">
+            <img
+              src="assets/Lifegoods-logo.png"
+              alt="LifeGoods Group B.V."
+              class="client-logo"
+              loading="eager"
+              decoding="async"
+            />
+          </a>
+        </div>
+      </header>
+
+      <form id="labelForm" class="form-grid" autocomplete="off">
+        <fieldset class="fields-columns">
+          <legend>Gegevens</legend>
+
+          <!-- 1..9 -->
+          <div class="field-row">
+            <label for="prodCode">ERP</label
+            ><input type="text" id="prodCode" required />
+          </div>
+          <div class="field-row">
+            <label for="prodDesc">Omschrijving</label
+            ><input type="text" id="prodDesc" required />
+          </div>
+          <div class="field-row">
+            <label for="ean">EAN</label><input type="text" id="ean" required />
+          </div>
+          <div class="field-row">
+            <label for="qty">QTY (PCS)</label
+            ><input type="number" id="qty" min="0" step="1" required />
+          </div>
+          <div class="field-row">
+            <label for="gw">G.W (KGS)</label
+            ><input type="number" id="gw" min="0" step="0.01" required />
+          </div>
+          <div class="field-row">
+            <label for="cbm">CBM</label><input type="text" id="cbm" required />
+          </div>
+          <div class="field-row">
+            <label for="boxLength">Length (L)</label
+            ><input
+              type="number"
+              step="0.01"
+              min="0"
+              id="boxLength"
+              min="5"
+              max="100"
+              required
+            />
+          </div>
+          <div class="field-row">
+            <label for="boxWidth">Width (W)</label
+            ><input
+              type="number"
+              step="0.01"
+              min="0"
+              id="boxWidth"
+              min="5"
+              max="100"
+              required
+            />
+          </div>
+          <div class="field-row">
+            <label for="boxHeight">Height (H)</label
+            ><input
+              type="number"
+              step="0.01"
+              min="0"
+              id="boxHeight"
+              min="5"
+              max="100"
+              required
+            />
+          </div>
+          <div class="field-row">
+            <label for="batch">Batch</label
+            ><input type="text" id="batch" required />
+          </div>
+        </fieldset>
+
+        <div class="actions">
+          <button type="button" id="btnGenerate" class="primary">
+            Genereer etiketten
+          </button>
+          <button type="button" id="btnPDF" class="secondary">
+            PDF genereren
+          </button>
+        </div>
+      </form>
+
+      <!-- Preview/controle -->
+      <section class="canvas" id="canvas">
+        <div class="control-card" id="controlInfo" aria-live="polite"></div>
+        <div class="labels-grid" id="labelsGrid" aria-live="polite"></div>
+      </section>
+
+      <!-- Verborgen 1:1 label factory (bron voor font-fit & PDF) -->
+      <div id="labelFactory" aria-hidden="true"></div>
+
+      <!-- BATCH -->
+      <section class="batch-panel">
+        <h2>Batch (Excel / CSV)</h2>
+
+        <div class="upload-row">
+          <label class="dropzone" id="dropzone">
+            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden />
+            <span
+              ><strong>Bestand kiezen</strong> of sleep hierheen (xlsx, xls,
+              csv)</span
+            >
+          </label>
+          <div class="batch-actions">
+            <button type="button" id="btnPickFile">Kies bestand…</button>
+            <button type="button" id="btnTemplateCsv">Template (CSV)</button>
+            <button type="button" id="btnTemplateXlsx">Template (XLSX)</button>
+          </div>
+        </div>
+
+        <div id="mappingWrap" class="mapping hidden">
+          <h3>Kolommen koppelen</h3>
+          <div id="mappingGrid" class="mapping-grid"></div>
+          <p class="hint">Automatisch gedetecteerd. Pas aan indien nodig.</p>
+        </div>
+
+        <div id="previewWrap" class="table-wrap hidden">
+          <h3>Voorbeeld (eerste 5 rijen)</h3>
+          <div id="tablePreview" class="table-scroller"></div>
+        </div>
+
+        <div id="normWrap" class="norms hidden">
+          <h3>Normalisatie</h3>
+          <label
+            ><input type="checkbox" id="optCommaDecimal" checked /> Komma als
+            decimaal scheidingsteken (1,25 → 1.25)</label
+          >
+          <label
+            ><input type="checkbox" id="optTrimSpaces" checked /> Spaties rondom
+            waarden verwijderen</label
+          >
+        </div>
+
+        <div class="batch-controls hidden" id="batchControls">
+          <button type="button" id="btnRunBatch" class="primary">
+            PDF’s genereren (batch)
+          </button>
+          <button type="button" id="btnAbortBatch" class="danger" disabled>
+            Stoppen
+          </button>
+        </div>
+
+        <div id="progressWrap" class="progress-wrap hidden">
+          <div class="progress-bar">
+            <div id="progressBar" class="bar"></div>
+          </div>
+          <div class="progress-text">
+            <span id="progressLabel">0 / 0</span>
+            <span id="progressPhase"></span>
+          </div>
+        </div>
+
+        <div id="logWrap" class="log-wrap hidden">
+          <h3>Log</h3>
+          <div id="logList" class="log-list"></div>
+        </div>
+      </section>
     </div>
 
-    <a href="#" class="brand-logo-link" aria-label="LifeGoods">
-      <img
-        src="assets/Lifegoods-logo.png"
-        alt="LifeGoods Group B.V."
-        class="client-logo"
-        loading="eager"
-        decoding="async"
-      />
-    </a>
-  </div>
-</header>
+    <footer class="site-footer">
+      <small>Copyright and created by: Renée de Vries | Studio RD - 2025</small>
+    </footer>
 
-  <form id="labelForm" class="form-grid" autocomplete="off">
-    <fieldset class="fields-columns">
-      <legend>Gegevens</legend>
+    <!-- Batch libs (client-side) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
-      <!-- 1..9 -->
-      <div class="field-row"><label for="prodCode">ERP</label><input type="text" id="prodCode" required></div>
-      <div class="field-row"><label for="prodDesc">Omschrijving</label><input type="text" id="prodDesc" required></div>
-      <div class="field-row"><label for="ean">EAN</label><input type="text" id="ean" required></div>
-      <div class="field-row"><label for="qty">QTY (PCS)</label><input type="number" id="qty" min="0" step="1" required></div>
-      <div class="field-row"><label for="gw">G.W (KGS)</label><input type="number" id="gw" min="0" step="0.01" required></div>
-      <div class="field-row"><label for="cbm">CBM</label><input type="text" id="cbm" required></div>
-      <div class="field-row"><label for="boxLength">Length (L)</label><input type="number" step="0.01" min="0" id="boxLength" min="5" max="100" required></div>
-      <div class="field-row"><label for="boxWidth">Width (W)</label><input type="number" step="0.01" min="0" id="boxWidth" min="5" max="100" required></div>
-      <div class="field-row"><label for="boxHeight">Height (H)</label><input type="number" step="0.01" min="0" id="boxHeight" min="5" max="100" required></div>
-      <div class="field-row"><label for="batch">Batch</label><input type="text" id="batch" required></div>
-    </fieldset>
-
-    <div class="actions">
-      <button type="button" id="btnGenerate" class="primary">Genereer etiketten</button>
-      <button type="button" id="btnPDF" class="secondary">PDF genereren</button>
-    </div>
-  </form>
-
-  <!-- Preview/controle -->
-  <section class="canvas" id="canvas">
-    <div class="control-card" id="controlInfo" aria-live="polite"></div>
-    <div class="labels-grid" id="labelsGrid" aria-live="polite"></div>
-  </section>
-
-  <!-- Verborgen 1:1 label factory (bron voor font-fit & PDF) -->
-  <div id="labelFactory" aria-hidden="true"></div>
-
-  <!-- BATCH -->
-<section class="batch-panel">
-  <h2>Batch (Excel / CSV)</h2>
-
-  <div class="upload-row">
-    <label class="dropzone" id="dropzone">
-      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden>
-      <span><strong>Bestand kiezen</strong> of sleep hierheen (xlsx, xls, csv)</span>
-    </label>
-    <div class="batch-actions">
-      <button type="button" id="btnPickFile">Kies bestand…</button>
-      <button type="button" id="btnTemplateCsv">Template (CSV)</button>
-      <button type="button" id="btnTemplateXlsx">Template (XLSX)</button>
-    </div>
-  </div>
-
-  <div id="mappingWrap" class="mapping hidden">
-    <h3>Kolommen koppelen</h3>
-    <div id="mappingGrid" class="mapping-grid"></div>
-    <p class="hint">Automatisch gedetecteerd. Pas aan indien nodig.</p>
-  </div>
-
-  <div id="previewWrap" class="table-wrap hidden">
-    <h3>Voorbeeld (eerste 5 rijen)</h3>
-    <div id="tablePreview" class="table-scroller"></div>
-  </div>
-
-  <div id="normWrap" class="norms hidden">
-    <h3>Normalisatie</h3>
-    <label><input type="checkbox" id="optCommaDecimal" checked> Komma als decimaal scheidingsteken (1,25 → 1.25)</label>
-    <label><input type="checkbox" id="optTrimSpaces" checked> Spaties rondom waarden verwijderen</label>
-  </div>
-
-  <div class="batch-controls hidden" id="batchControls">
-    <button type="button" id="btnRunBatch" class="primary">PDF’s genereren (batch)</button>
-    <button type="button" id="btnAbortBatch" class="danger" disabled>Stoppen</button>
-  </div>
-
-  <div id="progressWrap" class="progress-wrap hidden">
-    <div class="progress-bar"><div id="progressBar" class="bar"></div></div>
-    <div class="progress-text">
-      <span id="progressLabel">0 / 0</span>
-      <span id="progressPhase"></span>
-    </div>
-  </div>
-
-  <div id="logWrap" class="log-wrap hidden">
-    <h3>Log</h3>
-    <div id="logList" class="log-list"></div>
-  </div>
-</section>
-
-</div>
-
-<footer class="site-footer">
-  <small>Copyright and created by: Renée de Vries | Studio RD - 2025</small>
-</footer>
-
-<!-- Batch libs (client-side) -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-
-<!-- App -->
-<script src="app.js" defer></script>
-</body>
+    <!-- App -->
+    <script src="app.js" defer></script>
+  </body>
 </html>
