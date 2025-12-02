@@ -13,7 +13,7 @@
   <header class="app-header">
   <div class="brand">
     <div class="brand-text">
-      <h1>Etiketten Generator<span class="version-badge">v0.55</span></h1>
+      <h1>Etiketten Generator<span class="version-badge">v0.56</span></h1>
       <p class="subtitle">Vul de gegevens in en klik op <strong>“Genereer etiketten”</strong>. Voor PDF: <strong>“PDF genereren”</strong>.</p>
     </div>
 
@@ -57,6 +57,9 @@
     <div class="control-card" id="controlInfo" aria-live="polite"></div>
     <div class="labels-grid" id="labelsGrid" aria-live="polite"></div>
   </section>
+
+  <!-- Verborgen 1:1 label factory (bron voor font-fit & PDF) -->
+  <div id="labelFactory" aria-hidden="true"></div>
 
   <!-- BATCH -->
 <section class="batch-panel">

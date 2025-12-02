@@ -42,6 +42,8 @@
   const progressPhase = document.getElementById('progressPhase');
   const logWrap   = document.getElementById('logWrap');
   const logList   = document.getElementById('logList');
+  const labelFactory = document.getElementById('labelFactory');
+
 
   /* ====== STATE ====== */
   let currentPreviewScale = 1;
@@ -439,7 +441,6 @@ function fitContentToBoxConditional(innerEl){
     return detailBoxInner;
   }
 
-
   function createLabelEl(size, values, previewScale){
     // Afmeting in pixels voor de PREVIEW (geschaald naar het canvas)
     const widthPx  = Math.round(size.w * PX_PER_CM * previewScale);
@@ -483,11 +484,105 @@ function fitContentToBoxConditional(innerEl){
     return wrap;
 }
 
+// Bouw een 1:1 label (cm → px, géén previewScale)
+// Dit is de bron voor font-fit en PDF.
+function createMasterLabelEl(size, values){
+  const widthPx  = Math.round(size.w * PX_PER_CM);   // 1:1
+  const heightPx = Math.round(size.h * PX_PER_CM);
 
+  const wrap  = el('div', { class:'label-wrap' });
+  const label = el('div', {
+    class:'label',
+    style:{ width: widthPx + 'px', height: heightPx + 'px' }
+  });
+  label.dataset.idx = String(size.idx);
+
+  const inner = el('div', { class:'label-inner nowrap-mode' });
+
+  // Padding op de label-rand (niet meegeschaald)
+  const padPx = LABEL_PADDING_CM * PX_PER_CM;
+  label.style.padding = padPx + 'px';
+
+  // Referentiematen voor font-fit (kunnen blijven zoals je ze nu hebt)
+  const REF_W = 100;
+  const REF_H = 60;
+  inner.style.setProperty('--ref-w', REF_W + 'px');
+  inner.style.setProperty('--ref-h', REF_H + 'px');
+
+  // Geen --k meer nodig voor master; font-fit werkt op echte px
+  inner.style.removeProperty('--k');
+
+  // TOP-BOX: ERP boven, daaronder productomschrijving
+  const topBox = el(
+    'div',
+    { class: 'top-box' },
+    el(
+      'div',
+      { class: 'erp-box' },
+      el('div', { class: 'code-box line' }, values.code)
+    ),
+    el('div', { class: 'product-desc line' }, values.desc)
+  );
+
+  // BOTTOM-BOX: Detail-Box met bestaande left/right inhoud
+  const detailContent = buildLeftBlock(values, size);
+  const detailBox     = el('div', { class: 'detail-box' }, detailContent);
+  const bottomBox     = el('div', { class: 'bottom-box' }, detailBox);
+
+  inner.append(topBox, bottomBox);
+  label.append(inner);
+
+  // In de factory hebben we label-num niet nodig, maar kan geen kwaad
+  wrap.append(label, el('div', { class:'label-num' }, `Etiket ${size.idx}`));
+  return wrap;
+}
+
+// Maak een geschaalde preview op basis van een masterlabel
+function createPreviewFromMaster(masterWrap, size, previewScale){
+  // masterWrap is de <div class="label-wrap"> uit de factory
+  const masterLabel = masterWrap.querySelector('.label');
+  const clonedLabel = masterLabel.cloneNode(true);
+
+  const widthPx  = size.w * PX_PER_CM;
+  const heightPx = size.h * PX_PER_CM;
+
+  const scaledW = widthPx  * previewScale;
+  const scaledH = heightPx * previewScale;
+
+  // Wrapper voor preview
+  const wrap = el('div', { class:'label-wrap' });
+  const num  = el('div', { class:'label-num' }, `Etiket ${size.idx}`);
+
+  // Schaal het volledige label uniform omlaag
+  clonedLabel.style.transformOrigin = 'top left';
+  clonedLabel.style.transform       = `scale(${previewScale})`;
+
+  // Zorg dat de wrapper de geschaalde afmetingen heeft
+  wrap.style.width  = scaledW + 'px';
+  wrap.style.height = scaledH + 'px';
+
+  wrap.append(clonedLabel, num);
+  return wrap;
+}
 
   /* ====== PREVIEW PIPELINE (single & batch) ====== */
   async function renderPreviewFor(vals){
     const sizes = computeLabelSizes(vals);
+
+    // 1. Maak 1:1 masterlabels in de factory
+    if (labelFactory){
+      labelFactory.innerHTML = '';
+      // volgorde is hier nog gewoon 1,2,3,4
+      sizes.forEach(size => {
+        const masterWrap = createMasterLabelEl(size, vals);
+        labelFactory.appendChild(masterWrap);
+      });
+
+      // Font-fit + C/N op de masterlabels
+      await mountThenFit(labelFactory);
+    }
+
+    // 2. Preview-schaalfactor op basis van echte cm-afmetingen
     const scale = computePreviewScale(sizes);
     currentPreviewScale = scale;
 
@@ -495,14 +590,25 @@ function fitContentToBoxConditional(innerEl){
     labelsGrid.style.gap = '0';
     labelsGrid.innerHTML = '';
 
-    [0,2,1,3].forEach(i => labelsGrid.appendChild(createLabelEl(sizes[i], vals, scale)));
+    // 3. Maak geschaalde previews op basis van de masterlabels
+    // Volgorde: 1 & 3 boven, 2 & 4 onder (zoals je had)
+    const order = [0, 2, 1, 3];
+    order.forEach(i => {
+      const size = sizes[i];
+      const masterWrap = labelFactory
+        ? labelFactory.querySelector(`.label-wrap .label[data-idx="${size.idx}"]`)?.closest('.label-wrap')
+        : null;
 
-    // Visueel schalen zodat alles in het canvas past
-    // labelsGrid.style.transformOrigin = 'top left';
-    // labelsGrid.style.transform = `scale(${scale})`;
-
-    // Fit ná mount (font-fit werkt op ongeschaalde maten)
-    await mountThenFit(labelsGrid);
+      // safety: als er geen factory is, val terug op oude createLabelEl
+      let previewWrap;
+      if (masterWrap){
+        previewWrap = createPreviewFromMaster(masterWrap, size, scale);
+      } else {
+        // fallback naar oude gedrag (voor het geval)
+        previewWrap = createLabelEl(size, vals, scale);
+      }
+      labelsGrid.appendChild(previewWrap);
+    });
 
     return { sizes, scale };
   }
@@ -521,35 +627,52 @@ function fitContentToBoxConditional(innerEl){
     const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
     s.onload=()=>res(window.html2canvas); s.onerror=()=>rej(new Error('Kon html2canvas niet laden.')); document.head.appendChild(s); }); }
 
-  async function capturePreviewLabelToImage(h2c, idx, isFirst){
-    const src = document.querySelector(`.label[data-idx="${idx}"]`);
+  async function capturePreviewLabelToImage(h2c, idx){
+    // Eerst proberen in de factory (1:1 masterlabel)
+    let src = labelFactory
+      ? labelFactory.querySelector(`.label[data-idx="${idx}"]`)
+      : null;
+
+    // Fallback: gebruik de zichtbare preview zoals voorheen
+    if (!src){
+      src = document.querySelector(`.label[data-idx="${idx}"]`);
+    }
     if (!src) throw new Error('Label niet gevonden voor capture.');
 
     const clone = src.cloneNode(true);
-    // randen zó zetten dat het visueel klopt; liever te veel dan te weinig (geen missing edge)
+
+    // Fysieke randen voor PDF
     clone.style.borderTop    = `${BORDER_PX}px solid #000`;
     clone.style.borderRight  = `${BORDER_PX}px solid #000`;
     clone.style.borderBottom = `${BORDER_PX}px solid #000`;
     clone.style.borderLeft   = `${BORDER_PX}px solid #000`;
 
     const wrap = document.createElement('div');
-    wrap.style.position='fixed'; wrap.style.left='-10000px'; wrap.style.top='0'; wrap.style.background='#fff';
+    wrap.style.position  = 'fixed';
+    wrap.style.left      = '-10000px';
+    wrap.style.top       = '0';
+    wrap.style.background = '#fff';
+
     document.body.appendChild(wrap);
     wrap.appendChild(clone);
 
-    // scherpteschaal — tast fysieke cm in PDF niet aan
-    const capScale = Math.max(2, window.devicePixelRatio || 1, 1/currentPreviewScale);
+    // Cap-scale hoeft geen rekening meer te houden met previewScale
+    const capScale = Math.max(2, window.devicePixelRatio || 1);
     const canvas = await h2c(clone, { backgroundColor:'#fff', scale: capScale });
 
     // 90° met de klok mee
     const rot = document.createElement('canvas');
-    rot.width = canvas.height; rot.height = canvas.width;
+    rot.width  = canvas.height;
+    rot.height = canvas.width;
     const ctx = rot.getContext('2d');
-    ctx.translate(rot.width, 0); ctx.rotate(Math.PI/2); ctx.drawImage(canvas, 0, 0);
+    ctx.translate(rot.width, 0);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(canvas, 0, 0);
 
     document.body.removeChild(wrap);
     return rot.toDataURL('image/png');
   }
+
 
   /* ====== SINGLE PDF (via preview) ====== */
   async function generatePDFSingle(){

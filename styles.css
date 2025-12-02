@@ -142,6 +142,16 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   font-family: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
+/* Offscreen 1:1 label-factory: niet zichtbaar, wel in DOM voor metingen/PDF */
+#labelFactory {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  pointer-events: none;
+  visibility: hidden;   /* geen flikkering */
+}
+
+
 /* Preview 2×2: boven (1,3), onder (2,4) */
 /* Geen ruimte tussen labels in preview? Gebruik gap: 0; */
 .labels-grid{
@@ -234,7 +244,6 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   justify-content: center;
 }
 
-
 /* Het eigenlijke blok met labels + waarden: smal en gecentreerd */
 .detail-box-inner{
   display: inline-flex;
@@ -317,7 +326,6 @@ button:disabled{ opacity:.6; cursor:not-allowed; }
   font-weight:700;
   line-height:1.05;
 }
-
 
 /* Batch UI */
 .batch-panel{
