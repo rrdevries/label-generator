@@ -470,50 +470,108 @@
     return detailBoxInner;
   }
 
-  function createLabelEl(size, values, previewScale) {
-    // Afmeting in pixels voor de PREVIEW (geschaald naar het canvas)
-    const widthPx = Math.round(size.w * PX_PER_CM);
-    const heightPx = Math.round(size.h * PX_PER_CM);
+  function createLabelEl(side, dims, data) {
+    const wCm = dims.width;
+    const hCm = dims.height;
+    const pxPerCm = 37.7952755906;
+    const widthPx = wCm * pxPerCm;
+    const heightPx = hCm * pxPerCm;
 
-    const wrap = el("div", { class: "label-wrap" });
-    const label = el("div", {
-      class: "label",
-      "data-idx": String(size.idx),
-      style: {
-        width: widthPx + "px",
-        height: heightPx + "px",
-      },
+    const label = document.createElement("div");
+    label.className = "label";
+    label.style.width = `${widthPx}px`;
+    label.style.height = `${heightPx}px`;
+
+    // ========== Top/Bottom structuur ==========
+    const labelInner = document.createElement("div");
+    labelInner.className = "label-inner";
+
+    const topBox = document.createElement("div");
+    topBox.className = "top-box";
+
+    const erpBox = document.createElement("div");
+    erpBox.className = "erp-box label-head";
+
+    const erpCode = document.createElement("div");
+    erpCode.className = "code-box";
+    erpCode.textContent = data.prodCode || "";
+
+    const desc = document.createElement("div");
+    desc.className = "product-desc";
+    desc.textContent = data.prodDesc || "";
+
+    erpBox.appendChild(erpCode);
+    topBox.appendChild(erpBox);
+    topBox.appendChild(desc);
+
+    // ========== Detail-Box structuur ==========
+    const bottomBox = document.createElement("div");
+    bottomBox.className = "bottom-box";
+
+    const detailBox = document.createElement("div");
+    detailBox.className = "detail-box";
+
+    const detailInner = document.createElement("div");
+    detailInner.className = "detail-box-inner";
+
+    const lines = [
+      ["EAN:", data.ean],
+      ["QTY:", data.qty],
+      ["G.W:", data.gw],
+      ["CBM:", data.cbm],
+      ["Batch:", data.batch],
+      ["C/N:", "____"],
+      ["Made in China", ""],
+    ];
+
+    lines.forEach(([labelText, valueText]) => {
+      const row = document.createElement("div");
+      row.className = "detail-row";
+
+      if (labelText === "C/N:") row.classList.add("cn-row");
+      if (labelText === "Made in China") row.classList.add("made-row");
+
+      const labelEl = document.createElement("div");
+      labelEl.className = "detail-label";
+      labelEl.textContent = labelText;
+
+      const valueEl = document.createElement("div");
+      valueEl.className = "detail-value";
+
+      if (labelText === "C/N:") {
+        const cnLine = document.createElement("span");
+        cnLine.className = "cn-line";
+        valueEl.appendChild(cnLine);
+      } else {
+        valueEl.textContent = valueText;
+      }
+
+      row.appendChild(labelEl);
+      row.appendChild(valueEl);
+      detailInner.appendChild(row);
+
+      // Extra witruimte vóór "Made in China"
+      if (labelText === "Batch:") {
+        const spacer = document.createElement("div");
+        spacer.className = "block-spacer";
+        detailInner.appendChild(spacer);
+      }
     });
 
-    const inner = el("div", { class: "label-inner nowrap-mode" });
+    detailBox.appendChild(detailInner);
+    bottomBox.appendChild(detailBox);
 
-    // Padding op de label-rand
-    const padPx = LABEL_PADDING_CM * PX_PER_CM;
-    label.style.padding = padPx + "px";
+    labelInner.appendChild(topBox);
+    labelInner.appendChild(bottomBox);
+    label.appendChild(labelInner);
 
-    // --- TOP-BOX: ERP-box boven, daaronder productomschrijving ---
-    const topBox = el(
-      "div",
-      { class: "top-box" },
-      el(
-        "div",
-        { class: "erp-box" },
-        el("div", { class: "code-box line" }, values.code)
-      ),
-      el("div", { class: "product-desc line" }, values.desc)
-    );
+    // ========== Dynamische fontschaal ==========
+    const baseFont = heightPx * 0.14;
+    label.style.setProperty("--fs-base", `${baseFont}px`);
+    label.style.setProperty("--fs-erp", `${baseFont * 1.5}px`);
+    label.style.setProperty("--fs-detail", `${baseFont * 0.9}px`);
 
-    // BOTTOM-BOX (detail-box met links/rechts)
-    const detailContent = buildLeftBlock(values, size);
-    const detailBox = el("div", { class: "detail-box" }, detailContent);
-    const bottomBox = el("div", { class: "bottom-box" }, detailBox);
-
-    inner.append(topBox, bottomBox);
-    label.append(inner);
-
-    wrap.append(label, el("div", { class: "label-num" }, `Etiket ${size.idx}`));
-
-    return wrap;
+    return label;
   }
 
   // Bouw een 1:1 label (cm → px, géén previewScale)
