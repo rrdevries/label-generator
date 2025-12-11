@@ -1,66 +1,134 @@
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Etiketten Generator</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <div class="app">
-    <header class="app-header">
-      <div class="brand">
-        <div class="brand-text">
-          <h1>Etiketten Generator<span class="version-badge">v0.62</span></h1>
-          <p class="subtitle">Vul de gegevens in en klik op <strong>“Genereer etiketten”</strong>. Voor PDF: <strong>“PDF genereren”</strong>.</p>
-        </div>
-        <a href="#" class="brand-logo-link" aria-label="LifeGoods">
-          <img src="assets/Lifegoods-logo.png" alt="LifeGoods Group B.V." class="client-logo" />
-        </a>
-      </div>
-    </header>
+/* styles.css – volledig, incl. ontbrekende basisregels */
 
-    <form id="labelForm" class="form-grid" autocomplete="off">
-      <fieldset class="fields-columns">
-        <legend>Gegevens</legend>
-        <div class="field-row"><label for="prodCode">ERP</label><input type="text" id="prodCode" required></div>
-        <div class="field-row"><label for="prodDesc">Omschrijving</label><input type="text" id="prodDesc" required></div>
-        <div class="field-row"><label for="ean">EAN</label><input type="text" id="ean" required></div>
-        <div class="field-row"><label for="qty">QTY (PCS)</label><input type="number" id="qty" required></div>
-        <div class="field-row"><label for="gw">G.W (KGS)</label><input type="number" id="gw" required></div>
-        <div class="field-row"><label for="cbm">CBM</label><input type="text" id="cbm" required></div>
-        <div class="field-row"><label for="boxLength">Length (L)</label><input type="number" id="boxLength" required></div>
-        <div class="field-row"><label for="boxWidth">Width (W)</label><input type="number" id="boxWidth" required></div>
-        <div class="field-row"><label for="boxHeight">Height (H)</label><input type="number" id="boxHeight" required></div>
-        <div class="field-row"><label for="batch">Batch</label><input type="text" id="batch" required></div>
-      </fieldset>
-      <div class="actions">
-        <button type="button" id="btnGenerate" class="primary">Genereer etiketten</button>
-        <button type="button" id="btnPDF" class="secondary">PDF genereren</button>
-      </div>
-    </form>
+:root {
+  --px-per-cm: 37.7952755906;
+  --ui-radius: 12px;
+  --border-1px: 1px;
+  --code-border-3px: 3px;
+  --label-w: 140px;
+  --fs-base: 14px;
+  --fs-erp: 1.1em;
+}
 
-    <section class="canvas" id="previewCanvas">
-      <div class="labels-grid" id="labelsGrid"></div>
-    </section>
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.25;
+  color: #111;
+  background: #f5f6f8;
+}
 
-    <footer class="site-footer">
-      <small>Copyright and created by: Renée de Vries | Studio RD - 2025</small>
-    </footer>
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 16px 20px;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 12px;
+  min-height: calc(100vh - 48px);
+}
 
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script src="app.js" defer></script>
-  </div>
-</body>
-</html>
+.app-header .brand {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.client-logo {
+  height: 72px;
+  max-width: 280px;
+  object-fit: contain;
+}
+.brand-logo-link {
+  display: inline-block;
+  line-height: 0;
+}
 
-<!-- styles.css (kernfragment) -->
-<style>
+.version-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #334155;
+  vertical-align: middle;
+}
+
+.fields-columns {
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: var(--ui-radius);
+  background: #fff;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+@media (max-width: 1100px) {
+  .fields-columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 720px) {
+  .fields-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: var(--label-w) 1fr;
+  align-items: center;
+  gap: 6px 10px;
+  width: 100%;
+}
+.field-row input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  outline: none;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding-top: 8px;
+}
+button {
+  appearance: none;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+}
+button.primary {
+  background: #2a6df4;
+  color: #fff;
+}
+button.secondary {
+  background: #0b8f4d;
+  color: #fff;
+}
+
 .canvas {
   background: #fff;
   border: 1px solid #e7e7e7;
-  border-radius: 12px;
+  border-radius: var(--ui-radius);
   padding: 24px;
   overflow: hidden;
   position: relative;
@@ -86,7 +154,7 @@
 }
 
 .label {
-  border: 1px solid #000;
+  border: var(--border-1px) solid #000;
   background: #fff;
   overflow: hidden;
   position: relative;
@@ -111,14 +179,13 @@
 .erp-box .code-box {
   font-size: var(--fs-erp, 1em);
 }
-
 .product-desc {
   font-size: var(--fs-base, 1em);
 }
 
 .code-box {
   display: inline-block;
-  border: 3px solid #000;
+  border: var(--code-border-3px) solid #000;
   padding: 0.1em 0.25em;
   font-weight: 700;
   line-height: 1.05;
@@ -141,4 +208,17 @@
   max-width: 100%;
   margin: 0 auto;
 }
-</style>
+
+.site-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  border-top: 1px solid #e7e7e7;
+  background: #fff;
+  color: #444;
+}
+
+.site-footer small {
+  font-size: 0.85rem;
+}
