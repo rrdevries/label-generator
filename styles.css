@@ -1,332 +1,137 @@
-:root {
-  --px-per-cm: 37.7952755906;
-  --ui-radius: 12px;
-  --border-1px: 1px;
-  --code-border-3px: 3px;
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Etiketten Generator</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-text">
+          <h1>Etiketten Generator<span class="version-badge">v0.62</span></h1>
+          <p class="subtitle">Vul de gegevens in en klik op <strong>“Genereer etiketten”</strong>. Voor PDF: <strong>“PDF genereren”</strong>.</p>
+        </div>
+        <a href="#" class="brand-logo-link" aria-label="LifeGoods">
+          <img src="assets/Lifegoods-logo.png" alt="LifeGoods Group B.V." class="client-logo" />
+        </a>
+      </div>
+    </header>
 
-  --preview-gap-cm: 0.5cm; /* ruimte tussen labels in preview */
-  --label-w: 140px; /* vaste labelkolom; pas aan naar smaak (120-160px) */
-}
+    <form id="labelForm" class="form-grid" autocomplete="off">
+      <fieldset class="fields-columns">
+        <legend>Gegevens</legend>
+        <div class="field-row"><label for="prodCode">ERP</label><input type="text" id="prodCode" required></div>
+        <div class="field-row"><label for="prodDesc">Omschrijving</label><input type="text" id="prodDesc" required></div>
+        <div class="field-row"><label for="ean">EAN</label><input type="text" id="ean" required></div>
+        <div class="field-row"><label for="qty">QTY (PCS)</label><input type="number" id="qty" required></div>
+        <div class="field-row"><label for="gw">G.W (KGS)</label><input type="number" id="gw" required></div>
+        <div class="field-row"><label for="cbm">CBM</label><input type="text" id="cbm" required></div>
+        <div class="field-row"><label for="boxLength">Length (L)</label><input type="number" id="boxLength" required></div>
+        <div class="field-row"><label for="boxWidth">Width (W)</label><input type="number" id="boxWidth" required></div>
+        <div class="field-row"><label for="boxHeight">Height (H)</label><input type="number" id="boxHeight" required></div>
+        <div class="field-row"><label for="batch">Batch</label><input type="text" id="batch" required></div>
+      </fieldset>
+      <div class="actions">
+        <button type="button" id="btnGenerate" class="primary">Genereer etiketten</button>
+        <button type="button" id="btnPDF" class="secondary">PDF genereren</button>
+      </div>
+    </form>
 
-* {
-  box-sizing: border-box;
-}
-html,
-body {
-  height: 100%;
-}
-body {
-  margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
-  line-height: 1.25;
-  color: #111;
-  background: #f5f6f8;
-  overflow-x: hidden;
-  overflow-y: auto;
-}
+    <section class="canvas" id="previewCanvas">
+      <div class="labels-grid" id="labelsGrid"></div>
+    </section>
 
-.app {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 10px 16px 20px;
-  display: grid;
-  grid-template-rows: auto auto auto;
-  gap: 12px;
-  min-height: calc(100vh - 48px);
-}
+    <footer class="site-footer">
+      <small>Copyright and created by: Renée de Vries | Studio RD - 2025</small>
+    </footer>
 
-.app-header h1 {
-  margin: 0 0 2px;
-  font-size: 1.4rem;
-}
-.subtitle {
-  margin: 0;
-  color: #555;
-}
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <script src="app.js" defer></script>
+  </div>
+</body>
+</html>
 
-/* Header lay-out met logo rechts */
-.app-header .brand {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-/* Tekstblok links netjes stapelen */
-.app-header .brand-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* Logo */
-.client-logo {
-  display: block;
-  height: 72px; /* visuele hoogte, pas aan naar wens */
-  max-width: 280px; /* begrens breedte */
-  object-fit: contain;
-  object-position: right center;
-}
-
-/* Logo klikbaar zonder blauwe linkstijl */
-.brand-logo-link {
-  display: inline-block;
-  line-height: 0;
-}
-.brand-logo-link:focus {
-  outline: 2px solid #2a6df4;
-  outline-offset: 2px;
-}
-
-/* Kleinere schermen: logo wat compacter */
-@media (max-width: 640px) {
-  .client-logo {
-    height: 48px;
-    max-width: 200px;
-  }
-}
-
-.version-badge {
-  display: inline-block;
-  margin-left: 0.5rem;
-  padding: 0.15rem 0.45rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border-radius: 999px;
-  background: #eef2f7;
-  color: #334155;
-  vertical-align: middle;
-}
-
-/* Form in kolommen met gelijke inputbreedtes (CSS Grid) */
-.fields-columns {
-  border: 1px solid var(--bd);
-  padding: 10px;
-  border-radius: var(--ui-radius);
-  background: #fff;
-
-  /* i.p.v. column-count ⇒ echte grid met 3 gelijke kolommen */
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 16px; /* rij- en kolomafstand */
-}
-
-@media (max-width: 1100px) {
-  .fields-columns {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 720px) {
-  .fields-columns {
-    grid-template-columns: 1fr;
-  }
-}
-
-.fields-columns legend {
-  padding: 0 6px;
-  color: #333;
-}
-/* Elke rij: vaste labelkolom + 1fr inputkolom → gelijke inputbreedtes */
-.field-row {
-  break-inside: avoid;
-  display: grid;
-  grid-template-columns: var(--label-w) 1fr; /* <<< vaste label-breedte */
-  align-items: center;
-  gap: 6px 10px;
-  width: 100%;
-}
-
-/* labels op één regel, netjes afkappen indien nodig */
-.field-row label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* inputs altijd 100% van hun kolom */
-.field-row input {
-  width: 100%;
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  outline: none;
-}
-.field-row input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(42, 109, 244, 0.15);
-}
-
-/* Knoppen gecentreerd */
-.actions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  align-items: center;
-  padding-top: 8px;
-}
-button {
-  appearance: none;
-  border: none;
-  padding: 10px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-weight: 600;
-}
-button.primary {
-  background: #2a6df4;
-  color: #fff;
-}
-button.secondary {
-  background: #0b8f4d;
-  color: #fff;
-}
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Preview canvas */
+<!-- styles.css (kernfragment) -->
+<style>
 .canvas {
   background: #fff;
   border: 1px solid #e7e7e7;
-  border-radius: var(--ui-radius);
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  align-items: flex-start; /* geen center meer — JS doet centrering */
+  border-radius: 12px;
+  padding: 24px;
   overflow: hidden;
+  position: relative;
 }
 
-/* Controlekader */
-.control-card {
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 0.92rem;
-  color: #333;
-}
-.control-card h3 {
-  margin: 0 0 8px;
-  font-size: 1rem;
-}
-.control-grid-2x2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 14px;
-}
-.control-item {
-  background: #eef2f7;
-  border: 1px solid #dde3ea;
-  border-radius: 8px;
-  padding: 6px 8px;
-  font-family: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
-}
-
-/* Offscreen 1:1 label-factory: niet zichtbaar, wel in DOM voor metingen/PDF */
-#labelFactory {
-  position: fixed;
-  left: -10000px;
-  top: 0;
-  pointer-events: none;
-  visibility: hidden; /* geen flikkering */
-}
-
-/* Preview 2×2: boven (1,3), onder (2,4) */
 .labels-grid {
   display: grid;
   grid-template-columns: auto auto;
   gap: 12px;
-  margin: 0;
-  transform: none;
   will-change: transform;
 }
 
-/* Label + nummer (linksonder, buiten kader) */
 .label-wrap {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: 6px;
+  align-items: flex-start;
 }
+
 .label-num {
   font-size: 11px;
-  color: #333;
   opacity: 0.85;
 }
 
-/* Label kader — samengevoegd (geen dubbele definities meer) */
 .label {
-  border: var(--border-1px) solid #000;
+  border: 1px solid #000;
   background: #fff;
-  width: 100px;
-  height: 100px;
-  display: flex; /* mag blijven; schaadt niet */
-  position: relative; /* voor interne positionering indien nodig */
-  overflow: hidden; /* veilig bij overloop */
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
-/* Inhoud van het label: gecentreerd blok */
 .label-inner {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 0.9em;
-
   width: 100%;
   height: 100%;
-  overflow: hidden;
-
-  font-size: var(--fs-base, var(--fs, 14px));
-  padding: var(--inner-pad, 0); /* JS zet --inner-pad in px */
+  font-size: var(--fs-base, 14px);
+  gap: 0.9em;
 }
 
-/* optioneel: compacter bij extreem lage labels */
-.label-inner.compact {
-  gap: 0.5em;
+.erp-box .code-box {
+  font-size: var(--fs-erp, 1em);
 }
 
-/* Bovenste 30%: ERP + productomschrijving */
-/* Top & bottom vullen altijd de volledige breedte van het label */
-/* Top & bottom vullen altijd de volledige breedte van het label */
-.top-box,
-.bottom-box {
-  width: 100%;
+.product-desc {
+  font-size: var(--fs-base, 1em);
 }
 
-/* Bovenste 30%: ERP + productomschrijving */
-.top-box {
-  flex: 0 0 30%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
+.code-box {
+  display: inline-block;
+  border: 3px solid #000;
+  padding: 0.1em 0.25em;
+  font-weight: 700;
+  line-height: 1.05;
 }
 
-/* Onderste deel van het etiket */
-.bottom-box {
-  flex: 0 0 70%;
-  display: flex;
-  align-items: center;
-  justify-content: center; /* centreer detail-box binnen bottom-box */
-  padding-top: 0.2em;
-}
-
-/* Detail-Box: blok in het midden van het etiket */
 .detail-box {
-  width: 90%; /* 0,9 × etiketbreedte */
+  width: 90%;
   height: 90%;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Het eigenlijke blok met labels + waarden: smal en gecentreerd */
 .detail-box-inner {
   display: inline-flex;
   flex-direction: column;
@@ -334,251 +139,6 @@ button:disabled {
   font-weight: normal;
   text-align: left;
   max-width: 100%;
-  width: auto; /* alleen zo breed als nodig */
-  margin: 0 auto; /* blok als geheel centreren in Detail-Box */
+  margin: 0 auto;
 }
-
-/* Waarde-kolom: niet forceren tot volle breedte */
-.detail-value {
-  flex: 0 1 auto; /* neemt alleen de ruimte in die nodig is */
-  font-weight: 400;
-  white-space: nowrap; /* altijd 1 regel */
-  overflow: visible;
-  text-overflow: clip;
-}
-
-/* Rijen in de detail-box */
-.detail-row {
-  display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  justify-content: flex-start;
-  gap: 0.75em; /* horizontale ruimte tussen label & value */
-}
-
-/* Label- en waarde-kolom */
-.detail-label {
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-/* Mini extra ruimte tussen de regels, bovenop de gap */
-.detail-row + .detail-row {
-  margin-top: 0.05em;
-}
-
-/* Extra styling voor C/N en Made in China (Stap 2B) */
-
-.detail-row.cn-row .detail-label {
-  margin-right: 0.25em;
-}
-
-.cn-line {
-  display: inline-block;
-  border-bottom: 1px solid currentColor;
-  /* width wordt nu door JS gezet op basis van "IN CHINA" */
-  height: 0.9em;
-}
-
-/* optioneel: made-in-china iets dichter bij Batch houden */
-.detail-row.made-row .detail-label {
-  font-weight: 700;
-}
-
-.line {
-  white-space: normal;
-  word-break: break-word;
-}
-
-/* ====== FONT-HIËRARCHIE (Stap 3A) ====== */
-
-/* ERP-code: groter font */
-.erp-box .code-box {
-  font-size: var(--fs-erp, 1em);
-}
-
-/* Productomschrijving: basisfont */
-.product-desc {
-  font-size: var(--fs-base, 1em);
-}
-
-.code-box {
-  display: inline-block;
-  border: var(--code-border-3px) solid #000;
-  background: #fff;
-  padding: 0.1em 0.25em;
-  font-weight: 700;
-  line-height: 1.05;
-}
-
-/* Batch UI */
-.batch-panel {
-  background: var(--panel);
-  border: 1px solid var(--bd);
-  border-radius: var(--ui-radius);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.batch-panel h2 {
-  margin: 0;
-}
-.upload-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.dropzone {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 56px;
-  padding: 10px 14px;
-  border: 2px dashed #cbd5e1;
-  border-radius: 12px;
-  background: #f8fafc;
-  color: #334155;
-  cursor: pointer;
-  flex: 1;
-}
-.dropzone.dragover {
-  background: #eef2ff;
-  border-color: #6366f1;
-}
-.batch-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.mapping.hidden,
-.table-wrap.hidden,
-.norms.hidden,
-.batch-controls.hidden,
-.progress-wrap.hidden,
-.log-wrap.hidden {
-  display: none;
-}
-.mapping-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px 16px;
-}
-.mapping-grid .map-row {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 6px;
-  align-items: center;
-}
-.mapping-grid label {
-  color: #374151;
-}
-.mapping-grid select {
-  padding: 8px 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: #fff;
-}
-.table-wrap {
-  background: #fff;
-  border: 1px solid var(--bd);
-  border-radius: 10px;
-  padding: 8px;
-}
-.table-scroller {
-  overflow: auto;
-  max-height: 260px;
-  border-radius: 8px;
-}
-.table-scroller table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.95rem;
-}
-.table-scroller th,
-.table-scroller td {
-  border-bottom: 1px solid #eee;
-  padding: 6px 8px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-.table-scroller th {
-  background: #f8fafc;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-.norms label {
-  display: block;
-  color: #374151;
-  margin-bottom: 4px;
-}
-.batch-controls {
-  display: flex;
-  gap: 8px;
-}
-.progress-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.progress-bar {
-  height: 10px;
-  background: #e5e7eb;
-  border-radius: 999px;
-  overflow: hidden;
-}
-.progress-bar .bar {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #60a5fa, #2a6df4);
-  transition: width 0.2s;
-}
-.progress-text {
-  display: flex;
-  gap: 10px;
-  color: #374151;
-  font-size: 0.92rem;
-}
-.log-wrap {
-  background: #fff;
-  border: 1px solid var(--bd);
-  border-radius: 10px;
-  padding: 8px;
-}
-.log-list {
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size: 0.9rem;
-  white-space: pre-wrap;
-  color: #111;
-}
-.log-list .err {
-  color: #b91c1c;
-}
-.log-list .ok {
-  color: #065f46;
-}
-
-/* ====== FINE-TUNING TOP/BOTTOM LAYOUT (Stap 4B) ====== */
-
-/* Iets meer lucht rondom ERP + omschrijving */
-.top-box {
-  padding: 0.3em 0.8em;
-  box-sizing: border-box;
-}
-
-/* Footer onderaan */
-.site-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 16px;
-  border-top: 1px solid #e7e7e7;
-  background: #fff;
-  color: #444;
-}
-.site-footer small {
-  font-size: 0.85rem;
-}
+</style>
