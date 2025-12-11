@@ -635,8 +635,16 @@
   }
 
   async function renderSingle() {
-    const vals = getFormValues();
-    await renderPreviewFor(vals);
+    const vals = getFormValues(); // Formulierwaarden als object
+    const sizes = computeLabelSizes(vals); // Bereken afmetingen voor elke etiketpositie
+    const labels = sizes.map((s) => createLabelEl(s, vals)); // Maak voor elke etiket een DOM-element
+    labelFactory.innerHTML = ""; // (Optioneel: oude labels in factory wissen)
+    sizes.forEach((s) => {
+      // (Optioneel: master labels genereren voor PDF)
+      const master = createMasterLabelEl(s, vals);
+      labelFactory.appendChild(master);
+    });
+    await renderPreviewFor(labels); // Voorbeeld renderen met een array van labels
   }
 
   /* ====== jsPDF / html2canvas ====== */
