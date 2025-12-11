@@ -602,49 +602,56 @@
     const canvasEl = document.getElementById("previewCanvas");
     const labelsGrid = document.getElementById("labelsGrid");
 
-    // Reset inhoud
+    // Reset preview inhoud
     labelsGrid.innerHTML = "";
     labels.forEach((l) => labelsGrid.appendChild(l));
 
+    // Fit fonts en spacing
     mountThenFit(labelsGrid);
 
-    // Meet werkelijke breedtes van label 1 en 3
-    const [label1, label3] = [labels[0], labels[2]];
+    // Afmetingen meten (we gebruiken label 1 en 3 voor horizontale ruimte)
+    const [label1, , label3] = labels;
     const w1 = label1?.offsetWidth || 0;
     const w3 = label3?.offsetWidth || 0;
 
+    // Canvasbreedte en schaal berekenen
     const canvasWidth = canvasEl.clientWidth;
     const scale = computePreviewScale(w1, w3, 12, canvasWidth);
 
-    // totale breedte vóór schaling
+    // Breedte/hoogte van originele labels-grid vóór schaling
     const gridRect = labelsGrid.getBoundingClientRect();
     const baseW = gridRect.width;
     const baseH = gridRect.height;
 
+    // Geschaalde maten
     const scaledW = baseW * scale;
     const scaledH = baseH * scale;
 
-    // ruimte die overblijft in canvas
+    // Horizontale centrering
     const shiftX = (canvasWidth - scaledW) / 2;
 
     labelsGrid.style.transform = `translateX(${shiftX}px) scale(${scale})`;
     labelsGrid.style.transformOrigin = "top left";
 
-    // canvas hoogte aanpassen zodat de preview-box goed past
+    // Canvashoogte aanpassen aan 2 rijen labels + ruimte
     canvasEl.style.height = `${scaledH + 24}px`;
   }
 
   async function renderSingle() {
-    const vals = getFormValues(); // Formulierwaarden als object
-    const sizes = computeLabelSizes(vals); // Bereken afmetingen voor elke etiketpositie
-    const labels = sizes.map((s) => createLabelEl(s, vals)); // Maak voor elke etiket een DOM-element
-    labelFactory.innerHTML = ""; // (Optioneel: oude labels in factory wissen)
+    const vals = getFormValues(); // formulierwaarden
+    const sizes = computeLabelSizes(vals); // 4 etikettenmaten op basis van doos
+
+    // Maak visuele labels (voor preview)
+    const labels = sizes.map((s) => createLabelEl(s, vals));
+
+    // Master-labels (1:1) voor PDF in factory
+    labelFactory.innerHTML = "";
     sizes.forEach((s) => {
-      // (Optioneel: master labels genereren voor PDF)
       const master = createMasterLabelEl(s, vals);
       labelFactory.appendChild(master);
     });
-    await renderPreviewFor(labels); // Voorbeeld renderen met een array van labels
+
+    await renderPreviewFor(labels); // toon preview
   }
 
   /* ====== jsPDF / html2canvas ====== */
