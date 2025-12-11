@@ -187,16 +187,16 @@ button:disabled {
 }
 
 /* Preview canvas */
-/* was: padding: 2cm; */
 .canvas {
   background: #fff;
   border: 1px solid #e7e7e7;
   border-radius: var(--ui-radius);
-  padding: 24px; /* vaste px i.p.v. cm → meer ruimte voor labels */
+  padding: 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  overflow: hidden; /* voorkom dat het grid buiten de kaart “lekt” */
+  align-items: flex-start; /* geen center meer — JS doet centrering */
+  overflow: hidden;
 }
 
 /* Controlekader */
@@ -235,13 +235,13 @@ button:disabled {
 }
 
 /* Preview 2×2: boven (1,3), onder (2,4) */
-/* Geen ruimte tussen labels in preview? Gebruik gap: 0; */
 .labels-grid {
   display: grid;
   grid-template-columns: auto auto;
-  gap: 0; /* was: var(--preview-gap-cm) */
-  place-content: center;
-  place-items: center;
+  gap: 12px;
+  margin: 0;
+  transform: none;
+  will-change: transform;
 }
 
 /* Label + nummer (linksonder, buiten kader) */

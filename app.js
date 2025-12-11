@@ -197,17 +197,10 @@
       </div>`;
   }
 
-  function computePreviewScale(sizes) {
-    const gapPx = PREVIEW_GAP_CM_NUM * PX_PER_CM;
-    const w1 = sizes[0].w * PX_PER_CM,
-      w3 = sizes[2].w * PX_PER_CM;
-    const requiredW = Math.max(w1 + gapPx + w1, w3 + gapPx + w3);
-    const cs = getComputedStyle(canvasEl);
-    const innerW =
-      canvasEl.clientWidth -
-      parseFloat(cs.paddingLeft) -
-      parseFloat(cs.paddingRight);
-    return Math.min(innerW / requiredW, 1);
+  function computePreviewScale(w1, w3, gapPx = 12, maxWidth = 1000) {
+    // werkelijke breedte is etiket 1 + gap + etiket 3 (naast elkaar)
+    const totalW = w1 + gapPx + w3;
+    return Math.min(1, maxWidth / totalW);
   }
 
   /* ====== FONT-FIT ===========================================
@@ -605,44 +598,40 @@
   }
 
   /* ====== PREVIEW PIPELINE (single & batch) ====== */
-  async function renderPreviewFor(vals) {
-    const sizes = computeLabelSizes(vals);
-    const scale = computePreviewScale(sizes);
-    currentPreviewScale = scale;
+  function renderPreviewFor(labels) {
+    const canvasEl = document.getElementById("previewCanvas");
+    const labelsGrid = document.getElementById("labelsGrid");
 
-    updateControlInfo(sizes);
-
-    labelsGrid.style.gap = "0";
-    labelsGrid.style.transformOrigin = "top left";
-    labelsGrid.style.transform = "none";
+    // Reset inhoud
     labelsGrid.innerHTML = "";
+    labels.forEach((l) => labelsGrid.appendChild(l));
 
-    // 1 & 3 boven, 2 & 4 onder
-    [0, 2, 1, 3].forEach((i) => {
-      labelsGrid.appendChild(createLabelEl(sizes[i], vals)); // 1:1 labels
-    });
+    mountThenFit(labelsGrid);
 
-    // Eerst op 1:1 grootte font-fitten
-    await mountThenFit(labelsGrid);
+    // Meet werkelijke breedtes van label 1 en 3
+    const [label1, label3] = [labels[0], labels[2]];
+    const w1 = label1?.offsetWidth || 0;
+    const w3 = label3?.offsetWidth || 0;
 
-    // Hoogte van het ongeschaalde grid meten
-    const rect = labelsGrid.getBoundingClientRect();
-    const baseHeight = rect.height;
+    const canvasWidth = canvasEl.clientWidth;
+    const scale = computePreviewScale(w1, w3, 12, canvasWidth);
 
-    // Preview schalen
-    if (scale < 1) {
-      labelsGrid.style.transform = `scale(${scale})`;
+    // totale breedte vóór schaling
+    const gridRect = labelsGrid.getBoundingClientRect();
+    const baseW = gridRect.width;
+    const baseH = gridRect.height;
 
-      // Canvashoogte aanpassen aan geschaalde content,
-      // zodat het “kader” niet gigantisch wordt
-      const scaledHeight = baseHeight * scale;
-      canvasEl.style.height = scaledHeight + 32 + "px"; // + beetje marge
-    } else {
-      labelsGrid.style.transform = "none";
-      canvasEl.style.height = baseHeight + 32 + "px";
-    }
+    const scaledW = baseW * scale;
+    const scaledH = baseH * scale;
 
-    return { sizes, scale };
+    // ruimte die overblijft in canvas
+    const shiftX = (canvasWidth - scaledW) / 2;
+
+    labelsGrid.style.transform = `translateX(${shiftX}px) scale(${scale})`;
+    labelsGrid.style.transformOrigin = "top left";
+
+    // canvas hoogte aanpassen zodat de preview-box goed past
+    canvasEl.style.height = `${scaledH + 24}px`;
   }
 
   async function renderSingle() {
