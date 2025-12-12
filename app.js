@@ -110,26 +110,27 @@
 
   /* ====== ENKELVOUDIG INLEZEN ====== */
   function readValuesSingle() {
-    const g = (id) => document.getElementById(id).value.trim();
-    const L = parseFloat(g("boxLength"));
-    const W = parseFloat(g("boxWidth"));
-    const H = parseFloat(g("boxHeight"));
+    const get = (id) => document.getElementById(id).value.trim();
+
+    const L = parseFloat(get("boxLength"));
+    const W = parseFloat(get("boxWidth"));
+    const H = parseFloat(get("boxHeight"));
 
     const vals = {
       L,
       W,
       H,
-      code: g("prodCode"),
-      desc: g("prodDesc"),
-      ean: g("ean"),
-      qty: String(Math.max(0, Math.floor(Number(g("qty")) || 0))),
-      gw: ((v) => (isFinite(+v) ? (+v).toFixed(2) : v))(g("gw")),
-      cbm: g("cbm"),
-      batch: g("batch"), // verplicht
+      code: get("prodCode"),
+      desc: get("prodDesc"),
+      ean: get("ean"),
+      qty: String(Math.max(0, Math.floor(Number(get("qty")) || 0))),
+      gw: ((v) => (isFinite(+v) ? (+v).toFixed(2) : v))(get("gw")),
+      cbm: get("cbm"),
+      batch: get("batch"), // VERPLICHT
     };
 
+    // Verplichte velden check
     if (
-      [L, W, H].some((v) => !isFinite(v) || v <= 0) ||
       !vals.code ||
       !vals.desc ||
       !vals.ean ||
@@ -138,23 +139,37 @@
       !vals.cbm ||
       !vals.batch
     ) {
-      throw new Error("Controleer de verplichte velden (incl. Batch).");
+      throw new Error("Vul alle verplichte velden in (inclusief Batch).");
     }
+
+    // Maatvalidatie: 5–100 cm
+    ["L", "W", "H"].forEach((k) => {
+      const v = vals[k];
+      if (!isFinite(v) || v < 5 || v > 100) {
+        throw new Error(
+          "Lengte (L), Breedte (W) en Hoogte (H) moeten tussen 5 en 100 cm liggen (5–100)."
+        );
+      }
+    });
+
     return vals;
   }
 
   /* ====== LABELMATEN & PREVIEW SCALE ====== */
   function computeLabelSizes({ L, W, H }) {
-    // Etiket = 80% van respectievelijk L×H (1&2) en W×H (3&4) → 10% marge rondom
-    const scale = 0.8;
-    const fb = { w: L * scale, h: H * scale };
-    const sd = { w: W * scale, h: H * scale };
-    const cnText = "C/N: ___________________";
+    // 10% kleiner aan elke zijde
+    const lw = Math.max(5, Math.min(100, L));
+    const ww = Math.max(5, Math.min(100, W));
+    const hh = Math.max(5, Math.min(100, H));
+
+    const fb = { w: lw * 0.9, h: hh * 0.9 }; // front/back = L × H
+    const sd = { w: ww * 0.9, h: hh * 0.9 }; // side       = W × H
+
     return [
-      { idx: 1, kind: "front/back", ...fb, under: "Made in China" },
-      { idx: 2, kind: "front/back", ...fb, under: cnText },
-      { idx: 3, kind: "side", ...sd, under: "Made in China" },
-      { idx: 4, kind: "side", ...sd, under: cnText },
+      { idx: 1, kind: "front/back", ...fb }, // C/N straks hier
+      { idx: 2, kind: "front/back", ...fb }, // C/N straks hier
+      { idx: 3, kind: "side", ...sd }, // Made in China hier
+      { idx: 4, kind: "side", ...sd }, // Made in China hier
     ];
   }
 
@@ -192,7 +207,16 @@
     return Math.min(innerW / requiredW, 1);
   }
 
-  /* ====== FONT-FIT ====== */
+  /* ====== FONT-FIT ===========================================
+   Doelen:
+   - Grotere startwaarde bij grote etiketten → zichtbaar grotere tekst.
+   - Eerst agressief omhoog groeien, dán pas binair finetunen.
+   - Wrap pas inzetten als body < WRAP_THRESHOLD_PX (no-wrap voorkeur).
+   - Houd een kleine “guard” (binnenmarge) aan tegen clipping.
+   - Code-box schaalt mee (geen cap), body via --fs.
+========================================================================= */
+
+  /** past alles binnen 'innerEl' met een veiligheidsmarge? */
   function fitsWithGuard(innerEl, guardX, guardY) {
     return (
       innerEl.scrollWidth <= innerEl.clientWidth - guardX &&
@@ -200,34 +224,37 @@
     );
   }
 
+  /** zet actuele body-font (via --fs) + code-box (1.6× body) */
   function applyFontSizes(innerEl, fsPx) {
-    // basis (body)
     innerEl.style.setProperty("--fs", fsPx + "px");
-    // productcode schaalt mee (geen cap)
     const codeEl = innerEl.querySelector(".code-box");
     if (codeEl) {
+      // Geen cap: mag zo groot als past; de fit stopt vanzelf bij overshoot
       codeEl.style.fontSize = fsPx * CODE_MULT + "px";
     }
   }
 
-  function searchFontSize(innerEl, minFs, hi, guardX, guardY) {
-    // probeer eerst omhoog te groeien
-    applyFontSizes(innerEl, hi);
+  /** zoek een passende fontgrootte (eerst groeien, daarna finetunen naar beneden) */
+  function searchFontSize(innerEl, minFs, startHi, guardX, guardY) {
+    // 1) agressief omhoog groeien vanaf startHi (groeifactor 1.08)
+    applyFontSizes(innerEl, startHi);
     if (fitsWithGuard(innerEl, guardX, guardY)) {
-      let grow = hi;
-      for (let i = 0; i < 36; i++) {
-        const next = grow * 1.06;
+      let grow = startHi;
+      for (let i = 0; i < 48; i++) {
+        const next = grow * 1.08; // iets sneller groeien
         applyFontSizes(innerEl, next);
         if (!fitsWithGuard(innerEl, guardX, guardY)) {
-          applyFontSizes(innerEl, grow);
+          applyFontSizes(innerEl, grow); // stap terug naar laatste passende
           return grow;
         }
         grow = next;
       }
-      return grow;
+      return grow; // plafond bereikt zonder clip
     }
-    // anders binair omlaag zoeken
+
+    // 2) paste startHi al niet? dan binair omlaag tussen [minFs, startHi]
     let lo = minFs,
+      hi = startHi,
       best = lo;
     while (hi - lo > 0.5) {
       const mid = (lo + hi) / 2;
@@ -243,37 +270,61 @@
     return best;
   }
 
-  // eerst no-wrap (>=10px), dan indien nodig soft-wrap (>=6px)
+  /** hoofd-fit: eerst no-wrap ≥ WRAP_THRESHOLD_PX, anders soft-wrap ≥ MIN_FS_PX */
   function fitContentToBoxConditional(innerEl) {
-    const box = innerEl.getBoundingClientRect();
-    const guardX = Math.max(6, box.width * 0.02);
-    const guardY = Math.max(6, box.height * 0.02);
+    // Effectieve box (na padding) → we vertrouwen op clientWidth/Height
+    const w = innerEl.clientWidth;
+    const h = innerEl.clientHeight;
 
-    const hi = Math.max(16, Math.min(box.height * 0.22, box.width * 0.18)); // geen hard cap
+    // Veiligheidsmarges (px): 2% van kant + absolute ondergrens
+    const guardX = Math.max(8, w * 0.02);
+    const guardY = Math.max(8, h * 0.02);
 
+    // Startschatting agressiever: proportioneel op de KLEINSTE zijde
+    // → zo schaal je in grote etiketten duidelijk omhoog
+    const baseFromBox = Math.min(w, h) * 0.11; // was ~0.06–0.085; nu forser
+    const startHi = Math.max(16, baseFromBox); // ondergrens redelijke leesbaarheid
+
+    // Fase 1: no-wrap (voorkeur)
     innerEl.classList.add("nowrap-mode");
     innerEl.classList.remove("softwrap-mode");
-    let fs = searchFontSize(innerEl, WRAP_THRESHOLD_PX, hi, guardX, guardY);
+    let fs = searchFontSize(
+      innerEl,
+      WRAP_THRESHOLD_PX,
+      startHi,
+      guardX,
+      guardY
+    );
     if (fs >= WRAP_THRESHOLD_PX) return;
 
+    // Fase 2: soft-wrap (alleen als echt nodig)
     innerEl.classList.remove("nowrap-mode");
     innerEl.classList.add("softwrap-mode");
-    searchFontSize(innerEl, MIN_FS_PX, hi, guardX, guardY);
+
+    // Zelfde startHi gebruiken (nu mag het beter passen dankzij wrap)
+    searchFontSize(innerEl, MIN_FS_PX, startHi, guardX, guardY);
   }
 
   /* ====== UI OPBOUW ====== */
   function buildLeftBlock(values, size) {
     const block = el("div", { class: "label-leftblock" });
     const grid = el("div", { class: "specs-grid" });
+
     [
       ...line("EAN:", values.ean),
       ...line("QTY:", `${values.qty} PCS`),
       ...line("G.W:", `${values.gw} KGS`),
       ...line("CBM:", values.cbm),
     ].forEach((n) => grid.append(n));
+
     block.append(grid);
-    block.append(el("div", { class: "line" }, `Batch: ${values.batch}`));
-    block.append(el("div", { class: "line" }, size.under));
+
+    // Onderregel per etiket:
+    if (size.idx === 1 || size.idx === 2) {
+      block.append(el("div", { class: "line" }, "C/N: ___________________"));
+    } else {
+      block.append(el("div", { class: "line" }, "Made in China"));
+    }
     return block;
   }
 
@@ -935,22 +986,21 @@
     renderSingle().catch(() => {});
   });
 
-  /*
   // (optioneel) demo-waarden voor snelle start
-  try{
-    if (document.getElementById('prodCode')){
-      document.getElementById('prodCode').value   = 'LG1000843';
-      document.getElementById('prodDesc').value   = 'Combination Lock - Orange - 1 Pack (YF20610B)';
-      document.getElementById('ean').value        = '8719632951889';
-      document.getElementById('qty').value        = '12';
-      document.getElementById('gw').value         = '18.00';
-      document.getElementById('cbm').value        = '0.02';
-      document.getElementById('boxLength').value  = '39';
-      document.getElementById('boxWidth').value   = '19.5';
-      document.getElementById('boxHeight').value  = '22';
-      document.getElementById('batch').value      = 'IOR2500307';
+  try {
+    if (document.getElementById("prodCode")) {
+      document.getElementById("prodCode").value = "LG1000843";
+      document.getElementById("prodDesc").value =
+        "Combination Lock - Orange - 1 Pack (YF20610B)";
+      document.getElementById("ean").value = "8719632951889";
+      document.getElementById("qty").value = "12";
+      document.getElementById("gw").value = "18.00";
+      document.getElementById("cbm").value = "0.02";
+      document.getElementById("boxLength").value = "39";
+      document.getElementById("boxWidth").value = "19.5";
+      document.getElementById("boxHeight").value = "22";
+      document.getElementById("batch").value = "IOR2500307";
       safeRender();
     }
-  }catch(_){}
-  */
+  } catch (_) {}
 })();

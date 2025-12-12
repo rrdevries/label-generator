@@ -226,10 +226,11 @@ button:disabled {
 }
 
 /* Preview 2×2: boven (1,3), onder (2,4) */
+/* Geen ruimte tussen labels in preview? Gebruik gap: 0; */
 .labels-grid {
   display: grid;
   grid-template-columns: auto auto;
-  gap: var(--preview-gap-cm);
+  gap: 0; /* was: var(--preview-gap-cm) */
   place-content: center;
   place-items: center;
 }
@@ -247,41 +248,37 @@ button:disabled {
   opacity: 0.85;
 }
 
-/* Label kader */
-.label {
-  border: var(--border-1px) solid #000;
-  display: flex;
-  background: #fff;
-  width: 100px;
-  height: 100px;
-}
+/* Label kader — samengevoegd (geen dubbele definities meer) */
 .label {
   border: var(--border-1px) solid #000;
   background: #fff;
   width: 100px;
   height: 100px;
-  position: relative; /* NIEUW: nodig om .label-inner te centreren */
-  overflow: hidden; /* NIEUW: veilig bij schaal/transforms */
+  display: flex; /* mag blijven; schaadt niet */
+  position: relative; /* voor interne positionering indien nodig */
+  overflow: hidden; /* veilig bij overloop */
 }
 
+/* Inhoud van het label: gecentreerd blok, tekst links via .label-leftblock */
 .label-inner {
-  position: absolute;
-  inset: 0; /* full stretch binnen label */
-  margin: auto; /* centreer het blok */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
   gap: 0.9em;
-  /* Referentiekader (ontwerpmaat). Pas aan als je anders wilt (bv. 120×72) */
-  width: var(--ref-w, 100px);
-  height: var(--ref-h, 60px);
-  /* Schaal rond het midden */
-  transform-origin: center;
-  transform: scale(var(--k, 1));
-  /* Lettergrootte schaalt mee met k (behoudt jouw bestaande --fs fallback) */
-  font-size: calc(var(--fs, 14px) * var(--k, 1));
+
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+
+  font-size: var(--fs, 14px); /* JS zet --fs dynamisch */
+  padding: var(--inner-pad, 0); /* JS zet --inner-pad in px */
+}
+
+/* optioneel: compacter bij extreem lage labels */
+.label-inner.compact {
+  gap: 0.5em;
 }
 
 /* Kop (gecentreerd) */
@@ -300,7 +297,7 @@ button:disabled {
   line-height: 1.05;
 }
 
-/* Links-blok als geheel gecentreerd */
+/* Links-blok als geheel gecentreerd (tekst in het blok blijft links) */
 .label-leftblock {
   width: var(--specs-percent);
   margin: 0 auto;
