@@ -12,6 +12,11 @@
   // Code-box is 1.6× de body-font
   const CODE_MULT = 1.6;
 
+  // ===== PDF (terug naar v0.31 gedrag) =====
+  const PDF_MARGIN_CM = 0.5; // klopt met je oude PDF (20.8cm breedte bij 19.8cm labelhoogte)
+  const BORDER_PX = 1; // safety: borders altijd meenemen in capture
+  let currentPreviewScale = 1; // nodig voor scherpe PDF-capture bij geschaalde preview
+
   /* ====== Helpers ====== */
   const $ = (sel) => document.querySelector(sel);
 
@@ -68,12 +73,10 @@
   */
 
   function calcLabelSizes(values) {
-    // Huidige v0.70 logica (zoals in jouw code)
     const L = values.len || 0;
     const W = values.wid || 0;
     const H = values.hei || 0;
 
-    // Factoren uit je huidige file
     const FRONT_BACK_FACTOR = 0.45;
     const SIDE_FACTOR = 0.45;
 
@@ -106,14 +109,7 @@
     });
   }
 
-  /* ====== Auto-fit logic (font sizing) ======
-=========================================================================
-  Doel:
-   - Tekst zo groot mogelijk maken binnen de beschikbare box.
-   - Eerst no-wrap proberen; als nodig onder 10px -> soft-wrap.
-   - Guard tegen clipping.
-   - Code-box schaalt mee (1.6× body).
-========================================================================= */
+  /* ====== Auto-fit logic (font sizing) ====== */
 
   /** past alles binnen 'innerEl' met een veiligheidsmarge? */
   function fitsWithGuard(innerEl, guardX, guardY) {
@@ -135,7 +131,6 @@
 
   /** zoek een passende fontgrootte (eerst groeien, daarna finetunen naar beneden) */
   function searchFontSize(innerEl, minFs, startHi, guardX, guardY) {
-    // 1) agressief omhoog groeien vanaf startHi (groeifactor 1.08)
     let hi = Math.max(minFs, startHi);
     applyFontSizes(innerEl, hi);
 
@@ -149,26 +144,21 @@
       hi = next;
     }
 
-    // 2) binaire search naar max die past
     let lo = minFs;
     let best = lo;
 
-    // Zorg dat hi in elk geval "te groot" is (of gelijk)
     applyFontSizes(innerEl, hi);
     if (fitsWithGuard(innerEl, guardX, guardY)) {
-      // hi past nog, dan is hi best (maar we laten de loop hierboven al stoppen)
       best = hi;
       return best;
     }
 
-    // lo laten passen (minFs moet altijd passen, zo niet dan toch de bodem)
     applyFontSizes(innerEl, lo);
     if (!fitsWithGuard(innerEl, guardX, guardY)) {
       return minFs;
     }
     best = lo;
 
-    // Binary refine
     for (let i = 0; i < 22; i++) {
       const mid = (lo + hi) / 2;
       applyFontSizes(innerEl, mid);
@@ -193,13 +183,11 @@
     const baseFromBox = Math.min(w, h) * 0.11;
     const startHi = Math.max(16, baseFromBox);
 
-    // Fase 1: no-wrap (voorkeur)
     innerEl.classList.add("nowrap-mode");
     innerEl.classList.remove("softwrap-mode");
 
     let best = searchFontSize(innerEl, MIN_FS_PX, startHi, guardX, guardY);
 
-    // Als we onder threshold zouden eindigen, probeer soft-wrap
     if (best < WRAP_THRESHOLD_PX) {
       innerEl.classList.remove("nowrap-mode");
       innerEl.classList.add("softwrap-mode");
@@ -216,7 +204,6 @@
     fitAllIn(container);
   }
 
-  // Fit alle label-inhouden in container
   function fitAllIn(container) {
     container.querySelectorAll(".label-inner").forEach((inner) => {
       inner.classList.add("nowrap-mode");
@@ -267,7 +254,6 @@
 
     const inner = el("div", { class: "label-inner nowrap-mode" });
 
-    // Padding op de label-rand, niet op de content die we schalen:
     const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
     label.style.padding = padPx + "px";
 
@@ -278,9 +264,7 @@
       el("div", { class: "line" }, values.desc)
     );
 
-    // ====== wijziging #1: content wrapper zodat we content kunnen meten ======
     const content = el("div", { class: "label-content" });
-
     content.append(
       head,
       el("div", { class: "block-spacer" }),
@@ -296,7 +280,6 @@
 
   /* ====== Preview render ====== */
   function computePreviewScale(sizes) {
-    // Houd je bestaande schaal-logica aan (zoals in v0.70)
     const labelsGrid = $("#labelsGrid");
     if (!labelsGrid) return 1;
 
@@ -314,7 +297,6 @@
     const sH = cellH / maxHpx;
 
     const s = Math.min(sW, sH) * 0.98;
-
     return Math.max(0.08, Math.min(1, s));
   }
 
@@ -326,6 +308,7 @@
     renderDims(sizes);
 
     const scale = computePreviewScale(sizes);
+    currentPreviewScale = scale; // belangrijk voor PDF capture kwaliteit
 
     labelsGrid.innerHTML = "";
     const fragments = document.createDocumentFragment();
@@ -350,67 +333,128 @@
     return window.jspdf?.jsPDF;
   }
 
-  function buildPdfFileName(code) {
-    const d = new Date();
-    const pad = (n) => String(n).padStart(2, "0");
-    const ts =
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
-      `${pad(d.getHours())}.${pad(d.getMinutes())}.${pad(d.getSeconds())}`;
-
-    const safeCode = (code || "export").trim() || "export";
-    return `${safeCode} - ${ts}.pdf`;
+  function pad2(n) {
+    return String(n).padStart(2, "0");
   }
 
-  async function generatePDFSingle() {
-    const labelsGrid = $("#labelsGrid");
-    if (!labelsGrid) throw new Error("labelsGrid niet gevonden");
+  function buildTimestamp(d = new Date()) {
+    return (
+      `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ` +
+      `${pad2(d.getHours())}.${pad2(d.getMinutes())}.${pad2(d.getSeconds())}`
+    );
+  }
 
-    const JsPDF = loadJsPDF();
-    if (!JsPDF) throw new Error("jsPDF niet geladen");
+  function buildPdfFileName(code) {
+    const safeCode = (code || "export").trim() || "export";
+    return `${safeCode} - ${buildTimestamp()}.pdf`;
+  }
 
-    // Render zeker up-to-date
-    const vals = getFormValues();
-    await renderPreviewFor(vals);
+  function rotateCanvas90CW(srcCanvas) {
+    const dst = document.createElement("canvas");
+    dst.width = srcCanvas.height;
+    dst.height = srcCanvas.width;
 
-    const canvas = await html2canvas(labelsGrid, {
-      scale: 2,
+    const ctx = dst.getContext("2d");
+    // 90° met de klok mee
+    ctx.translate(dst.width, 0);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(srcCanvas, 0, 0);
+
+    return dst;
+  }
+
+  async function captureLabelToRotatedPng(labelIdx) {
+    const src = document.querySelector(`.label[data-idx="${labelIdx}"]`);
+    if (!src)
+      throw new Error(`Label ${labelIdx} niet gevonden voor PDF-capture.`);
+
+    const clone = src.cloneNode(true);
+
+    // Forceer borders (html2canvas wil bij scaling soms 1 zijde "kwijtraken")
+    clone.style.borderTop = `${BORDER_PX}px solid #000`;
+    clone.style.borderRight = `${BORDER_PX}px solid #000`;
+    clone.style.borderBottom = `${BORDER_PX}px solid #000`;
+    clone.style.borderLeft = `${BORDER_PX}px solid #000`;
+
+    const host = document.createElement("div");
+    host.style.position = "fixed";
+    host.style.left = "-10000px";
+    host.style.top = "0";
+    host.style.background = "#fff";
+    host.style.padding = "0";
+    host.style.margin = "0";
+
+    document.body.appendChild(host);
+    host.appendChild(clone);
+
+    // Scherpte: compenseer preview-schaal zodat PDF niet “zacht” wordt bij grote labels
+    const capScale = Math.max(
+      2,
+      window.devicePixelRatio || 1,
+      1 / (currentPreviewScale || 1)
+    );
+
+    const canvas = await html2canvas(clone, {
+      scale: capScale,
       backgroundColor: "#ffffff",
       useCORS: true,
     });
 
-    const imgData = canvas.toDataURL("image/png");
+    const rot = rotateCanvas90CW(canvas);
 
-    // A4 portrait (zoals je huidige), maar afbeelding 90° roteren zoals je “goede” PDF
+    document.body.removeChild(host);
+
+    return rot.toDataURL("image/png");
+  }
+
+  async function generatePDFSingle() {
+    const JsPDF = loadJsPDF();
+    if (!JsPDF) throw new Error("jsPDF niet geladen");
+    if (!window.html2canvas) throw new Error("html2canvas niet geladen");
+
+    // Zorg dat preview up-to-date is (en currentPreviewScale gezet is)
+    const vals = getFormValues();
+    const result = await renderPreviewFor(vals);
+    if (!result) throw new Error("Kon preview niet renderen voor PDF.");
+    const { sizes } = result;
+
+    // v0.31 gedrag:
+    // - Elk label apart capturen
+    // - Canvas 90° CW roteren
+    // - In PDF stapelen (1,3,2,4) op een lange pagina
+    const order = [1, 3, 2, 4];
+
+    // Na rotatie: width = originele hoogte (h), height = originele breedte (w)
+    const pageW = Math.max(...sizes.map((s) => s.h)) + PDF_MARGIN_CM * 2;
+    const pageH = sizes.reduce((sum, s) => sum + s.w, 0) + PDF_MARGIN_CM * 2;
+
     const pdf = new JsPDF({
+      unit: "cm",
       orientation: "portrait",
-      unit: "pt",
-      format: "a4",
+      format: [pageW, pageH],
     });
 
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
+    let y = PDF_MARGIN_CM;
 
-    const margin = 24;
-    const maxW = pageW - margin * 2;
-    const maxH = pageH - margin * 2;
+    for (const idx of order) {
+      const s = sizes[idx - 1];
+      const imgData = await captureLabelToRotatedPng(idx);
 
-    const imgW = canvas.width;
-    const imgH = canvas.height;
+      const wRot = s.h;
+      const hRot = s.w;
 
-    // Na rotatie wisselen breedte/hoogte om
-    const rot = 90; // als hij de verkeerde kant op draait: maak dit -90
-    const rotW = imgH;
-    const rotH = imgW;
-
-    const ratio = Math.min(maxW / rotW, maxH / rotH);
-    const drawW = rotW * ratio;
-    const drawH = rotH * ratio;
-
-    const x = (pageW - drawW) / 2;
-    const y = (pageH - drawH) / 2;
-
-    // jsPDF: addImage(..., alias, compression, rotation)
-    pdf.addImage(imgData, "PNG", x, y, drawW, drawH, undefined, "FAST", rot);
+      pdf.addImage(
+        imgData,
+        "PNG",
+        PDF_MARGIN_CM,
+        y,
+        wRot,
+        hRot,
+        undefined,
+        "FAST"
+      );
+      y += hRot;
+    }
 
     pdf.save(buildPdfFileName(vals.code));
   }
