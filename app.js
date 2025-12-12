@@ -91,9 +91,6 @@
   // Fit alle label-inhouden in container
   function fitAllIn(container) {
     container.querySelectorAll(".label-inner").forEach((inner) => {
-      // als we schaalfactor k gebruiken, sla fitting over
-      const hasK = inner.style.getPropertyValue("--k");
-      if (hasK) return;
       inner.classList.add("nowrap-mode");
       inner.classList.remove("softwrap-mode");
       fitContentToBoxConditional(inner);
