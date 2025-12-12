@@ -344,16 +344,16 @@
     const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
     label.style.padding = padPx + "px";
 
-    //  schaal de HELE content proportioneel & centreer ---
-    const REF_W = 100; // referentiebreedte (px in ontwerpmaat)
-    const REF_H = 60; // referentiehoogte (idem)
-    inner.style.setProperty("--ref-w", REF_W + "px");
-    inner.style.setProperty("--ref-h", REF_H + "px");
+    // //  schaal de HELE content proportioneel & centreer ---
+    // const REF_W = 100; // referentiebreedte (px in ontwerpmaat)
+    // const REF_H = 60; // referentiehoogte (idem)
+    // inner.style.setProperty("--ref-w", REF_W + "px");
+    // inner.style.setProperty("--ref-h", REF_H + "px");
 
-    const availW = widthPx - padPx * 2;
-    const availH = heightPx - padPx * 2;
-    const k = Math.max(0.1, Math.min(availW / REF_W, availH / REF_H)); // 0.1 als veiligheidsbodem
-    inner.style.setProperty("--k", String(k));
+    // const availW = widthPx - padPx * 2;
+    // const availH = heightPx - padPx * 2;
+    // const k = Math.max(0.1, Math.min(availW / REF_W, availH / REF_H)); // 0.1 als veiligheidsbodem
+    // inner.style.setProperty("--k", String(k));
 
     const head = el(
       "div",

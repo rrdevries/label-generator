@@ -254,6 +254,7 @@ button:disabled {
   background: #fff;
   width: 100px;
   height: 100px;
+  font-family: Arial, Helvetica, sans-serif;
   display: flex; /* mag blijven; schaadt niet */
   position: relative; /* voor interne positionering indien nodig */
   overflow: hidden; /* veilig bij overloop */
