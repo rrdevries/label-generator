@@ -350,6 +350,17 @@
     return window.jspdf?.jsPDF;
   }
 
+  function buildPdfFileName(code) {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const ts =
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+      `${pad(d.getHours())}.${pad(d.getMinutes())}.${pad(d.getSeconds())}`;
+
+    const safeCode = (code || "export").trim() || "export";
+    return `${safeCode} - ${ts}.pdf`;
+  }
+
   async function generatePDFSingle() {
     const labelsGrid = $("#labelsGrid");
     if (!labelsGrid) throw new Error("labelsGrid niet gevonden");
@@ -357,7 +368,7 @@
     const JsPDF = loadJsPDF();
     if (!JsPDF) throw new Error("jsPDF niet geladen");
 
-    // render zeker up-to-date
+    // Render zeker up-to-date
     const vals = getFormValues();
     await renderPreviewFor(vals);
 
@@ -368,6 +379,8 @@
     });
 
     const imgData = canvas.toDataURL("image/png");
+
+    // A4 portrait (zoals je huidige), maar afbeelding 90° roteren zoals je “goede” PDF
     const pdf = new JsPDF({
       orientation: "portrait",
       unit: "pt",
@@ -377,7 +390,6 @@
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
 
-    // fit image into page with margins
     const margin = 24;
     const maxW = pageW - margin * 2;
     const maxH = pageH - margin * 2;
@@ -385,15 +397,22 @@
     const imgW = canvas.width;
     const imgH = canvas.height;
 
-    const ratio = Math.min(maxW / imgW, maxH / imgH);
-    const drawW = imgW * ratio;
-    const drawH = imgH * ratio;
+    // Na rotatie wisselen breedte/hoogte om
+    const rot = 90; // als hij de verkeerde kant op draait: maak dit -90
+    const rotW = imgH;
+    const rotH = imgW;
+
+    const ratio = Math.min(maxW / rotW, maxH / rotH);
+    const drawW = rotW * ratio;
+    const drawH = rotH * ratio;
 
     const x = (pageW - drawW) / 2;
     const y = (pageH - drawH) / 2;
 
-    pdf.addImage(imgData, "PNG", x, y, drawW, drawH);
-    pdf.save(`etiketten_${(vals.code || "export").replace(/\s+/g, "_")}.pdf`);
+    // jsPDF: addImage(..., alias, compression, rotation)
+    pdf.addImage(imgData, "PNG", x, y, drawW, drawH, undefined, "FAST", rot);
+
+    pdf.save(buildPdfFileName(vals.code));
   }
 
   /* ====== init ====== */
