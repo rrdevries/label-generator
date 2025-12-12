@@ -1,13 +1,13 @@
-/* styles.css – volledig, incl. ontbrekende basisregels */
-
 :root {
   --px-per-cm: 37.7952755906;
   --ui-radius: 12px;
   --border-1px: 1px;
   --code-border-3px: 3px;
-  --label-w: 140px;
-  --fs-base: 14px;
-  --fs-erp: 1.1em;
+
+  --preview-gap-cm: 0.5cm; /* ruimte tussen labels in preview */
+  --specs-percent: 66%; /* breedte links-blok t.o.v. label */
+  --tab-gap: 2.4em; /* “tab” tussen label en waarde */
+  --label-w: 140px; /* vaste labelkolom; pas aan naar smaak (120-160px) */
 }
 
 * {
@@ -16,11 +16,15 @@
 html,
 body {
   height: 100%;
+}
+body {
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
   line-height: 1.25;
   color: #111;
   background: #f5f6f8;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .app {
@@ -33,25 +37,55 @@ body {
   min-height: calc(100vh - 48px);
 }
 
+.app-header h1 {
+  margin: 0 0 2px;
+  font-size: 1.4rem;
+}
+.subtitle {
+  margin: 0;
+  color: #555;
+}
+
+/* Header lay-out met logo rechts */
 .app-header .brand {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
 }
-.brand-text {
+
+/* Tekstblok links netjes stapelen */
+.app-header .brand-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
+
+/* Logo */
 .client-logo {
-  height: 72px;
-  max-width: 280px;
+  display: block;
+  height: 72px; /* visuele hoogte, pas aan naar wens */
+  max-width: 280px; /* begrens breedte */
   object-fit: contain;
+  object-position: right center;
 }
+
+/* Logo klikbaar zonder blauwe linkstijl */
 .brand-logo-link {
   display: inline-block;
   line-height: 0;
+}
+.brand-logo-link:focus {
+  outline: 2px solid #2a6df4;
+  outline-offset: 2px;
+}
+
+/* Kleinere schermen: logo wat compacter */
+@media (max-width: 640px) {
+  .client-logo {
+    height: 48px;
+    max-width: 200px;
+  }
 }
 
 .version-badge {
@@ -66,14 +100,17 @@ body {
   vertical-align: middle;
 }
 
+/* Form in kolommen met gelijke inputbreedtes (CSS Grid) */
 .fields-columns {
-  border: 1px solid #ccc;
+  border: 1px solid var(--bd);
   padding: 10px;
   border-radius: var(--ui-radius);
   background: #fff;
+
+  /* i.p.v. column-count ⇒ echte grid met 3 gelijke kolommen */
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 16px;
+  gap: 12px 16px; /* rij- en kolomafstand */
 }
 
 @media (max-width: 1100px) {
@@ -87,25 +124,47 @@ body {
   }
 }
 
+.fields-columns legend {
+  padding: 0 6px;
+  color: #333;
+}
+/* Elke rij: vaste labelkolom + 1fr inputkolom → gelijke inputbreedtes */
 .field-row {
+  break-inside: avoid;
   display: grid;
-  grid-template-columns: var(--label-w) 1fr;
+  grid-template-columns: var(--label-w) 1fr; /* <<< vaste label-breedte */
   align-items: center;
   gap: 6px 10px;
   width: 100%;
 }
+
+/* labels op één regel, netjes afkappen indien nodig */
+.field-row label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* inputs altijd 100% van hun kolom */
 .field-row input {
   width: 100%;
+  min-width: 0;
   padding: 8px 10px;
   border: 1px solid #ccc;
   border-radius: 8px;
   outline: none;
 }
+.field-row input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(42, 109, 244, 0.15);
+}
 
+/* Knoppen gecentreerd */
 .actions {
   display: flex;
   gap: 10px;
   justify-content: center;
+  align-items: center;
   padding-top: 8px;
 }
 button {
@@ -124,91 +183,336 @@ button.secondary {
   background: #0b8f4d;
   color: #fff;
 }
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
+/* Preview canvas */
 .canvas {
   background: #fff;
   border: 1px solid #e7e7e7;
   border-radius: var(--ui-radius);
-  padding: 24px;
-  overflow: hidden;
-  position: relative;
+  padding: 2cm;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
+/* Controlekader */
+.control-card {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.92rem;
+  color: #333;
+}
+.control-card h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+.control-grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+}
+.control-item {
+  background: #eef2f7;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-family: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* Preview 2×2: boven (1,3), onder (2,4) */
 .labels-grid {
   display: grid;
   grid-template-columns: auto auto;
-  gap: 12px;
-  will-change: transform;
+  gap: var(--preview-gap-cm);
+  place-content: center;
+  place-items: center;
 }
 
+/* Label + nummer (linksonder, buiten kader) */
 .label-wrap {
   display: flex;
   flex-direction: column;
-  gap: 6px;
   align-items: flex-start;
+  gap: 6px;
 }
-
 .label-num {
   font-size: 11px;
+  color: #333;
   opacity: 0.85;
 }
 
+/* Label kader */
+.label {
+  border: var(--border-1px) solid #000;
+  display: flex;
+  background: #fff;
+  width: 100px;
+  height: 100px;
+}
 .label {
   border: var(--border-1px) solid #000;
   background: #fff;
-  overflow: hidden;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  width: 100px;
+  height: 100px;
+  position: relative; /* NIEUW: nodig om .label-inner te centreren */
+  overflow: hidden; /* NIEUW: veilig bij schaal/transforms */
 }
 
 .label-inner {
+  position: absolute;
+  inset: 0; /* full stretch binnen label */
+  margin: auto; /* centreer het blok */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  width: 100%;
-  height: 100%;
-  font-size: var(--fs-base, 14px);
   gap: 0.9em;
+  /* Referentiekader (ontwerpmaat). Pas aan als je anders wilt (bv. 120×72) */
+  width: var(--ref-w, 100px);
+  height: var(--ref-h, 60px);
+  /* Schaal rond het midden */
+  transform-origin: center;
+  transform: scale(var(--k, 1));
+  /* Lettergrootte schaalt mee met k (behoudt jouw bestaande --fs fallback) */
+  font-size: calc(var(--fs, 14px) * var(--k, 1));
 }
 
-.erp-box .code-box {
-  font-size: var(--fs-erp, 1em);
+/* Kop (gecentreerd) */
+.label-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6em;
 }
-.product-desc {
-  font-size: var(--fs-base, 1em);
-}
-
 .code-box {
   display: inline-block;
   border: var(--code-border-3px) solid #000;
+  background: #fff;
   padding: 0.1em 0.25em;
   font-weight: 700;
   line-height: 1.05;
 }
 
-.detail-box {
-  width: 90%;
-  height: 90%;
+/* Links-blok als geheel gecentreerd */
+.label-leftblock {
+  width: var(--specs-percent);
+  margin: 0 auto;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+}
+
+/* Grid labels + waarden */
+.specs-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: var(--tab-gap);
+  row-gap: 0.35em;
+  min-width: 0;
+}
+.specs-grid .lab {
+  font-weight: 700;
+}
+.specs-grid .val {
+  min-width: 0;
+}
+
+/* Fase 1: no-wrap (voorkeur) */
+.nowrap-mode .specs-grid .val {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+/* Fase 2: soft-wrap (alleen als font < 10px nodig is) */
+.softwrap-mode .specs-grid .val {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.cn-row {
+  display: flex;
+  align-items: center;
+  column-gap: var(--tab-gap);
+  white-space: nowrap;
+}
+.cn-row .lab {
+  font-weight: 700;
+}
+.cn-row .cn-line {
+  border-bottom: 1.5px solid #000;
+  height: 0;
+  flex: 1 1 12em;
+  min-width: 3em;
+}
+
+.line {
+  white-space: normal;
+  word-break: break-word;
+}
+.block-spacer {
+  height: 0.4em;
+}
+
+/* Batch UI */
+.batch-panel {
+  background: var(--panel);
+  border: 1px solid var(--bd);
+  border-radius: var(--ui-radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.batch-panel h2 {
+  margin: 0;
+}
+.upload-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.dropzone {
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  flex: 1;
 }
-
-.detail-box-inner {
-  display: inline-flex;
+.dropzone.dragover {
+  background: #eef2ff;
+  border-color: #6366f1;
+}
+.batch-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mapping.hidden,
+.table-wrap.hidden,
+.norms.hidden,
+.batch-controls.hidden,
+.progress-wrap.hidden,
+.log-wrap.hidden {
+  display: none;
+}
+.mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 16px;
+}
+.mapping-grid .map-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 6px;
+  align-items: center;
+}
+.mapping-grid label {
+  color: #374151;
+}
+.mapping-grid select {
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+}
+.table-wrap {
+  background: #fff;
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  padding: 8px;
+}
+.table-scroller {
+  overflow: auto;
+  max-height: 260px;
+  border-radius: 8px;
+}
+.table-scroller table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.table-scroller th,
+.table-scroller td {
+  border-bottom: 1px solid #eee;
+  padding: 6px 8px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.table-scroller th {
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.norms label {
+  display: block;
+  color: #374151;
+  margin-bottom: 4px;
+}
+.batch-controls {
+  display: flex;
+  gap: 8px;
+}
+.progress-wrap {
+  display: flex;
   flex-direction: column;
-  gap: 0.25em;
-  font-weight: normal;
-  text-align: left;
-  max-width: 100%;
-  margin: 0 auto;
+  gap: 6px;
+}
+.progress-bar {
+  height: 10px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-bar .bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #60a5fa, #2a6df4);
+  transition: width 0.2s;
+}
+.progress-text {
+  display: flex;
+  gap: 10px;
+  color: #374151;
+  font-size: 0.92rem;
+}
+.log-wrap {
+  background: #fff;
+  border: 1px solid var(--bd);
+  border-radius: 10px;
+  padding: 8px;
+}
+.log-list {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  color: #111;
+}
+.log-list .err {
+  color: #b91c1c;
+}
+.log-list .ok {
+  color: #065f46;
 }
 
+/* Footer onderaan */
 .site-footer {
   display: flex;
   align-items: center;
@@ -218,7 +522,6 @@ button.secondary {
   background: #fff;
   color: #444;
 }
-
 .site-footer small {
   font-size: 0.85rem;
 }
