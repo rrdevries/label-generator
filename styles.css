@@ -1,254 +1,204 @@
 :root {
   --px-per-cm: 37.7952755906;
   --ui-radius: 12px;
-  --border-1px: 1px;
-  --code-border-3px: 3px;
+  --ui-border: #e6e8ee;
+  --ui-bg: #f7f8fb;
+  --text: #111;
+  --muted: #6b7280;
+  --shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
 
-  --preview-gap-cm: 0.5cm; /* ruimte tussen labels in preview */
-  --specs-percent: 66%; /* breedte links-blok t.o.v. label */
-  --tab-gap: 2.4em; /* “tab” tussen label en waarde */
-  --label-w: 140px; /* vaste labelkolom; pas aan naar smaak (120-160px) */
+  --border-1px: 1px;
+
+  --code-border-3px: 3px;
+  --code-pad-y: 2px;
+  --code-pad-x: 6px;
+  --code-radius: 0;
 }
 
+/* reset */
 * {
   box-sizing: border-box;
 }
+
 html,
 body {
   height: 100%;
 }
+
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
-  line-height: 1.25;
-  color: #111;
-  background: #f5f6f8;
-  overflow-x: hidden;
-  overflow-y: auto;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: var(--text);
+  background: #fff;
 }
 
+/* layout */
 .app {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 10px 16px 20px;
-  display: grid;
-  grid-template-rows: auto auto auto;
-  gap: 12px;
-  min-height: calc(100vh - 48px);
+  min-height: 100%;
 }
 
-.app-header h1 {
-  margin: 0 0 2px;
-  font-size: 1.4rem;
-}
-.subtitle {
-  margin: 0;
-  color: #555;
+.app-header {
+  padding: 18px 18px 8px;
+  border-bottom: 1px solid var(--ui-border);
 }
 
-/* Header lay-out met logo rechts */
-.app-header .brand {
+.brand {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
 }
 
-/* Tekstblok links netjes stapelen */
-.app-header .brand-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-/* Logo */
-.client-logo {
-  display: block;
-  height: 72px; /* visuele hoogte, pas aan naar wens */
-  max-width: 280px; /* begrens breedte */
-  object-fit: contain;
-  object-position: right center;
-}
-
-/* Logo klikbaar zonder blauwe linkstijl */
-.brand-logo-link {
-  display: inline-block;
-  line-height: 0;
-}
-.brand-logo-link:focus {
-  outline: 2px solid #2a6df4;
-  outline-offset: 2px;
-}
-
-/* Kleinere schermen: logo wat compacter */
-@media (max-width: 640px) {
-  .client-logo {
-    height: 48px;
-    max-width: 200px;
-  }
+.brand-text h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 800;
 }
 
 .version-badge {
-  display: inline-block;
-  margin-left: 0.5rem;
-  padding: 0.15rem 0.45rem;
-  font-size: 0.8rem;
-  font-weight: 600;
+  margin-left: 8px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border: 1px solid var(--ui-border);
   border-radius: 999px;
-  background: #eef2f7;
-  color: #334155;
+  color: var(--muted);
   vertical-align: middle;
+  font-weight: 700;
 }
 
-/* Form in kolommen met gelijke inputbreedtes (CSS Grid) */
-.fields-columns {
-  border: 1px solid var(--bd);
-  padding: 10px;
+.subtitle {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.client-logo {
+  height: 46px;
+  width: auto;
+}
+
+.app-main {
+  padding: 18px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.panel {
+  border: 1px solid var(--ui-border);
   border-radius: var(--ui-radius);
   background: #fff;
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
 
-  /* i.p.v. column-count ⇒ echte grid met 3 gelijke kolommen */
+.panel > h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.form-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px 16px; /* rij- en kolomafstand */
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px 12px;
+  align-items: end;
 }
 
-@media (max-width: 1100px) {
-  .fields-columns {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 720px) {
-  .fields-columns {
-    grid-template-columns: 1fr;
-  }
-}
-
-.fields-columns legend {
-  padding: 0 6px;
-  color: #333;
-}
-/* Elke rij: vaste labelkolom + 1fr inputkolom → gelijke inputbreedtes */
-.field-row {
-  break-inside: avoid;
+.field {
   display: grid;
-  grid-template-columns: var(--label-w) 1fr; /* <<< vaste label-breedte */
-  align-items: center;
-  gap: 6px 10px;
-  width: 100%;
+  gap: 6px;
+  font-size: 12px;
 }
 
-/* labels op één regel, netjes afkappen indien nodig */
-.field-row label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.field span {
+  color: var(--muted);
+  font-weight: 700;
 }
 
-/* inputs altijd 100% van hun kolom */
-.field-row input {
+.field input {
   width: 100%;
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--ui-border);
+  background: #fff;
   border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
   outline: none;
 }
-.field-row input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(42, 109, 244, 0.15);
-}
 
-/* Knoppen gecentreerd */
 .actions {
   display: flex;
   gap: 10px;
   justify-content: center;
-  align-items: center;
-  padding-top: 8px;
+  padding-top: 14px;
 }
-button {
-  appearance: none;
-  border: none;
-  padding: 10px 14px;
+
+.btn {
+  border: 0;
   border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 800;
   cursor: pointer;
-  font-weight: 600;
-}
-button.primary {
-  background: #2a6df4;
-  color: #fff;
-}
-button.secondary {
-  background: #0b8f4d;
-  color: #fff;
-}
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  font-size: 12px;
 }
 
-/* Preview canvas */
-.canvas {
+.btn.primary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.btn.success {
+  background: #0a8f3c;
+  color: #fff;
+}
+
+.panel-preview {
   background: #fff;
-  border: 1px solid #e7e7e7;
-  border-radius: var(--ui-radius);
-  padding: 2cm;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
 }
 
-/* Controlekader */
-.control-card {
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-size: 0.92rem;
-  color: #333;
+.calc-box {
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--ui-bg);
+  padding: 12px;
+  margin-bottom: 12px;
 }
-.control-card h3 {
-  margin: 0 0 8px;
-  font-size: 1rem;
+
+.calc-box h3 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 800;
 }
-.control-grid-2x2 {
+
+.dims-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
-.control-item {
+
+.dims-grid .pill {
+  font-size: 12px;
   background: #eef2f7;
-  border: 1px solid #dde3ea;
+  border: 1px solid #dde3ee;
   border-radius: 8px;
   padding: 6px 8px;
-  font-family: ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", monospace;
 }
 
-/* Preview 2×2: boven (1,3), onder (2,4) */
-/* Geen ruimte tussen labels in preview? Gebruik gap: 0; */
+/* labels preview grid */
 .labels-grid {
   display: grid;
-  grid-template-columns: auto auto;
-  gap: 0; /* was: var(--preview-gap-cm) */
-  place-content: center;
-  place-items: center;
+  grid-template-columns: repeat(2, auto);
+  justify-content: center;
+  gap: 0;
+  padding: 12px 0 6px;
 }
 
-/* Label + nummer (linksonder, buiten kader) */
 .label-wrap {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  display: grid;
   gap: 6px;
 }
-.label-num {
-  font-size: 11px;
-  color: #333;
-  opacity: 0.85;
-}
 
-/* Label kader — samengevoegd (geen dubbele definities meer) */
 .label {
   border: var(--border-1px) solid #000;
   background: #fff;
@@ -260,65 +210,75 @@ button:disabled {
   overflow: hidden; /* veilig bij overloop */
 }
 
-/* Inhoud van het label: gecentreerd blok, tekst links via .label-leftblock */
+.label-num {
+  font-size: 10px;
+  color: #777;
+  padding-left: 2px;
+}
+
+/* ====== LABEL CONTENT ====== */
+
 .label-inner {
+  /* Inner is het frame (100% van label). Content wordt apart gemeten voor auto-fit. */
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 0.9em;
 
   width: 100%;
   height: 100%;
   overflow: hidden;
 
   font-size: var(--fs, 14px); /* JS zet --fs dynamisch */
-  padding: var(--inner-pad, 0); /* JS zet --inner-pad in px */
+  padding: var(--inner-pad, 0); /* optioneel; default 0 */
+}
+
+.label-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.9em;
 }
 
 /* optioneel: compacter bij extreem lage labels */
-.label-inner.compact {
+.label-inner.compact .label-content {
   gap: 0.5em;
 }
 
 /* Kop (gecentreerd) */
 .label-head {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  display: grid;
   gap: 0.6em;
+  justify-items: center;
 }
+
+/* Code box */
 .code-box {
   display: inline-block;
   border: var(--code-border-3px) solid #000;
-  background: #fff;
-  padding: 0.1em 0.25em;
-  font-weight: 700;
-  line-height: 1.05;
+  padding: var(--code-pad-y) var(--code-pad-x);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  border-radius: var(--code-radius);
+  line-height: 1.1;
 }
 
-/* Links-blok als geheel gecentreerd (tekst in het blok blijft links) */
-.label-leftblock {
-  width: var(--specs-percent);
-  margin: 0 auto;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6em;
-}
-
-/* Grid labels + waarden */
+/* Body specs */
 .specs-grid {
   display: grid;
-  grid-template-columns: max-content 1fr;
-  column-gap: var(--tab-gap);
-  row-gap: 0.35em;
-  min-width: 0;
+  grid-template-columns: auto 1fr;
+  gap: 0.35em 0.9em;
+  align-items: baseline;
+  text-align: left;
 }
-.specs-grid .lab {
-  font-weight: 700;
+
+.specs-grid .key {
+  font-weight: 900;
+  white-space: nowrap;
 }
+
 .specs-grid .val {
   min-width: 0;
 }
@@ -329,6 +289,7 @@ button:disabled {
   overflow-wrap: normal;
   word-break: normal;
 }
+
 /* Fase 2: soft-wrap (alleen als font < 10px nodig is) */
 .softwrap-mode .specs-grid .val {
   white-space: normal;
@@ -336,190 +297,20 @@ button:disabled {
   word-break: break-word;
 }
 
-.cn-row {
-  display: flex;
-  align-items: center;
-  column-gap: var(--tab-gap);
-  white-space: nowrap;
-}
-.cn-row .lab {
-  font-weight: 700;
-}
-.cn-row .cn-line {
-  border-bottom: 1.5px solid #000;
-  height: 0;
-  flex: 1 1 12em;
-  min-width: 3em;
-}
-
-.line {
-  white-space: normal;
-  word-break: break-word;
-}
+/* spacer tussen kop en specs */
 .block-spacer {
-  height: 0.4em;
+  height: 0.2em;
 }
 
-/* Batch UI */
-.batch-panel {
-  background: var(--panel);
-  border: 1px solid var(--bd);
-  border-radius: var(--ui-radius);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.batch-panel h2 {
-  margin: 0;
-}
-.upload-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.dropzone {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 56px;
-  padding: 10px 14px;
-  border: 2px dashed #cbd5e1;
-  border-radius: 12px;
-  background: #f8fafc;
-  color: #334155;
-  cursor: pointer;
-  flex: 1;
-}
-.dropzone.dragover {
-  background: #eef2ff;
-  border-color: #6366f1;
-}
-.batch-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.mapping.hidden,
-.table-wrap.hidden,
-.norms.hidden,
-.batch-controls.hidden,
-.progress-wrap.hidden,
-.log-wrap.hidden {
-  display: none;
-}
-.mapping-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px 16px;
-}
-.mapping-grid .map-row {
-  display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 6px;
-  align-items: center;
-}
-.mapping-grid label {
-  color: #374151;
-}
-.mapping-grid select {
-  padding: 8px 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: #fff;
-}
-.table-wrap {
-  background: #fff;
-  border: 1px solid var(--bd);
-  border-radius: 10px;
-  padding: 8px;
-}
-.table-scroller {
-  overflow: auto;
-  max-height: 260px;
-  border-radius: 8px;
-}
-.table-scroller table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.95rem;
-}
-.table-scroller th,
-.table-scroller td {
-  border-bottom: 1px solid #eee;
-  padding: 6px 8px;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-.table-scroller th {
-  background: #f8fafc;
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-.norms label {
-  display: block;
-  color: #374151;
-  margin-bottom: 4px;
-}
-.batch-controls {
-  display: flex;
-  gap: 8px;
-}
-.progress-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.progress-bar {
-  height: 10px;
-  background: #e5e7eb;
-  border-radius: 999px;
-  overflow: hidden;
-}
-.progress-bar .bar {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, #60a5fa, #2a6df4);
-  transition: width 0.2s;
-}
-.progress-text {
-  display: flex;
-  gap: 10px;
-  color: #374151;
-  font-size: 0.92rem;
-}
-.log-wrap {
-  background: #fff;
-  border: 1px solid var(--bd);
-  border-radius: 10px;
-  padding: 8px;
-}
-.log-list {
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size: 0.9rem;
-  white-space: pre-wrap;
-  color: #111;
-}
-.log-list .err {
-  color: #b91c1c;
-}
-.log-list .ok {
-  color: #065f46;
-}
-
-/* Footer onderaan */
-.site-footer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 16px;
-  border-top: 1px solid #e7e7e7;
-  background: #fff;
-  color: #444;
-}
-.site-footer small {
-  font-size: 0.85rem;
+/* Responsive form columns */
+@media (max-width: 980px) {
+  .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .dims-grid {
+    grid-template-columns: 1fr;
+  }
+  .labels-grid {
+    grid-template-columns: 1fr;
+  }
 }
