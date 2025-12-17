@@ -483,8 +483,513 @@
     pdf.save(buildPdfFileName(vals.code));
   }
 
+
+  /* ====== BATCH (Excel / CSV) ======
+     Hersteld vanuit v0.70, passend gemaakt op v0.78:
+     - Leest XLSX/XLS/CSV (XLSX lib)
+     - Kolommen mappen (auto + handmatig)
+     - Genereert per rij dezelfde PDF als "PDF genereren" (v0.78 PDF pipeline)
+     - Bundelt alles in één ZIP (JSZip)
+  */
+
+  // Batch state
+  let parsedRows = [];
+  let headers = [];
+  let mapping = {};
+  let abortFlag = false;
+
+  // Batch DOM refs (worden in initBatchUI gezet)
+  let dropzone,
+    fileInput,
+    btnPickFile,
+    btnTemplateCsv,
+    btnTemplateXlsx,
+    mappingWrap,
+    mappingGrid,
+    previewWrap,
+    tablePreview,
+    normWrap,
+    chkComma,
+    chkTrim,
+    batchControls,
+    btnRunBatch,
+    btnAbortBatch,
+    progressWrap,
+    progressBar,
+    progressLabel,
+    progressPhase,
+    logWrap,
+    logList;
+
+  function setHidden(elm, hidden) {
+    if (elm) elm.classList.toggle("hidden", !!hidden);
+  }
+
+  function resetLog() {
+    if (logList) logList.innerHTML = "";
+  }
+
+  function log(msg, type = "info") {
+    if (!logList) return;
+    const div = el(
+      "div",
+      { class: type === "error" ? "err" : type === "ok" ? "ok" : "" },
+      msg
+    );
+    logList.appendChild(div);
+  }
+
+  async function parseFile(file) {
+    if (!window.XLSX) throw new Error("XLSX library niet geladen.");
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, { type: "array" });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+  }
+
+  const REQUIRED_FIELDS = [
+    ["productcode", "ERP"],
+    ["omschrijving", "Omschrijving"],
+    ["ean", "EAN"],
+    ["qty", "QTY"],
+    ["gw", "G.W"],
+    ["cbm", "CBM"],
+    ["lengte", "Length (L)"],
+    ["breedte", "Width (W)"],
+    ["hoogte", "Height (H)"],
+    ["batch", "Batch"],
+  ];
+
+  const SYNONYMS = {
+    productcode: [
+      "erp",
+      "erp#",
+      "erp #",
+      "productcode",
+      "code",
+      "sku",
+      "artikelcode",
+      "itemcode",
+      "prodcode",
+    ],
+    omschrijving: [
+      "omschrijving",
+      "description",
+      "product",
+      "naam",
+      "title",
+      "titel",
+    ],
+    ean: ["ean", "barcode", "gtin", "ean13", "ean_13"],
+    qty: ["qty", "aantal", "quantity", "pcs", "stuks"],
+    gw: [
+      "gw",
+      "g.w",
+      "gewicht",
+      "weight",
+      "grossweight",
+      "gweight",
+      "brutogewicht",
+    ],
+    cbm: ["cbm", "m3", "volume", "kub", "kubiekemeter", "kubiekemeters"],
+    lengte: ["lengte", "l", "depth", "diepte", "length"],
+    breedte: ["breedte", "b", "width", "w"],
+    hoogte: ["hoogte", "h", "height"],
+    batch: ["batch", "lot", "lotno", "batchno", "batchnr"],
+  };
+
+  function slugify(s) {
+    return String(s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "")
+      .trim();
+  }
+
+  function guessMapping(hdrs) {
+    const m = {};
+    REQUIRED_FIELDS.forEach(([key]) => (m[key] = ""));
+    const slugs = hdrs.map((h) => slugify(String(h).replace(/\([^)]*\)/g, "")));
+
+    // exact synonym match
+    for (let i = 0; i < hdrs.length; i++) {
+      const h = hdrs[i];
+      const s = slugs[i];
+      for (const [key, syns] of Object.entries(SYNONYMS)) {
+        if (syns.includes(s)) {
+          m[key] = h;
+          break;
+        }
+      }
+    }
+
+    // substring fallback
+    for (const [key] of REQUIRED_FIELDS) {
+      if (!m[key]) {
+        const sset = (SYNONYMS[key] || [key]).filter((tok) => tok.length >= 2);
+        const idx = slugs.findIndex((s) => sset.some((tok) => s.includes(tok)));
+        if (idx >= 0) m[key] = hdrs[idx];
+      }
+    }
+
+    return m;
+  }
+
+  function buildMappingUI(hdrs, mappingObj) {
+    if (!mappingGrid) return;
+    mappingGrid.innerHTML = "";
+
+    const makeRow = (key, labelText) => {
+      const row = el("div", { class: "map-row" });
+      const lab = el("label", {}, labelText + " *");
+      const sel = el("select", { "data-key": key });
+      sel.appendChild(el("option", { value: "" }, "-- kies kolom --"));
+      hdrs.forEach((h) => {
+        const opt = el("option", { value: h }, h);
+        if (mappingObj[key] === h) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      row.append(lab, sel);
+      mappingGrid.appendChild(row);
+    };
+
+    REQUIRED_FIELDS.forEach(([k, l]) => makeRow(k, l));
+
+    mappingGrid.querySelectorAll("select").forEach((sel) => {
+      sel.addEventListener("change", () => {
+        mappingObj[sel.getAttribute("data-key")] = sel.value;
+      });
+    });
+  }
+
+  function showTablePreview(rows) {
+    if (!tablePreview) return;
+    if (!rows.length) {
+      tablePreview.innerHTML = "<em>Geen data gevonden.</em>";
+      return;
+    }
+    const cols = Object.keys(rows[0]);
+    const n = Math.min(5, rows.length);
+    const table = el("table");
+    const thead = el("thead");
+    const trh = el("tr");
+    cols.forEach((c) => trh.appendChild(el("th", {}, c)));
+    thead.appendChild(trh);
+    const tbody = el("tbody");
+    for (let i = 0; i < n; i++) {
+      const tr = el("tr");
+      cols.forEach((c) => tr.appendChild(el("td", {}, String(rows[i][c] ?? ""))));
+      tbody.appendChild(tr);
+    }
+    table.append(thead, tbody);
+    tablePreview.innerHTML = "";
+    tablePreview.appendChild(table);
+  }
+
+  function normalizeNumber(val) {
+    if (typeof val !== "string") val = String(val ?? "");
+    if (chkTrim?.checked) val = val.trim();
+    if (chkComma?.checked) val = val.replace(",", ".");
+    // 1.234.567,89 -> 1234567.89
+    if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(val)) val = val.replace(/\./g, "");
+    const num = parseFloat(val);
+    return isFinite(num) ? num : NaN;
+  }
+
+  function readRowWithMapping(row, mappingObj) {
+    const get = (key) => {
+      const hdr = mappingObj[key] || "";
+      return hdr ? row[hdr] ?? "" : "";
+    };
+
+    const vals = {
+      code: String(get("productcode") ?? "").trim(),
+      desc: String(get("omschrijving") ?? "").trim(),
+      ean: String(get("ean") ?? "").trim(),
+      qty: String(Math.max(0, Math.floor(normalizeNumber(String(get("qty")))))),
+      gw: (() => {
+        const n = normalizeNumber(String(get("gw")));
+        return isFinite(n) ? n.toFixed(2) : "";
+      })(),
+      cbm: String(get("cbm") ?? "").trim(),
+      len: normalizeNumber(String(get("lengte"))),
+      wid: normalizeNumber(String(get("breedte"))),
+      hei: normalizeNumber(String(get("hoogte"))),
+      batch: String(get("batch") ?? "").trim(),
+    };
+
+    const missing = [];
+    if (!vals.code) missing.push("ERP");
+    if (!vals.desc) missing.push("Omschrijving");
+    if (!vals.ean) missing.push("EAN");
+    if (!vals.qty || isNaN(+vals.qty)) missing.push("QTY");
+    if (!vals.gw) missing.push("G.W");
+    if (!vals.cbm) missing.push("CBM");
+    if (!isFinite(vals.len) || vals.len <= 0) missing.push("Length (L)");
+    if (!isFinite(vals.wid) || vals.wid <= 0) missing.push("Width (W)");
+    if (!isFinite(vals.hei) || vals.hei <= 0) missing.push("Height (H)");
+    if (!vals.batch) missing.push("Batch");
+
+    if (missing.length) {
+      return { ok: false, error: `Ontbrekende/ongeldige velden: ${missing.join(", ")}` };
+    }
+
+    vals.len = +vals.len;
+    vals.wid = +vals.wid;
+    vals.hei = +vals.hei;
+    return { ok: true, vals };
+  }
+
+  // Render één PDF als Blob via dezelfde pipeline als "PDF genereren"
+  async function renderOnePdfBlobViaPreview(vals) {
+    const JsPDF = loadJsPDF();
+    if (!JsPDF) throw new Error("jsPDF niet geladen");
+    if (!window.html2canvas) throw new Error("html2canvas niet geladen");
+
+    const result = await renderPreviewFor(vals);
+    if (!result) throw new Error("Kon preview niet renderen voor batch.");
+    const { sizes } = result;
+
+    const order = [1, 3, 2, 4];
+
+    const pageW = Math.max(...sizes.map((s) => s.h)) + PDF_MARGIN_CM * 2;
+    const pageH = sizes.reduce((sum, s) => sum + s.w, 0) + PDF_MARGIN_CM * 2;
+
+    const pdf = new JsPDF({
+      unit: "cm",
+      orientation: "portrait",
+      format: [pageW, pageH],
+    });
+
+    let y = PDF_MARGIN_CM;
+    for (const idx of order) {
+      const s = sizes[idx - 1];
+      const imgData = await captureLabelToRotatedPng(idx);
+      const wRot = s.h;
+      const hRot = s.w;
+      pdf.addImage(imgData, "PNG", PDF_MARGIN_CM, y, wRot, hRot, undefined, "FAST");
+      y += hRot;
+    }
+
+    return pdf.output("blob");
+  }
+
+  function initBatchUI() {
+    // DOM refs
+    dropzone = $("#dropzone");
+    fileInput = $("#fileInput");
+    btnPickFile = $("#btnPickFile");
+    btnTemplateCsv = $("#btnTemplateCsv");
+    btnTemplateXlsx = $("#btnTemplateXlsx");
+    mappingWrap = $("#mappingWrap");
+    mappingGrid = $("#mappingGrid");
+    previewWrap = $("#previewWrap");
+    tablePreview = $("#tablePreview");
+    normWrap = $("#normWrap");
+    chkComma = $("#optCommaDecimal");
+    chkTrim = $("#optTrimSpaces");
+    batchControls = $("#batchControls");
+    btnRunBatch = $("#btnRunBatch");
+    btnAbortBatch = $("#btnAbortBatch");
+    progressWrap = $("#progressWrap");
+    progressBar = $("#progressBar");
+    progressLabel = $("#progressLabel");
+    progressPhase = $("#progressPhase");
+    logWrap = $("#logWrap");
+    logList = $("#logList");
+
+    // Als batch-sectie niet aanwezig is, niets doen.
+    if (!dropzone || !fileInput || !btnRunBatch) return;
+
+    const handleFile = async (file) => {
+      resetLog();
+      setHidden(logWrap, false);
+
+      try {
+        log(`Bestand: ${file.name}`);
+        const rows = await parseFile(file);
+
+        if (!rows.length) {
+          log("Geen rijen gevonden.", "error");
+          return;
+        }
+
+        headers = Object.keys(rows[0]);
+        mapping = guessMapping(headers);
+
+        buildMappingUI(headers, mapping);
+        setHidden(mappingWrap, false);
+
+        showTablePreview(rows);
+        setHidden(previewWrap, false);
+
+        setHidden(normWrap, false);
+        setHidden(batchControls, false);
+        setHidden(progressWrap, true);
+
+        parsedRows = rows;
+
+        log(`Gelezen rijen: ${rows.length}`, "ok");
+      } catch (err) {
+        log(`Fout bij lezen bestand: ${err.message || err}`, "error");
+      }
+    };
+
+    // pick file button
+    btnPickFile?.addEventListener("click", () => fileInput.click());
+
+    // drag & drop
+    ["dragover", "dragenter"].forEach((ev) => {
+      dropzone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        dropzone.classList.add("dragover");
+      });
+    });
+    ["dragleave", "drop"].forEach((ev) => {
+      dropzone.addEventListener(ev, (e) => {
+        e.preventDefault();
+        dropzone.classList.remove("dragover");
+      });
+    });
+    dropzone.addEventListener("drop", async (e) => {
+      const f = e.dataTransfer.files?.[0];
+      if (f) await handleFile(f);
+    });
+
+    // input change
+    fileInput.addEventListener("change", async () => {
+      const f = fileInput.files?.[0];
+      if (f) await handleFile(f);
+    });
+
+    // templates
+    btnTemplateCsv?.addEventListener("click", () => {
+      const hdrs = ["ERP","Omschrijving","EAN","QTY","G.W","CBM","Length (L)","Width (W)","Height (H)","Batch"];
+      const blob = new Blob([hdrs.join(",") + "\n"], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "etiketten-template.csv";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+    });
+
+    btnTemplateXlsx?.addEventListener("click", () => {
+      if (!window.XLSX) {
+        alert("XLSX library niet geladen.");
+        return;
+      }
+      const hdrs = ["ERP","Omschrijving","EAN","QTY","G.W","CBM","Length (L)","Width (W)","Height (H)","Batch"];
+      const ws = XLSX.utils.aoa_to_sheet([hdrs]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Etiketten");
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([wbout], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "etiketten-template.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+    });
+
+    // run batch
+    btnRunBatch.addEventListener("click", async () => {
+      if (!parsedRows.length) {
+        log("Geen dataset geladen.", "error");
+        return;
+      }
+      if (!window.JSZip) {
+        log("JSZip library niet geladen.", "error");
+        return;
+      }
+
+      const missingMap = REQUIRED_FIELDS.filter(([k]) => !mapping[k]).map(([, label]) => label);
+      if (missingMap.length) {
+        log(`Koppel alle verplichte velden: ${missingMap.join(", ")}`, "error");
+        return;
+      }
+
+      abortFlag = false;
+      if (btnAbortBatch) btnAbortBatch.disabled = false;
+
+      setHidden(progressWrap, false);
+      if (progressBar) progressBar.style.width = "0%";
+      if (progressLabel) progressLabel.textContent = `${0} / ${parsedRows.length}`;
+      if (progressPhase) progressPhase.textContent = "Voorbereiden…";
+
+      const zip = new JSZip();
+      const batchTime = buildTimestamp();
+      let okCount = 0;
+      let errCount = 0;
+
+      for (let i = 0; i < parsedRows.length; i++) {
+        if (abortFlag) {
+          log(`Batch afgebroken op rij ${i + 1}.`, "error");
+          break;
+        }
+
+        const r = readRowWithMapping(parsedRows[i], mapping);
+        if (!r.ok) {
+          errCount++;
+          log(`Rij ${i + 1}: ${r.error}`, "error");
+        } else {
+          try {
+            if (progressPhase) progressPhase.textContent = `Rij ${i + 1}: PDF renderen…`;
+            const blob = await renderOnePdfBlobViaPreview(r.vals);
+
+            const safeCode = String(r.vals.code || "export").replace(/[^\w.-]+/g, "_");
+            const name = `${safeCode} - ${batchTime} - R${String(i + 1).padStart(3, "0")}.pdf`;
+            zip.file(name, blob);
+            okCount++;
+          } catch (err) {
+            errCount++;
+            log(`Rij ${i + 1}: renderfout: ${err.message || err}`, "error");
+          }
+        }
+
+        if (progressBar) progressBar.style.width = `${Math.round(((i + 1) / parsedRows.length) * 100)}%`;
+        if (progressLabel) progressLabel.textContent = `${i + 1} / ${parsedRows.length}`;
+        await new Promise((r) => setTimeout(r, 0));
+      }
+
+      if (btnAbortBatch) btnAbortBatch.disabled = true;
+      if (progressPhase) progressPhase.textContent = "Bundelen als ZIP…";
+
+      if (okCount > 0) {
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `etiketten-batch - ${batchTime}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+        log(`Gereed: ${okCount} PDF’s succesvol, ${errCount} fouten.`, "ok");
+      } else {
+        log(`Geen PDF’s gegenereerd. (${errCount} fouten)`, "error");
+      }
+
+      if (progressPhase) progressPhase.textContent = "Klaar.";
+    });
+
+    // abort
+    btnAbortBatch?.addEventListener("click", () => {
+      abortFlag = true;
+      btnAbortBatch.disabled = true;
+      if (progressPhase) progressPhase.textContent = "Afbreken…";
+    });
+  }
+
   /* ====== init ====== */
   function init() {
+    initBatchUI();
+
     const btnGen = $("#btnGen");
     const btnPDF = $("#btnPDF");
 

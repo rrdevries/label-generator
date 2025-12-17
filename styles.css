@@ -7,6 +7,10 @@
   --muted: #6b7280;
   --shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
 
+  /* compat voor oudere batch styles */
+  --panel: var(--ui-bg);
+  --bd: var(--ui-border);
+
   --border-1px: 1px;
 
   --code-border-3px: 3px;
@@ -224,7 +228,7 @@ body {
 .code-box {
   display: inline-block;
 
-  /* Schaal mee met font-size, zodat mini-labels niet “opgegeten” worden door vaste px-randen */
+  /* Schaal mee met font-size, zodat mini-labels niet â€œopgegetenâ€ worden door vaste px-randen */
   border: clamp(1px, 0.18em, 3px) solid #000;
   padding: clamp(1px, 0.14em, 2px) clamp(2px, 0.40em, 6px);
 
@@ -274,4 +278,185 @@ body {
   .labels-grid {
     grid-template-columns: 1fr;
   }
+}
+
+
+
+/* ===== Panels (compat) ===== */
+.panel {
+  border: 1px solid var(--ui-border);
+  background: var(--ui-bg);
+  border-radius: var(--ui-radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.panel h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+
+.dims-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* Buttons */
+.btn.danger {
+  background: #b91c1c;
+  color: #fff;
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== Batch UI (uit v0.70, afgestemd op v0.78) ===== */
+.batch-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.upload-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  flex: 1;
+}
+.dropzone.dragover {
+  background: #eef2ff;
+  border-color: #6366f1;
+}
+
+.batch-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.mapping-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 16px;
+}
+.mapping-grid .map-row {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 6px;
+  align-items: center;
+}
+.mapping-grid label {
+  color: #374151;
+}
+.mapping-grid select {
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.table-wrap {
+  background: #fff;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  padding: 8px;
+}
+.table-scroller {
+  overflow: auto;
+  max-height: 260px;
+  border-radius: 8px;
+}
+.table-scroller table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.table-scroller th,
+.table-scroller td {
+  border-bottom: 1px solid #eee;
+  padding: 6px 8px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+.table-scroller th {
+  background: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.norms label {
+  display: block;
+  color: #374151;
+  margin-bottom: 4px;
+}
+
+.batch-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.progress-bar {
+  height: 10px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.progress-bar .bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #60a5fa, #2a6df4);
+  transition: width 0.2s;
+}
+.progress-text {
+  display: flex;
+  gap: 10px;
+  color: #374151;
+  font-size: 0.92rem;
+}
+
+.log-wrap {
+  background: #fff;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  padding: 8px;
+}
+.log-list {
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  white-space: pre-wrap;
+  color: #111;
+}
+.log-list .err {
+  color: #b91c1c;
+}
+.log-list .ok {
+  color: #065f46;
 }
