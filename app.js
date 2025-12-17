@@ -264,7 +264,7 @@
   }
 
   /* ====== Build label DOM ====== */
-  function buildLeftBlock(values, size) {
+  function buildLeftBlock(values, size, largestTwo) {
     const block = el("div", { class: "specs-grid" });
 
     block.append(
@@ -278,19 +278,25 @@
       el("div", { class: "val" }, values.cbm || "")
     );
 
-    if (size.type === "fb") {
-      block.append(
-        el("div", { class: "key" }, "C/N:"),
-        el("div", { class: "val" }, "___________________")
-      );
-    } else {
+    // Als largestTwo null is => fallback naar default (oude gedrag: fb => C/N, side => Made in China)
+    const useMadeInChina =
+      largestTwo ? largestTwo.has(size.idx) : (size.type !== "fb");
+
+    if (useMadeInChina) {
       block.append(
         el("div", { class: "key" }, ""),
         el("div", { class: "val" }, "Made in China")
       );
+    } else {
+      block.append(
+        el("div", { class: "key" }, "C/N:"),
+        el("div", { class: "val" }, "___________________")
+      );
     }
+
     return block;
   }
+
 
   function createLabelEl(size, values, previewScale) {
     const widthPx = Math.round(size.w * PX_PER_CM * previewScale);
@@ -308,6 +314,10 @@
     const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
     label.style.padding = padPx + "px";
 
+    sizes.forEach((size) => {
+      fragments.append(createLabelEl(size, values, scale, largestTwo));
+    });
+
     const head = el(
       "div",
       { class: "label-head" },
@@ -316,8 +326,11 @@
     );
 
     const content = el("div", { class: "label-content" });
-    content.append(head, el("div", { class: "block-spacer" }), buildLeftBlock(values, size));
-
+    content.append(
+        head,
+        el("div", { class: "block-spacer" }),
+        buildLeftBlock(values, size, largestTwo)
+      );
     inner.append(content);
     label.append(inner);
     wrap.append(label, el("div", { class: "label-num" }, `Etiket ${size.idx}`));
@@ -352,6 +365,22 @@
     if (!labelsGrid) return;
 
     const sizes = calcLabelSizes(values);
+    // Bepaal welke 2 etiketten “Made in China” krijgen op basis van grootste oppervlak.
+    // Als er een tie op de grens is, gebruiken we default gedrag (size.type).
+    function pickTwoLargestIdxOrNull(sizes) {
+      const eps = 1e-9;
+      const ranked = [...sizes]
+        .map(s => ({ idx: s.idx, area: (s.w || 0) * (s.h || 0) }))
+        .sort((a, b) => b.area - a.area);
+
+      // Tie op de grens (2e == 3e) => ambiguous => fallback naar default
+      if (Math.abs(ranked[1].area - ranked[2].area) <= eps) return null;
+
+      return new Set([ranked[0].idx, ranked[1].idx]);
+    }
+
+    const largestTwo = pickTwoLargestIdxOrNull(sizes);
+
     renderDims(sizes);
 
     const scale = computePreviewScale(sizes);
