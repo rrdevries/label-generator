@@ -64,6 +64,57 @@
     };
   }
 
+  function syncDescWidthToSpecs(innerEl) {
+  const grid = innerEl.querySelector(".specs-grid");
+  const desc = innerEl.querySelector(".label-desc");
+  if (!grid || !desc) return;
+
+  // offsetWidth is layout-breedte (niet beïnvloed door transform scale)
+  const w = grid.offsetWidth || grid.getBoundingClientRect().width;
+  desc.style.setProperty("--desc-w", w + "px");
+}
+
+function descFitsInTwoLines(descEl) {
+  const cs = getComputedStyle(descEl);
+  const lh = parseFloat(cs.lineHeight);
+  if (!Number.isFinite(lh) || lh <= 0) return true; // fallback: niet blokkeren
+
+  const maxH = lh * 2 + 0.5; // kleine toleranties
+  return descEl.scrollHeight <= maxH;
+}
+
+function shrinkDescToTwoLines(innerEl, bodyFsPx) {
+  const desc = innerEl.querySelector(".label-desc");
+  if (!desc) return;
+
+  // Start met dezelfde grootte als body
+  desc.style.fontSize = ""; 
+  // Eerst breedte syncen, anders klopt wrap niet
+  syncDescWidthToSpecs(innerEl);
+
+  // Als het al past: klaar
+  if (descFitsInTwoLines(desc)) return;
+
+  // Binary search: verklein alleen de omschrijving tot hij binnen 2 regels past
+  let lo = 2;                 // mag extreem klein
+  let hi = Math.max(2, bodyFsPx);
+  let best = lo;
+
+  for (let i = 0; i < 18; i++) {
+    const mid = (lo + hi) / 2;
+    desc.style.fontSize = mid + "px";
+
+    if (descFitsInTwoLines(desc)) {
+      best = mid;
+      hi = mid; // probeer nog kleiner? (we willen minimaal verkleinen, dus naar beneden refine)
+    } else {
+      lo = mid;
+    }
+  }
+
+  desc.style.fontSize = best + "px";
+}
+
   /* ====== Label sizes (Optie A: 0.9) ====== */
   function calcLabelSizes(values) {
     const L = values.len || 0;
@@ -318,7 +369,7 @@
       "div",
       { class: "label-head" },
       el("div", { class: "code-box line" }, values.code),
-      el("div", { class: "line" }, values.desc)
+      el("div", { class: "line label-desc" }, values.desc)
     );
 
     const content = el("div", { class: "label-content" });

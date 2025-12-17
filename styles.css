@@ -220,8 +220,17 @@ body {
   will-change: transform;
 }
 
-.label-head .line {
+.label-head .line { text-align: center; line-height: 1.15;}
+
+.label-desc{
+  display: block;
+  margin: 0 auto;
+  width: var(--desc-w, auto);     /* wordt door JS gezet op specs-grid breedte */
+  max-width: 100%;
   line-height: 1.15;
+  min-height: calc(2 * 1.15em);   /* altijd ruimte voor 2 regels */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Schaalbare code-box */
