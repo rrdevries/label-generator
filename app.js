@@ -7,18 +7,22 @@
 
   // Threshold: als we onder 10px body-font moeten, dan pas zachte afbreking aanzetten
   const WRAP_THRESHOLD_PX = 10;
-  const MIN_FS_PX = 6; // absolute bodem
+  const MIN_FS_PX = 2; // absolute bodem (moet altijd alles kunnen tonen)
 
   // Code-box is 1.6× de body-font
   const CODE_MULT = 1.6;
 
   // ===== PDF (terug naar v0.31 gedrag) =====
-  const PDF_MARGIN_CM = 0.5; // klopt met je oude PDF (20.8cm breedte bij 19.8cm labelhoogte)
-  const BORDER_PX = 1; // safety: borders altijd meenemen in capture
-  let currentPreviewScale = 1; // nodig voor scherpe PDF-capture bij geschaalde preview
+  const PDF_MARGIN_CM = 0.5;
+  const BORDER_PX = 1;
+  let currentPreviewScale = 1;
 
   /* ====== Helpers ====== */
   const $ = (sel) => document.querySelector(sel);
+
+  /* ====== Tester ====== */
+  const DEBUG = true; // zet op false voor productie
+
 
   function el(tag, attrs = {}, ...children) {
     const node = document.createElement(tag);
@@ -64,37 +68,29 @@
     };
   }
 
-  /* ====== Label sizes ======
-     Uitgangspunt v0.31: labels berekend op basis van doosafmetingen:
-       - front/back: (L + W) x H
-       - side: (W + H) x H  (of varianten; hier: W+H x H)
-     In je screenshot: 99x99x99 → 89.10 x 89.10 cm (dat komt door (L+W)*0.45 etc).
-     We laten je bestaande logica intact en gebruiken wat er nu al in je v0.70 staat.
-  */
-
+  /* ====== Label sizes (Optie A: 0.9) ====== */
   function calcLabelSizes(values) {
-  const L = values.len || 0;
-  const W = values.wid || 0;
-  const H = values.hei || 0;
+    const L = values.len || 0;
+    const W = values.wid || 0;
+    const H = values.hei || 0;
 
-  const FACTOR = 0.9; // Optie A: 10% kleiner aan elke zijde
+    const FACTOR = 0.9; // Optie A: 10% kleiner aan elke zijde
 
-  // Etiket 1 & 2: lengte x hoogte
-  const fbW = L * FACTOR;
-  const fbH = H * FACTOR;
+    // Etiket 1 & 2: lengte x hoogte
+    const fbW = L * FACTOR;
+    const fbH = H * FACTOR;
 
-  // Etiket 3 & 4: breedte x hoogte
-  const sideW = W * FACTOR;
-  const sideH = H * FACTOR;
+    // Etiket 3 & 4: breedte x hoogte
+    const sideW = W * FACTOR;
+    const sideH = H * FACTOR;
 
-  return [
-    { idx: 1, name: "Etiket 1 (front/back)", w: fbW, h: fbH, type: "fb" },
-    { idx: 2, name: "Etiket 2 (front/back)", w: fbW, h: fbH, type: "fb" },
-    { idx: 3, name: "Etiket 3 (side)", w: sideW, h: sideH, type: "side" },
-    { idx: 4, name: "Etiket 4 (side)", w: sideW, h: sideH, type: "side" },
-  ];
-}
-
+    return [
+      { idx: 1, name: "Etiket 1 (front/back)", w: fbW, h: fbH, type: "fb" },
+      { idx: 2, name: "Etiket 2 (front/back)", w: fbW, h: fbH, type: "fb" },
+      { idx: 3, name: "Etiket 3 (side)", w: sideW, h: sideH, type: "side" },
+      { idx: 4, name: "Etiket 4 (side)", w: sideW, h: sideH, type: "side" },
+    ];
+  }
 
   function renderDims(sizes) {
     const dims = $("#dims");
@@ -113,42 +109,38 @@
 
   /* ====== Auto-fit logic (font sizing) ====== */
 
-  // /** past alles binnen 'innerEl' met een veiligheidsmarge? */
-  // function fitsWithGuard(innerEl, guardX, guardY) {
-  //   const content = innerEl.querySelector(".label-content") || innerEl;
-  //   return (
-  //     content.scrollWidth <= innerEl.clientWidth - guardX &&
-  //     content.scrollHeight <= innerEl.clientHeight - guardY
-  //   );
-  // }
-
   function fitsWithGuard(innerEl, guardX, guardY) {
-  const content = innerEl.querySelector(".label-content") || innerEl;
+    const content = innerEl.querySelector(".label-content") || innerEl;
 
-  // Belangrijk: detecteer overflow in grid-cellen (EAN/waarden)
-  const valOverflow = Array.from(
-    content.querySelectorAll(".specs-grid .val")
-  ).some((v) => v.scrollWidth > v.clientWidth + 0.5);
+    // Detecteer overflow in grid-cellen (EAN/waarden). Dit kan gebeuren zonder dat
+    // content.scrollWidth groter wordt (grid-cel overflow).
+    const valOverflow = Array.from(
+      content.querySelectorAll(".specs-grid .val")
+    ).some((v) => v.scrollWidth > v.clientWidth + 0.5);
 
-  if (valOverflow) return false;
+    if (valOverflow) return false;
 
-  return (
-    content.scrollWidth <= innerEl.clientWidth - guardX &&
-    content.scrollHeight <= innerEl.clientHeight - guardY
-  );
-}
+    return (
+      content.scrollWidth <= innerEl.clientWidth - guardX &&
+      content.scrollHeight <= innerEl.clientHeight - guardY
+    );
+  }
 
-  /** zet actuele body-font (via --fs) + code-box (1.6× body) */
   function applyFontSizes(innerEl, fsPx) {
     innerEl.style.setProperty("--fs", fsPx + "px");
+
+    // Reset eventuele fallback-scale bij nieuwe metingen
+    const content = innerEl.querySelector(".label-content");
+    if (content) content.style.setProperty("--k", "1");
+
     const codeEl = innerEl.querySelector(".code-box");
     if (codeEl) {
       codeEl.style.fontSize = fsPx * CODE_MULT + "px";
     }
   }
 
-  /** zoek een passende fontgrootte (eerst groeien, daarna finetunen naar beneden) */
   function searchFontSize(innerEl, minFs, startHi, guardX, guardY) {
+    // 1) agressief omhoog groeien vanaf startHi (groeifactor 1.08)
     let hi = Math.max(minFs, startHi);
     applyFontSizes(innerEl, hi);
 
@@ -162,15 +154,18 @@
       hi = next;
     }
 
+    // 2) binaire search naar max die past
     let lo = minFs;
     let best = lo;
 
+    // Zorg dat hi in elk geval "te groot" is (of gelijk)
     applyFontSizes(innerEl, hi);
     if (fitsWithGuard(innerEl, guardX, guardY)) {
       best = hi;
       return best;
     }
 
+    // lo laten passen (minFs moet altijd passen, zo niet dan toch de bodem)
     applyFontSizes(innerEl, lo);
     if (!fitsWithGuard(innerEl, guardX, guardY)) {
       return minFs;
@@ -191,26 +186,68 @@
     return best;
   }
 
+  // Laatste redmiddel: als zelfs MIN_FS_PX + (soft)wrap niet past, schaal de volledige content
+  // met CSS transform zodat alles altijd zichtbaar blijft.
+  function applyScaleFallback(innerEl, guardX, guardY) {
+    const content = innerEl.querySelector(".label-content") || innerEl;
+
+    const availW = Math.max(1, innerEl.clientWidth - guardX);
+    const availH = Math.max(1, innerEl.clientHeight - guardY);
+
+    const sw = Math.max(1, content.scrollWidth);
+    const sh = Math.max(1, content.scrollHeight);
+
+    let scaleW = availW / sw;
+    let scaleH = availH / sh;
+
+    // Extra: corrigeer voor overflow die alleen in grid-cellen zichtbaar is
+    let scaleVal = 1;
+    content.querySelectorAll(".specs-grid .val").forEach((v) => {
+      const vSw = v.scrollWidth;
+      const vCw = v.clientWidth;
+      if (vSw > vCw + 0.5) {
+        scaleVal = Math.min(scaleVal, vCw / vSw);
+      }
+    });
+
+    const k = Math.max(0.02, Math.min(1, scaleW, scaleH, scaleVal));
+    content.style.setProperty("--k", String(k));
+    return k;
+  }
+
   function fitContentToBoxConditional(innerEl) {
     const w = innerEl.clientWidth;
     const h = innerEl.clientHeight;
 
-    const guardX = Math.max(8, w * 0.02);
-    const guardY = Math.max(8, h * 0.02);
+    // Guard: kleiner minimum zodat mini-labels nog bruikbare ruimte hebben,
+    // maar wel voldoende marge tegen rand-clipping.
+    const guardX = Math.max(2, w * 0.015);
+    const guardY = Math.max(2, h * 0.015);
 
     const baseFromBox = Math.min(w, h) * 0.11;
     const startHi = Math.max(16, baseFromBox);
 
+    // Fase 1: no-wrap (voorkeur)
     innerEl.classList.add("nowrap-mode");
     innerEl.classList.remove("softwrap-mode");
 
     let best = searchFontSize(innerEl, MIN_FS_PX, startHi, guardX, guardY);
 
+    // Fase 2: als erg klein, probeer soft-wrap (kan horizontale overflow oplossen)
     if (best < WRAP_THRESHOLD_PX) {
       innerEl.classList.remove("nowrap-mode");
       innerEl.classList.add("softwrap-mode");
 
       best = searchFontSize(innerEl, MIN_FS_PX, startHi, guardX, guardY);
+    }
+
+    // Fase 3 (altijd alles tonen): als het nog steeds niet past op MIN_FS_PX,
+    // schaal dan de volledige content met transform.
+    if (!fitsWithGuard(innerEl, guardX, guardY)) {
+      applyScaleFallback(innerEl, guardX, guardY);
+    } else {
+      const content = innerEl.querySelector(".label-content");
+      if (content) content.style.setProperty("--k", "1");
     }
 
     return best;
@@ -283,11 +320,7 @@
     );
 
     const content = el("div", { class: "label-content" });
-    content.append(
-      head,
-      el("div", { class: "block-spacer" }),
-      buildLeftBlock(values, size)
-    );
+    content.append(head, el("div", { class: "block-spacer" }), buildLeftBlock(values, size));
 
     inner.append(content);
     label.append(inner);
@@ -326,7 +359,7 @@
     renderDims(sizes);
 
     const scale = computePreviewScale(sizes);
-    currentPreviewScale = scale; // belangrijk voor PDF capture kwaliteit
+    currentPreviewScale = scale;
 
     labelsGrid.innerHTML = "";
     const fragments = document.createDocumentFragment();
@@ -373,7 +406,6 @@
     dst.height = srcCanvas.width;
 
     const ctx = dst.getContext("2d");
-    // 90° met de klok mee
     ctx.translate(dst.width, 0);
     ctx.rotate(Math.PI / 2);
     ctx.drawImage(srcCanvas, 0, 0);
@@ -383,12 +415,10 @@
 
   async function captureLabelToRotatedPng(labelIdx) {
     const src = document.querySelector(`.label[data-idx="${labelIdx}"]`);
-    if (!src)
-      throw new Error(`Label ${labelIdx} niet gevonden voor PDF-capture.`);
+    if (!src) throw new Error(`Label ${labelIdx} niet gevonden voor PDF-capture.`);
 
     const clone = src.cloneNode(true);
 
-    // Forceer borders (html2canvas wil bij scaling soms 1 zijde "kwijtraken")
     clone.style.borderTop = `${BORDER_PX}px solid #000`;
     clone.style.borderRight = `${BORDER_PX}px solid #000`;
     clone.style.borderBottom = `${BORDER_PX}px solid #000`;
@@ -405,12 +435,7 @@
     document.body.appendChild(host);
     host.appendChild(clone);
 
-    // Scherpte: compenseer preview-schaal zodat PDF niet “zacht” wordt bij grote labels
-    const capScale = Math.max(
-      2,
-      window.devicePixelRatio || 1,
-      1 / (currentPreviewScale || 1)
-    );
+    const capScale = Math.max(2, window.devicePixelRatio || 1, 1 / (currentPreviewScale || 1));
 
     const canvas = await html2canvas(clone, {
       scale: capScale,
@@ -430,19 +455,13 @@
     if (!JsPDF) throw new Error("jsPDF niet geladen");
     if (!window.html2canvas) throw new Error("html2canvas niet geladen");
 
-    // Zorg dat preview up-to-date is (en currentPreviewScale gezet is)
     const vals = getFormValues();
     const result = await renderPreviewFor(vals);
     if (!result) throw new Error("Kon preview niet renderen voor PDF.");
     const { sizes } = result;
 
-    // v0.31 gedrag:
-    // - Elk label apart capturen
-    // - Canvas 90° CW roteren
-    // - In PDF stapelen (1,3,2,4) op een lange pagina
     const order = [1, 3, 2, 4];
 
-    // Na rotatie: width = originele hoogte (h), height = originele breedte (w)
     const pageW = Math.max(...sizes.map((s) => s.h)) + PDF_MARGIN_CM * 2;
     const pageH = sizes.reduce((sum, s) => sum + s.w, 0) + PDF_MARGIN_CM * 2;
 
@@ -461,27 +480,151 @@
       const wRot = s.h;
       const hRot = s.w;
 
-      pdf.addImage(
-        imgData,
-        "PNG",
-        PDF_MARGIN_CM,
-        y,
-        wRot,
-        hRot,
-        undefined,
-        "FAST"
-      );
+      pdf.addImage(imgData, "PNG", PDF_MARGIN_CM, y, wRot, hRot, undefined, "FAST");
       y += hRot;
     }
 
     pdf.save(buildPdfFileName(vals.code));
   }
 
+  function visualFitReport(labelEl) {
+  const inner = labelEl.querySelector(".label-inner");
+  const content = inner?.querySelector(".label-content") || inner;
+  if (!inner || !content) return { ok: false, reason: "missing inner/content" };
+
+  const w = inner.clientWidth;
+  const h = inner.clientHeight;
+
+  // zelfde guard als fitContentToBoxConditional()
+  const guardX = Math.max(2, w * 0.015);
+  const guardY = Math.max(2, h * 0.015);
+
+  const ir = inner.getBoundingClientRect();
+  const cr = content.getBoundingClientRect();
+
+  const eps = 0.75; // subpixel toleranties
+
+  const okContent =
+    cr.left >= ir.left + guardX - eps &&
+    cr.right <= ir.right - guardX + eps &&
+    cr.top >= ir.top + guardY - eps &&
+    cr.bottom <= ir.bottom - guardY + eps;
+
+  // Extra: check alle .val cellen (daar ging het bij jou vaak mis)
+  const badVals = [];
+  content.querySelectorAll(".specs-grid .val, .specs-grid .key, .label-head, .code-box").forEach((node) => {
+    const r = node.getBoundingClientRect();
+    const ok =
+      r.left >= ir.left + guardX - eps &&
+      r.right <= ir.right - guardX + eps &&
+      r.top >= ir.top + guardY - eps &&
+      r.bottom <= ir.bottom - guardY + eps;
+
+    if (!ok) {
+      const t = (node.textContent || "").trim().slice(0, 60);
+      badVals.push(t || node.className || node.tagName);
+    }
+  });
+
+  const ok = okContent && badVals.length === 0;
+
+  return {
+    ok,
+    guardX: Math.round(guardX * 10) / 10,
+    guardY: Math.round(guardY * 10) / 10,
+    fs: inner.style.getPropertyValue("--fs") || "(unset)",
+    k: (content.style.getPropertyValue("--k") || "1").trim(),
+    bad: badVals.slice(0, 6).join(" | "),
+  };
+}
+
+async function runOverflowTestSuite() {
+  const tests = [
+    { L: 5, W: 5, H: 5 },
+    { L: 100, W: 100, H: 100 },
+    { L: 10, W: 10, H: 50 },
+    { L: 50, W: 10, H: 10 },
+    { L: 10, W: 50, H: 10 },
+
+    { L: 5, W: 100, H: 5 },
+    { L: 100, W: 5, H: 5 },
+    { L: 5, W: 5, H: 100 },
+
+    { L: 12, W: 12, H: 90 },
+    { L: 90, W: 12, H: 12 },
+    { L: 12, W: 90, H: 12 },
+
+    { L: 33, W: 77, H: 12 },
+    { L: 77, W: 33, H: 12 },
+    { L: 15, W: 30, H: 90 },
+
+    { L: 38, W: 55.5, H: 13 },
+    { L: 60, W: 40, H: 25 },
+    { L: 25, W: 60, H: 40 },
+    { L: 8, W: 80, H: 20 },
+    { L: 80, W: 8, H: 20 },
+  ];
+
+  const results = [];
+
+  for (const t of tests) {
+    const values = { ...getFormValues(), len: t.L, wid: t.W, hei: t.H };
+    const r = await renderPreviewFor(values);
+    if (!r) {
+      results.push({ ...t, ok: false, failCount: 4, details: "render failed" });
+      continue;
+    }
+
+    const labels = Array.from(document.querySelectorAll(".label"));
+    const perLabel = labels.map((lab) => {
+      const rep = visualFitReport(lab);
+      return { idx: lab.dataset.idx || "?", ...rep };
+    });
+
+    const fails = perLabel.filter((x) => !x.ok);
+    results.push({
+      ...t,
+      ok: fails.length === 0,
+      failCount: fails.length,
+      details: fails.map((f) => `#${f.idx} fs=${f.fs} k=${f.k} bad=${f.bad}`).join(" || "),
+    });
+  }
+
+  console.table(results);
+  const failed = results.filter((r) => !r.ok);
+
+  if (failed.length) {
+    console.warn("FAILED CASES:", failed);
+    alert(`Layout test: ${failed.length} van ${results.length} cases FAIL. Zie console.table()`);
+  } else {
+    alert(`Layout test: alle ${results.length} cases OK`);
+  }
+}
+
   /* ====== init ====== */
   function init() {
     const btnGen = $("#btnGen");
     const btnPDF = $("#btnPDF");
 
+      if (DEBUG) {
+    const actions = document.querySelector(".actions");
+    if (actions) {
+      const btnTest = document.createElement("button");
+      btnTest.type = "button";
+      btnTest.className = "btn debug";
+      btnTest.textContent = "Layout test (debug)";
+      btnTest.addEventListener("click", async () => {
+        try {
+          await runOverflowTestSuite();
+        } catch (e) {
+          alert(e.message || e);
+        }
+      });
+      actions.appendChild(btnTest);
+    }
+  }
+
+  
     const safeRender = () => renderSingle().catch((e) => alert(e.message || e));
     if (btnGen) btnGen.addEventListener("click", safeRender);
 
