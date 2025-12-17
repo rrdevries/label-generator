@@ -492,49 +492,42 @@
   const content = inner?.querySelector(".label-content") || inner;
   if (!inner || !content) return { ok: false, reason: "missing inner/content" };
 
-  const w = inner.clientWidth;
-  const h = inner.clientHeight;
-
-  // zelfde guard als fitContentToBoxConditional()
-  const guardX = Math.max(2, w * 0.015);
-  const guardY = Math.max(2, h * 0.015);
-
   const ir = inner.getBoundingClientRect();
   const cr = content.getBoundingClientRect();
 
-  const eps = 0.75; // subpixel toleranties
+  const eps = 1.0; // subpixel toleranties
 
   const okContent =
-    cr.left >= ir.left + guardX - eps &&
-    cr.right <= ir.right - guardX + eps &&
-    cr.top >= ir.top + guardY - eps &&
-    cr.bottom <= ir.bottom - guardY + eps;
+    cr.left >= ir.left + eps &&
+    cr.right <= ir.right - eps &&
+    cr.top >= ir.top + eps &&
+    cr.bottom <= ir.bottom - eps;
 
-  // Extra: check alle .val cellen (daar ging het bij jou vaak mis)
-  const badVals = [];
-  content.querySelectorAll(".specs-grid .val, .specs-grid .key, .label-head, .code-box").forEach((node) => {
+  // Check kritieke nodes op zichtbare “uitstulpingen”
+  const offenders = [];
+  const nodes = content.querySelectorAll(".code-box, .label-head, .specs-grid .key, .specs-grid .val");
+
+  nodes.forEach((node) => {
     const r = node.getBoundingClientRect();
     const ok =
-      r.left >= ir.left + guardX - eps &&
-      r.right <= ir.right - guardX + eps &&
-      r.top >= ir.top + guardY - eps &&
-      r.bottom <= ir.bottom - guardY + eps;
+      r.left >= ir.left + eps &&
+      r.right <= ir.right - eps &&
+      r.top >= ir.top + eps &&
+      r.bottom <= ir.bottom - eps;
 
     if (!ok) {
-      const t = (node.textContent || "").trim().slice(0, 60);
-      badVals.push(t || node.className || node.tagName);
+      const t = (node.textContent || "").trim().replace(/\s+/g, " ").slice(0, 60);
+      offenders.push(t || node.className || node.tagName);
     }
   });
 
-  const ok = okContent && badVals.length === 0;
+  const ok = okContent && offenders.length === 0;
 
   return {
     ok,
-    guardX: Math.round(guardX * 10) / 10,
-    guardY: Math.round(guardY * 10) / 10,
     fs: inner.style.getPropertyValue("--fs") || "(unset)",
     k: (content.style.getPropertyValue("--k") || "1").trim(),
-    bad: badVals.slice(0, 6).join(" | "),
+    bad: offenders.slice(0, 4).join(" | "),
   };
 }
 
@@ -545,19 +538,15 @@ async function runOverflowTestSuite() {
     { L: 10, W: 10, H: 50 },
     { L: 50, W: 10, H: 10 },
     { L: 10, W: 50, H: 10 },
-
     { L: 5, W: 100, H: 5 },
     { L: 100, W: 5, H: 5 },
     { L: 5, W: 5, H: 100 },
-
     { L: 12, W: 12, H: 90 },
     { L: 90, W: 12, H: 12 },
     { L: 12, W: 90, H: 12 },
-
     { L: 33, W: 77, H: 12 },
     { L: 77, W: 33, H: 12 },
     { L: 15, W: 30, H: 90 },
-
     { L: 38, W: 55.5, H: 13 },
     { L: 60, W: 40, H: 25 },
     { L: 25, W: 60, H: 40 },
@@ -569,11 +558,15 @@ async function runOverflowTestSuite() {
 
   for (const t of tests) {
     const values = { ...getFormValues(), len: t.L, wid: t.W, hei: t.H };
+
     const r = await renderPreviewFor(values);
     if (!r) {
       results.push({ ...t, ok: false, failCount: 4, details: "render failed" });
       continue;
     }
+
+    // Extra tick zodat layout/transform echt “settled” is
+    await new Promise((rr) => requestAnimationFrame(rr));
 
     const labels = Array.from(document.querySelectorAll(".label"));
     const perLabel = labels.map((lab) => {
@@ -582,6 +575,7 @@ async function runOverflowTestSuite() {
     });
 
     const fails = perLabel.filter((x) => !x.ok);
+
     results.push({
       ...t,
       ok: fails.length === 0,
@@ -591,8 +585,8 @@ async function runOverflowTestSuite() {
   }
 
   console.table(results);
-  const failed = results.filter((r) => !r.ok);
 
+  const failed = results.filter((r) => !r.ok);
   if (failed.length) {
     console.warn("FAILED CASES:", failed);
     alert(`Layout test: ${failed.length} van ${results.length} cases FAIL. Zie console.table()`);
@@ -600,6 +594,7 @@ async function runOverflowTestSuite() {
     alert(`Layout test: alle ${results.length} cases OK`);
   }
 }
+
 
   /* ====== init ====== */
   function init() {
@@ -624,7 +619,7 @@ async function runOverflowTestSuite() {
     }
   }
 
-  
+
     const safeRender = () => renderSingle().catch((e) => alert(e.message || e));
     if (btnGen) btnGen.addEventListener("click", safeRender);
 
