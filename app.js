@@ -73,26 +73,28 @@
   */
 
   function calcLabelSizes(values) {
-    const L = values.len || 0;
-    const W = values.wid || 0;
-    const H = values.hei || 0;
+  const L = values.len || 0;
+  const W = values.wid || 0;
+  const H = values.hei || 0;
 
-    const FRONT_BACK_FACTOR = 0.45;
-    const SIDE_FACTOR = 0.45;
+  const FACTOR = 0.9; // Optie A: 10% kleiner aan elke zijde
 
-    const fbW = (L + W) * FRONT_BACK_FACTOR;
-    const fbH = H * FRONT_BACK_FACTOR;
+  // Etiket 1 & 2: lengte x hoogte
+  const fbW = L * FACTOR;
+  const fbH = H * FACTOR;
 
-    const sideW = (W + H) * SIDE_FACTOR;
-    const sideH = H * SIDE_FACTOR;
+  // Etiket 3 & 4: breedte x hoogte
+  const sideW = W * FACTOR;
+  const sideH = H * FACTOR;
 
-    return [
-      { idx: 1, name: "Etiket 1 (front/back)", w: fbW, h: fbH, type: "fb" },
-      { idx: 2, name: "Etiket 2 (front/back)", w: fbW, h: fbH, type: "fb" },
-      { idx: 3, name: "Etiket 3 (side)", w: sideW, h: sideH, type: "side" },
-      { idx: 4, name: "Etiket 4 (side)", w: sideW, h: sideH, type: "side" },
-    ];
-  }
+  return [
+    { idx: 1, name: "Etiket 1 (front/back)", w: fbW, h: fbH, type: "fb" },
+    { idx: 2, name: "Etiket 2 (front/back)", w: fbW, h: fbH, type: "fb" },
+    { idx: 3, name: "Etiket 3 (side)", w: sideW, h: sideH, type: "side" },
+    { idx: 4, name: "Etiket 4 (side)", w: sideW, h: sideH, type: "side" },
+  ];
+}
+
 
   function renderDims(sizes) {
     const dims = $("#dims");
