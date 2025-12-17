@@ -11,7 +11,7 @@
       <header class="app-header">
         <div class="brand">
           <div class="brand-text">
-            <h1>Etiketten Generator<span class="version-badge">v0.83</span></h1>
+            <h1>Etiketten Generator<span class="version-badge">v0.84</span></h1>
             <p class="subtitle">
               Vul de gegevens in en klik op
               <strong>“Genereer etiketten”</strong>. Voor PDF:
@@ -108,14 +108,28 @@
 
           <div class="upload-row">
             <label class="dropzone" id="dropzone">
-              <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" hidden />
-              <span><strong>Bestand kiezen</strong> of sleep hierheen (xlsx, xls, csv)</span>
+              <input
+                type="file"
+                id="fileInput"
+                accept=".xlsx,.xls,.csv"
+                hidden
+              />
+              <span
+                ><strong>Bestand kiezen</strong> of sleep hierheen (xlsx, xls,
+                csv)</span
+              >
             </label>
 
             <div class="batch-actions">
-              <button type="button" id="btnPickFile" class="btn">Kies bestand…</button>
-              <button type="button" id="btnTemplateCsv" class="btn">Template (CSV)</button>
-              <button type="button" id="btnTemplateXlsx" class="btn">Template (XLSX)</button>
+              <button type="button" id="btnPickFile" class="btn">
+                Kies bestand…
+              </button>
+              <button type="button" id="btnTemplateCsv" class="btn">
+                Template (CSV)
+              </button>
+              <button type="button" id="btnTemplateXlsx" class="btn">
+                Template (XLSX)
+              </button>
             </div>
           </div>
 
@@ -132,13 +146,28 @@
 
           <div id="normWrap" class="norms hidden">
             <h3>Normalisatie</h3>
-            <label><input type="checkbox" id="optCommaDecimal" checked /> Komma als decimaal scheidingsteken (1,25 → 1.25)</label>
-            <label><input type="checkbox" id="optTrimSpaces" checked /> Spaties rondom waarden verwijderen</label>
+            <label
+              ><input type="checkbox" id="optCommaDecimal" checked /> Komma als
+              decimaal scheidingsteken (1,25 → 1.25)</label
+            >
+            <label
+              ><input type="checkbox" id="optTrimSpaces" checked /> Spaties
+              rondom waarden verwijderen</label
+            >
           </div>
 
           <div class="batch-controls hidden" id="batchControls">
-            <button type="button" id="btnRunBatch" class="btn primary">PDF’s genereren (batch)</button>
-            <button type="button" id="btnAbortBatch" class="btn danger" disabled>Stoppen</button>
+            <button type="button" id="btnRunBatch" class="btn primary">
+              PDF’s genereren (batch)
+            </button>
+            <button
+              type="button"
+              id="btnAbortBatch"
+              class="btn danger"
+              disabled
+            >
+              Stoppen
+            </button>
           </div>
 
           <div id="progressWrap" class="progress-wrap hidden">
@@ -156,7 +185,6 @@
             <div id="logList" class="log-list"></div>
           </div>
         </section>
-
       </main>
     </div>
 

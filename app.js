@@ -65,55 +65,55 @@
   }
 
   function syncDescWidthToSpecs(innerEl) {
-  const grid = innerEl.querySelector(".specs-grid");
-  const desc = innerEl.querySelector(".label-desc");
-  if (!grid || !desc) return;
+    const grid = innerEl.querySelector(".specs-grid");
+    const desc = innerEl.querySelector(".label-desc");
+    if (!grid || !desc) return;
 
-  // offsetWidth is layout-breedte (niet beïnvloed door transform scale)
-  const w = grid.offsetWidth || grid.getBoundingClientRect().width;
-  desc.style.setProperty("--desc-w", w + "px");
-}
-
-function descFitsInTwoLines(descEl) {
-  const cs = getComputedStyle(descEl);
-  const lh = parseFloat(cs.lineHeight);
-  if (!Number.isFinite(lh) || lh <= 0) return true; // fallback: niet blokkeren
-
-  const maxH = lh * 2 + 0.5; // kleine toleranties
-  return descEl.scrollHeight <= maxH;
-}
-
-function shrinkDescToTwoLines(innerEl, bodyFsPx) {
-  const desc = innerEl.querySelector(".label-desc");
-  if (!desc) return;
-
-  // Start met dezelfde grootte als body
-  desc.style.fontSize = ""; 
-  // Eerst breedte syncen, anders klopt wrap niet
-  syncDescWidthToSpecs(innerEl);
-
-  // Als het al past: klaar
-  if (descFitsInTwoLines(desc)) return;
-
-  // Binary search: verklein alleen de omschrijving tot hij binnen 2 regels past
-  let lo = 2;                 // mag extreem klein
-  let hi = Math.max(2, bodyFsPx);
-  let best = lo;
-
-  for (let i = 0; i < 18; i++) {
-    const mid = (lo + hi) / 2;
-    desc.style.fontSize = mid + "px";
-
-    if (descFitsInTwoLines(desc)) {
-      best = mid;
-      hi = mid; // probeer nog kleiner? (we willen minimaal verkleinen, dus naar beneden refine)
-    } else {
-      lo = mid;
-    }
+    // offsetWidth is layout-breedte (niet beïnvloed door transform scale)
+    const w = grid.offsetWidth || grid.getBoundingClientRect().width;
+    desc.style.setProperty("--desc-w", w + "px");
   }
 
-  desc.style.fontSize = best + "px";
-}
+  function descFitsInTwoLines(descEl) {
+    const cs = getComputedStyle(descEl);
+    const lh = parseFloat(cs.lineHeight);
+    if (!Number.isFinite(lh) || lh <= 0) return true; // fallback: niet blokkeren
+
+    const maxH = lh * 2 + 0.5; // kleine toleranties
+    return descEl.scrollHeight <= maxH;
+  }
+
+  function shrinkDescToTwoLines(innerEl, bodyFsPx) {
+    const desc = innerEl.querySelector(".label-desc");
+    if (!desc) return;
+
+    // Start met dezelfde grootte als body
+    desc.style.fontSize = "";
+    // Eerst breedte syncen, anders klopt wrap niet
+    syncDescWidthToSpecs(innerEl);
+
+    // Als het al past: klaar
+    if (descFitsInTwoLines(desc)) return;
+
+    // Binary search: verklein alleen de omschrijving tot hij binnen 2 regels past
+    let lo = 2; // mag extreem klein
+    let hi = Math.max(2, bodyFsPx);
+    let best = lo;
+
+    for (let i = 0; i < 18; i++) {
+      const mid = (lo + hi) / 2;
+      desc.style.fontSize = mid + "px";
+
+      if (descFitsInTwoLines(desc)) {
+        best = mid;
+        hi = mid; // probeer nog kleiner? (we willen minimaal verkleinen, dus naar beneden refine)
+      } else {
+        lo = mid;
+      }
+    }
+
+    desc.style.fontSize = best + "px";
+  }
 
   /* ====== Label sizes (Optie A: 0.9) ====== */
   function calcLabelSizes(values) {
@@ -289,8 +289,8 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
     }
 
     // Zorg dat omschrijving altijd binnen 2 regels past op dezelfde breedte als specs-grid
-      syncDescWidthToSpecs(innerEl);
-      shrinkDescToTwoLines(innerEl, best);
+    syncDescWidthToSpecs(innerEl);
+    shrinkDescToTwoLines(innerEl, best);
 
     // Fase 3 (altijd alles tonen): als het nog steeds niet past op MIN_FS_PX,
     // schaal dan de volledige content met transform.
@@ -334,8 +334,9 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
     );
 
     // Als largestTwo null is => fallback naar default (oude gedrag: fb => C/N, side => Made in China)
-    const useMadeInChina =
-      largestTwo ? largestTwo.has(size.idx) : (size.type !== "fb");
+    const useMadeInChina = largestTwo
+      ? largestTwo.has(size.idx)
+      : size.type !== "fb";
 
     if (useMadeInChina) {
       block.append(
@@ -352,8 +353,7 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
     return block;
   }
 
-
-  function createLabelEl(size, values, previewScale, largestTwo)  {
+  function createLabelEl(size, values, previewScale, largestTwo) {
     const widthPx = Math.round(size.w * PX_PER_CM * previewScale);
     const heightPx = Math.round(size.h * PX_PER_CM * previewScale);
 
@@ -378,10 +378,10 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
 
     const content = el("div", { class: "label-content" });
     content.append(
-        head,
-        el("div", { class: "block-spacer" }),
-        buildLeftBlock(values, size, largestTwo)
-      );
+      head,
+      el("div", { class: "block-spacer" }),
+      buildLeftBlock(values, size, largestTwo)
+    );
     inner.append(content);
     label.append(inner);
     wrap.append(label, el("div", { class: "label-num" }, `Etiket ${size.idx}`));
@@ -421,7 +421,7 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
     function pickTwoLargestIdxOrNull(sizes) {
       const eps = 1e-9;
       const ranked = [...sizes]
-        .map(s => ({ idx: s.idx, area: (s.w || 0) * (s.h || 0) }))
+        .map((s) => ({ idx: s.idx, area: (s.w || 0) * (s.h || 0) }))
         .sort((a, b) => b.area - a.area);
 
       // Tie op de grens (2e == 3e) => ambiguous => fallback naar default
@@ -491,7 +491,8 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
 
   async function captureLabelToRotatedPng(labelIdx) {
     const src = document.querySelector(`.label[data-idx="${labelIdx}"]`);
-    if (!src) throw new Error(`Label ${labelIdx} niet gevonden voor PDF-capture.`);
+    if (!src)
+      throw new Error(`Label ${labelIdx} niet gevonden voor PDF-capture.`);
 
     const clone = src.cloneNode(true);
 
@@ -511,7 +512,11 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
     document.body.appendChild(host);
     host.appendChild(clone);
 
-    const capScale = Math.max(2, window.devicePixelRatio || 1, 1 / (currentPreviewScale || 1));
+    const capScale = Math.max(
+      2,
+      window.devicePixelRatio || 1,
+      1 / (currentPreviewScale || 1)
+    );
 
     const canvas = await html2canvas(clone, {
       scale: capScale,
@@ -556,13 +561,21 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
       const wRot = s.h;
       const hRot = s.w;
 
-      pdf.addImage(imgData, "PNG", PDF_MARGIN_CM, y, wRot, hRot, undefined, "FAST");
+      pdf.addImage(
+        imgData,
+        "PNG",
+        PDF_MARGIN_CM,
+        y,
+        wRot,
+        hRot,
+        undefined,
+        "FAST"
+      );
       y += hRot;
     }
 
     pdf.save(buildPdfFileName(vals.code));
   }
-
 
   /* ====== BATCH (Excel / CSV) ======
      Hersteld vanuit v0.70, passend gemaakt op v0.78:
@@ -759,7 +772,9 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
     const tbody = el("tbody");
     for (let i = 0; i < n; i++) {
       const tr = el("tr");
-      cols.forEach((c) => tr.appendChild(el("td", {}, String(rows[i][c] ?? ""))));
+      cols.forEach((c) =>
+        tr.appendChild(el("td", {}, String(rows[i][c] ?? "")))
+      );
       tbody.appendChild(tr);
     }
     table.append(thead, tbody);
@@ -812,7 +827,10 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
     if (!vals.batch) missing.push("Batch");
 
     if (missing.length) {
-      return { ok: false, error: `Ontbrekende/ongeldige velden: ${missing.join(", ")}` };
+      return {
+        ok: false,
+        error: `Ontbrekende/ongeldige velden: ${missing.join(", ")}`,
+      };
     }
 
     vals.len = +vals.len;
@@ -848,7 +866,16 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
       const imgData = await captureLabelToRotatedPng(idx);
       const wRot = s.h;
       const hRot = s.w;
-      pdf.addImage(imgData, "PNG", PDF_MARGIN_CM, y, wRot, hRot, undefined, "FAST");
+      pdf.addImage(
+        imgData,
+        "PNG",
+        PDF_MARGIN_CM,
+        y,
+        wRot,
+        hRot,
+        undefined,
+        "FAST"
+      );
       y += hRot;
     }
 
@@ -945,15 +972,31 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
 
     // templates
     btnTemplateCsv?.addEventListener("click", () => {
-      const hdrs = ["ERP","Omschrijving","EAN","QTY","G.W","CBM","Length (L)","Width (W)","Height (H)","Batch"];
-      const blob = new Blob([hdrs.join(",") + "\n"], { type: "text/csv;charset=utf-8;" });
+      const hdrs = [
+        "ERP",
+        "Omschrijving",
+        "EAN",
+        "QTY",
+        "G.W",
+        "CBM",
+        "Length (L)",
+        "Width (W)",
+        "Height (H)",
+        "Batch",
+      ];
+      const blob = new Blob([hdrs.join(",") + "\n"], {
+        type: "text/csv;charset=utf-8;",
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "etiketten-template.csv";
       document.body.appendChild(a);
       a.click();
-      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        a.remove();
+      }, 0);
     });
 
     btnTemplateXlsx?.addEventListener("click", () => {
@@ -961,7 +1004,18 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
         alert("XLSX library niet geladen.");
         return;
       }
-      const hdrs = ["ERP","Omschrijving","EAN","QTY","G.W","CBM","Length (L)","Width (W)","Height (H)","Batch"];
+      const hdrs = [
+        "ERP",
+        "Omschrijving",
+        "EAN",
+        "QTY",
+        "G.W",
+        "CBM",
+        "Length (L)",
+        "Width (W)",
+        "Height (H)",
+        "Batch",
+      ];
       const ws = XLSX.utils.aoa_to_sheet([hdrs]);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Etiketten");
@@ -975,7 +1029,10 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
       a.download = "etiketten-template.xlsx";
       document.body.appendChild(a);
       a.click();
-      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        a.remove();
+      }, 0);
     });
 
     // run batch
@@ -989,7 +1046,9 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
         return;
       }
 
-      const missingMap = REQUIRED_FIELDS.filter(([k]) => !mapping[k]).map(([, label]) => label);
+      const missingMap = REQUIRED_FIELDS.filter(([k]) => !mapping[k]).map(
+        ([, label]) => label
+      );
       if (missingMap.length) {
         log(`Koppel alle verplichte velden: ${missingMap.join(", ")}`, "error");
         return;
@@ -1000,7 +1059,8 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
 
       setHidden(progressWrap, false);
       if (progressBar) progressBar.style.width = "0%";
-      if (progressLabel) progressLabel.textContent = `${0} / ${parsedRows.length}`;
+      if (progressLabel)
+        progressLabel.textContent = `${0} / ${parsedRows.length}`;
       if (progressPhase) progressPhase.textContent = "Voorbereiden…";
 
       const zip = new JSZip();
@@ -1020,11 +1080,17 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
           log(`Rij ${i + 1}: ${r.error}`, "error");
         } else {
           try {
-            if (progressPhase) progressPhase.textContent = `Rij ${i + 1}: PDF renderen…`;
+            if (progressPhase)
+              progressPhase.textContent = `Rij ${i + 1}: PDF renderen…`;
             const blob = await renderOnePdfBlobViaPreview(r.vals);
 
-            const safeCode = String(r.vals.code || "export").replace(/[^\w.-]+/g, "_");
-            const name = `${safeCode} - ${batchTime} - R${String(i + 1).padStart(3, "0")}.pdf`;
+            const safeCode = String(r.vals.code || "export").replace(
+              /[^\w.-]+/g,
+              "_"
+            );
+            const name = `${safeCode} - ${batchTime} - R${String(
+              i + 1
+            ).padStart(3, "0")}.pdf`;
             zip.file(name, blob);
             okCount++;
           } catch (err) {
@@ -1033,8 +1099,12 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
           }
         }
 
-        if (progressBar) progressBar.style.width = `${Math.round(((i + 1) / parsedRows.length) * 100)}%`;
-        if (progressLabel) progressLabel.textContent = `${i + 1} / ${parsedRows.length}`;
+        if (progressBar)
+          progressBar.style.width = `${Math.round(
+            ((i + 1) / parsedRows.length) * 100
+          )}%`;
+        if (progressLabel)
+          progressLabel.textContent = `${i + 1} / ${parsedRows.length}`;
         await new Promise((r) => setTimeout(r, 0));
       }
 
@@ -1049,7 +1119,10 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
         a.download = `etiketten-batch - ${batchTime}.zip`;
         document.body.appendChild(a);
         a.click();
-        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          a.remove();
+        }, 0);
         log(`Gereed: ${okCount} PDF’s succesvol, ${errCount} fouten.`, "ok");
       } else {
         log(`Geen PDF’s gegenereerd. (${errCount} fouten)`, "error");

@@ -26,7 +26,8 @@ body {
 
 body {
   margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+    "Noto Sans", "Liberation Sans", sans-serif;
   color: var(--text);
   background: #ffffff;
 }
@@ -154,7 +155,8 @@ body {
   border: 1px solid #dde3ee;
   border-radius: 10px;
   padding: 10px 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
   font-size: 13px;
 }
 
@@ -220,15 +222,18 @@ body {
   will-change: transform;
 }
 
-.label-head .line { text-align: center; line-height: 1.15;}
+.label-head .line {
+  text-align: center;
+  line-height: 1.15;
+}
 
-.label-desc{
+.label-desc {
   display: block;
   margin: 0 auto;
-  width: var(--desc-w, auto);     /* wordt door JS gezet op specs-grid breedte */
+  width: var(--desc-w, auto); /* wordt door JS gezet op specs-grid breedte */
   max-width: 100%;
   line-height: 1.15;
-  min-height: calc(2 * 1.15em);   /* altijd ruimte voor 2 regels */
+  min-height: calc(2 * 1.15em); /* altijd ruimte voor 2 regels */
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -239,7 +244,7 @@ body {
 
   /* Schaal mee met font-size, zodat mini-labels niet Ã¢â‚¬Å“opgegetenÃ¢â‚¬Â worden door vaste px-randen */
   border: clamp(1px, 0.18em, 3px) solid #000;
-  padding: clamp(1px, 0.14em, 2px) clamp(2px, 0.40em, 6px);
+  padding: clamp(1px, 0.14em, 2px) clamp(2px, 0.4em, 6px);
 
   font-weight: 900;
   letter-spacing: 0.02em;
@@ -251,7 +256,7 @@ body {
   height: 0.25em;
 }
 
-.specs-grid{
+.specs-grid {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 0.35em 0.9em;
@@ -288,8 +293,6 @@ body {
     grid-template-columns: 1fr;
   }
 }
-
-
 
 /* ===== Panels (compat) ===== */
 .panel {
