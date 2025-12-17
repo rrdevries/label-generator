@@ -1,400 +1,225 @@
 (() => {
   /* ====== CONSTANTS ====== */
-  const PX_PER_CM = 37.7952755906; // 96dpi
-  const PREVIEW_GAP_CM_NUM = 0; // geen ruimte tussen etiketten in preview
-  const PDF_MARGIN_CM = 0.5; // witmarge rondom in PDF
-  const LABEL_PADDING_CM = 0.5; // binnenmarge in label (cm)
+  const PX_PER_CM = 37.7952755906;
 
-  // Typografie / fit
-  const WRAP_THRESHOLD_PX = 10; // onder 10px pas zachte afbreking aanzetten
-  const MIN_FS_PX = 2; // noodrem bij heel kleine labels
-  const CODE_MULT = 1.6; // productcode ≈ 1.6 × body
+  // Label padding (rondom, binnen het label) in cm
+  const LABEL_PADDING_CM = 0.6;
 
-  // PDF rand (alleen voor capture-visual; fysieke rand komt uit DOM-stijl)
-  const BORDER_PX = 2;
+  // Threshold: als we onder 10px body-font moeten, dan pas zachte afbreking aanzetten
+  const WRAP_THRESHOLD_PX = 10;
+  const MIN_FS_PX = 2; // absolute bodem (moet altijd alles kunnen tonen)
 
-  /* ====== DOM HOOKS ====== */
-  const labelsGrid = document.getElementById("labelsGrid");
-  const controlInfo = document.getElementById("controlInfo");
-  const canvasEl = document.getElementById("canvas");
-  const btnGen = document.getElementById("btnGenerate");
-  const btnPDF = document.getElementById("btnPDF");
+  // Code-box is 1.6× de body-font
+  const CODE_MULT = 1.6;
 
-  // Batch DOM (optioneel aanwezig)
-  const dropzone = document.getElementById("dropzone");
-  const fileInput = document.getElementById("fileInput");
-  const btnPickFile = document.getElementById("btnPickFile");
-  const btnTemplateCsv = document.getElementById("btnTemplateCsv");
-  const btnTemplateXlsx = document.getElementById("btnTemplateXlsx");
-  const mappingWrap = document.getElementById("mappingWrap");
-  const mappingGrid = document.getElementById("mappingGrid");
-  const previewWrap = document.getElementById("previewWrap");
-  const tablePreview = document.getElementById("tablePreview");
-  const normWrap = document.getElementById("normWrap");
-  const chkComma = document.getElementById("optCommaDecimal");
-  const chkTrim = document.getElementById("optTrimSpaces");
-  const batchControls = document.getElementById("batchControls");
-  const btnRunBatch = document.getElementById("btnRunBatch");
-  const btnAbortBatch = document.getElementById("btnAbortBatch");
-  const progressWrap = document.getElementById("progressWrap");
-  const progressBar = document.getElementById("progressBar");
-  const progressLabel = document.getElementById("progressLabel");
-  const progressPhase = document.getElementById("progressPhase");
-  const logWrap = document.getElementById("logWrap");
-  const logList = document.getElementById("logList");
-  const labelFactory = document.getElementById("labelFactory");
-
-  /* ====== STATE ====== */
+  // ===== PDF (terug naar v0.31 gedrag) =====
+  const PDF_MARGIN_CM = 0.5;
+  const BORDER_PX = 1;
   let currentPreviewScale = 1;
-  let parsedRows = [];
-  let headers = [];
-  let mapping = {};
-  let abortFlag = false;
 
-  /* ====== HELPERS ====== */
-  const el = (tag, attrs = {}, ...children) => {
+  /* ====== Helpers ====== */
+  const $ = (sel) => document.querySelector(sel);
+
+  function el(tag, attrs = {}, ...children) {
     const node = document.createElement(tag);
-    Object.entries(attrs).forEach(([k, v]) => {
-      if (k === "style" && typeof v === "object") Object.assign(node.style, v);
-      else if (k.startsWith("on") && typeof v === "function")
-        node.addEventListener(k.substring(2), v);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (k === "class") node.className = v;
+      else if (k === "style") Object.assign(node.style, v);
       else node.setAttribute(k, v);
-    });
-    children
-      .flat()
-      .forEach((c) =>
-        node.appendChild(typeof c === "string" ? document.createTextNode(c) : c)
-      );
-    return node;
-  };
-  const line = (lab, val) => [
-    el("div", { class: "lab" }, lab),
-    el("div", { class: "val" }, val),
-  ];
-  const pad2 = (n) => String(n).padStart(2, "0");
-  const ts = (d = new Date()) =>
-    `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(
-      d.getHours()
-    )}.${pad2(d.getMinutes())}.${pad2(d.getSeconds())}`;
-
-  // Compat-wrapper: project kan readValues óf readValuesSingle hebben
-  function getFormValues() {
-    if (typeof readValues === "function") return readValues();
-    if (typeof readValuesSingle === "function") return readValuesSingle();
-    throw new Error("readValues / readValuesSingle niet gevonden");
-  }
-
-  // 1 frame wachten zodat layout/afmetingen kloppen
-  function nextFrame() {
-    return new Promise((r) => requestAnimationFrame(r));
-  }
-
-  // Fit alle label-inhouden in container
-  function fitAllIn(container) {
-    container.querySelectorAll(".label-inner").forEach((inner) => {
-      inner.classList.add("nowrap-mode");
-      inner.classList.remove("softwrap-mode");
-
-      // font-fit Top-Box + Detail-Box
-      fitContentToBoxConditional(inner);
-
-      // C/N-lijn breedte laten volgen op "IN CHINA"
-      updateCnLine(inner);
-    });
-  }
-
-  // Extra robuust: twee fit-rondes met tussentijds frame
-  async function mountThenFit(container) {
-    await nextFrame();
-    fitAllIn(container);
-    await nextFrame();
-    fitAllIn(container);
-  }
-
-  /* ====== ENKELVOUDIG INLEZEN ====== */
-  function readValuesSingle() {
-    const get = (id) => document.getElementById(id).value.trim();
-
-    const L = parseFloat(get("boxLength"));
-    const W = parseFloat(get("boxWidth"));
-    const H = parseFloat(get("boxHeight"));
-
-    const vals = {
-      L,
-      W,
-      H,
-      code: get("prodCode"),
-      desc: get("prodDesc"),
-      ean: get("ean"),
-      qty: String(Math.max(0, Math.floor(Number(get("qty")) || 0))),
-      gw: ((v) => (isFinite(+v) ? (+v).toFixed(2) : v))(get("gw")),
-      cbm: get("cbm"),
-      batch: get("batch"), // VERPLICHT
-    };
-
-    // Verplichte velden check
-    if (
-      !vals.code ||
-      !vals.desc ||
-      !vals.ean ||
-      !vals.qty ||
-      !vals.gw ||
-      !vals.cbm ||
-      !vals.batch
-    ) {
-      throw new Error("Vul alle verplichte velden in (inclusief Batch).");
     }
-
-    // Maatvalidatie: 5–100 cm
-    ["L", "W", "H"].forEach((k) => {
-      const v = vals[k];
-      if (!isFinite(v) || v < 5 || v > 100) {
-        throw new Error(
-          "Lengte (L), Breedte (W) en Hoogte (H) moeten tussen 5 en 100 cm liggen (5–100)."
-        );
-      }
+    children.flat().forEach((c) => {
+      if (c == null) return;
+      node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
     });
-
-    return vals;
+    return node;
   }
 
-  /* ====== LABELMATEN & PREVIEW SCALE ====== */
-  function computeLabelSizes({ L, W, H }) {
-    // 10% kleiner aan elke zijde
-    const lw = Math.max(5, Math.min(100, L));
-    const ww = Math.max(5, Math.min(100, W));
-    const hh = Math.max(5, Math.min(100, H));
+  function parseNumber(val) {
+    if (val == null) return "";
+    const s = String(val).trim();
+    if (!s) return "";
+    // accepteer komma of punt
+    const n = Number(s.replace(",", "."));
+    return Number.isFinite(n) ? n : "";
+  }
 
-    const fb = { w: lw * 0.9, h: hh * 0.9 }; // front/back = L × H
-    const sd = { w: ww * 0.9, h: hh * 0.9 }; // side       = W × H
+  function format2(val) {
+    const n = parseNumber(val);
+    if (n === "") return "";
+    return n.toFixed(2);
+  }
+
+  function getFormValues() {
+    return {
+      code: ($("#erp")?.value || "").trim(),
+      desc: ($("#desc")?.value || "").trim(),
+      ean: ($("#ean")?.value || "").trim(),
+      qty: ($("#qty")?.value || "").trim(),
+      gw: ($("#gw")?.value || "").trim(),
+      cbm: ($("#cbm")?.value || "").trim(),
+      len: parseNumber($("#len")?.value),
+      wid: parseNumber($("#wid")?.value),
+      hei: parseNumber($("#hei")?.value),
+      batch: ($("#batch")?.value || "").trim(),
+    };
+  }
+
+  function syncDescWidthToSpecs(innerEl) {
+  const grid = innerEl.querySelector(".specs-grid");
+  const desc = innerEl.querySelector(".label-desc");
+  if (!grid || !desc) return;
+
+  // offsetWidth is layout-breedte (niet beïnvloed door transform scale)
+  const w = grid.offsetWidth || grid.getBoundingClientRect().width;
+  desc.style.setProperty("--desc-w", w + "px");
+}
+
+function descFitsInTwoLines(descEl) {
+  const cs = getComputedStyle(descEl);
+  const lh = parseFloat(cs.lineHeight);
+  if (!Number.isFinite(lh) || lh <= 0) return true; // fallback: niet blokkeren
+
+  const maxH = lh * 2 + 0.5; // kleine toleranties
+  return descEl.scrollHeight <= maxH;
+}
+
+function shrinkDescToTwoLines(innerEl, bodyFsPx) {
+  const desc = innerEl.querySelector(".label-desc");
+  if (!desc) return;
+
+  // Start met dezelfde grootte als body
+  desc.style.fontSize = ""; 
+  // Eerst breedte syncen, anders klopt wrap niet
+  syncDescWidthToSpecs(innerEl);
+
+  // Als het al past: klaar
+  if (descFitsInTwoLines(desc)) return;
+
+  // Binary search: verklein alleen de omschrijving tot hij binnen 2 regels past
+  let lo = 2;                 // mag extreem klein
+  let hi = Math.max(2, bodyFsPx);
+  let best = lo;
+
+  for (let i = 0; i < 18; i++) {
+    const mid = (lo + hi) / 2;
+    desc.style.fontSize = mid + "px";
+
+    if (descFitsInTwoLines(desc)) {
+      best = mid;
+      hi = mid; // probeer nog kleiner? (we willen minimaal verkleinen, dus naar beneden refine)
+    } else {
+      lo = mid;
+    }
+  }
+
+  desc.style.fontSize = best + "px";
+}
+
+  /* ====== Label sizes (Optie A: 0.9) ====== */
+  function calcLabelSizes(values) {
+    const L = values.len || 0;
+    const W = values.wid || 0;
+    const H = values.hei || 0;
+
+    const FACTOR = 0.9; // Optie A: 10% kleiner aan elke zijde
+
+    // Etiket 1 & 2: lengte x hoogte
+    const fbW = L * FACTOR;
+    const fbH = H * FACTOR;
+
+    // Etiket 3 & 4: breedte x hoogte
+    const sideW = W * FACTOR;
+    const sideH = H * FACTOR;
 
     return [
-      { idx: 1, kind: "front/back", ...fb }, // C/N straks hier
-      { idx: 2, kind: "front/back", ...fb }, // C/N straks hier
-      { idx: 3, kind: "side", ...sd }, // Made in China hier
-      { idx: 4, kind: "side", ...sd }, // Made in China hier
+      { idx: 1, name: "Etiket 1 (front/back)", w: fbW, h: fbH, type: "fb" },
+      { idx: 2, name: "Etiket 2 (front/back)", w: fbW, h: fbH, type: "fb" },
+      { idx: 3, name: "Etiket 3 (side)", w: sideW, h: sideH, type: "side" },
+      { idx: 4, name: "Etiket 4 (side)", w: sideW, h: sideH, type: "side" },
     ];
   }
 
-  function updateControlInfo(sizes) {
-    const n2 = (x) => (Math.round(x * 100) / 100).toFixed(2);
-    const [s1, s2, s3, s4] = sizes;
-    controlInfo.innerHTML = `
-      <h3>Berekende labelafmetingen (werkelijke cm)</h3>
-      <div class="control-grid-2x2">
-        <div class="control-item">Etiket 1 (${s1.kind}): ${n2(s1.w)} × ${n2(
-      s1.h
-    )} cm</div>
-        <div class="control-item">Etiket 3 (${s3.kind}): ${n2(s3.w)} × ${n2(
-      s3.h
-    )} cm</div>
-        <div class="control-item">Etiket 2 (${s2.kind}): ${n2(s2.w)} × ${n2(
-      s2.h
-    )} cm</div>
-        <div class="control-item">Etiket 4 (${s4.kind}): ${n2(s4.w)} × ${n2(
-      s4.h
-    )} cm</div>
-      </div>`;
+  function renderDims(sizes) {
+    const dims = $("#dims");
+    if (!dims) return;
+    dims.innerHTML = "";
+    sizes.forEach((s) => {
+      dims.append(
+        el(
+          "div",
+          { class: "pill" },
+          `${s.name}: ${format2(s.w)} × ${format2(s.h)} cm`
+        )
+      );
+    });
   }
 
-  function computePreviewScale(sizes) {
-    const gapPx = PREVIEW_GAP_CM_NUM * PX_PER_CM;
-    const w1 = sizes[0].w * PX_PER_CM,
-      w3 = sizes[2].w * PX_PER_CM;
-    const requiredW = Math.max(w1 + gapPx + w1, w3 + gapPx + w3);
-    const cs = getComputedStyle(canvasEl);
-    const innerW =
-      canvasEl.clientWidth -
-      parseFloat(cs.paddingLeft) -
-      parseFloat(cs.paddingRight);
-    return Math.min(innerW / requiredW, 1);
-  }
+  /* ====== Auto-fit logic (font sizing) ====== */
 
-  /* ====== FONT-FIT ===========================================
-   Doelen:
-   - Grotere startwaarde bij grote etiketten → zichtbaar grotere tekst.
-   - Eerst agressief omhoog groeien, dán pas binair finetunen.
-   - Wrap pas inzetten als body < WRAP_THRESHOLD_PX (no-wrap voorkeur).
-   - Houd een kleine “guard” (binnenmarge) aan tegen clipping.
-   - Code-box schaalt mee (geen cap), body via --fs.
-========================================================================= */
-
-  /** past alles binnen 'innerEl' met een veiligheidsmarge? */
   function fitsWithGuard(innerEl, guardX, guardY) {
+    const content = innerEl.querySelector(".label-content") || innerEl;
+
+    // Detecteer overflow in grid-cellen (EAN/waarden). Dit kan gebeuren zonder dat
+    // content.scrollWidth groter wordt (grid-cel overflow).
+    const valOverflow = Array.from(
+      content.querySelectorAll(".specs-grid .val")
+    ).some((v) => v.scrollWidth > v.clientWidth + 0.5);
+
+    if (valOverflow) return false;
+
     return (
-      innerEl.scrollWidth <= innerEl.clientWidth - guardX &&
-      innerEl.scrollHeight <= innerEl.clientHeight - guardY
+      content.scrollWidth <= innerEl.clientWidth - guardX &&
+      content.scrollHeight <= innerEl.clientHeight - guardY
     );
   }
 
-  function fitsTopAndDetail(innerEl, guardX, guardY) {
-    const topBox = innerEl.querySelector(".top-box");
-    const detailBox = innerEl.querySelector(".detail-box");
-    const detailInner = innerEl.querySelector(".detail-box-inner");
-
-    // Als we de nieuwe structuur niet vinden, val terug op de oude check:
-    if (!topBox || !detailBox || !detailInner) {
-      return fitsWithGuard(innerEl, guardX, guardY);
-    }
-
-    // Constrain the top block (ERP + description) to the same width as the detail columns.
-    // This prevents long descriptions from forcing a smaller font just to stay on a single line.
-    const desc = topBox.querySelector(".product-desc");
-    const w = detailBox.clientWidth || detailBox.getBoundingClientRect().width || 0;
-    if (w > 0) {
-      topBox.style.width = w + "px";
-      if (desc) {
-        desc.style.width = "100%";
-        desc.style.maxWidth = "100%";
-      }
-    }
-
-    // Require the description to fit within 2 lines; if it doesn't, the font search will reduce fs.
-    if (desc) {
-      const cs = getComputedStyle(desc);
-      const lh = parseFloat(cs.lineHeight);
-      const fs = parseFloat(cs.fontSize);
-      const lineH = Number.isFinite(lh) ? lh : fs * 1.15;
-      const allowed = lineH * 2 + 0.5; // epsilon for rounding
-      if (desc.scrollHeight > allowed) return false;
-    }
-
-
-    // TOP-BOX: ERP + omschrijving
-    // Minimaal ~8% verticale marge zodat het nooit tegen de rand geplakt zit
-    const topGuardY = Math.max(guardY, topBox.clientHeight * 0.08);
-
-    const topOk =
-      topBox.scrollWidth <= topBox.clientWidth - guardX &&
-      topBox.scrollHeight <= topBox.clientHeight - topGuardY;
-
-    if (!topOk) return false;
-
-    // DETAIL-BOX: EAN/QTY/.../Made in China
-    // Minimaal ~7% marge zodat de onderste regel niet de onderrand raakt
-    const detailGuardY = Math.max(guardY, detailBox.clientHeight * 0.07);
-
-    const detailOkBox =
-      detailInner.scrollWidth <= detailBox.clientWidth - guardX &&
-      detailInner.scrollHeight <= detailBox.clientHeight - detailGuardY;
-
-    if (!detailOkBox) return false;
-
-    // EXTRA: geen enkele detail-value (inclusief EAN) mag horizontaal overlopen
-    const values = detailInner.querySelectorAll(".detail-value");
-    for (const v of values) {
-      if (v.scrollWidth > v.clientWidth - guardX) {
-        return false; // font is nog te groot → verder verkleinen
-      }
-    }
-
-    return true;
-  }
-
-  function updateCnLine(innerEl) {
-    const detailInner = innerEl.querySelector(".detail-box-inner");
-    const cnLine = innerEl.querySelector(".cn-line");
-
-    if (!detailInner || !cnLine) return;
-
-    // Meet-probe met tekst "IN CHINA" in dezelfde context als de details
-    const probe = document.createElement("span");
-    probe.textContent = "IN CHINA";
-    probe.style.visibility = "hidden";
-    probe.style.position = "absolute";
-    probe.style.whiteSpace = "nowrap";
-
-    detailInner.appendChild(probe);
-    const width = probe.getBoundingClientRect().width;
-    detailInner.removeChild(probe);
-
-    if (width > 0) {
-      cnLine.style.width = width + "px";
-    }
-  }
-
-  function searchBaseFontSize(innerEl, minFs, startHi, guardX, guardY) {
-    // 1) agressief omhoog groeien vanaf startHi
-    applyFontSizes(innerEl, startHi);
-    if (fitsTopAndDetail(innerEl, guardX, guardY)) {
-      let grow = startHi;
-      for (let i = 0; i < 48; i++) {
-        const next = grow * 1.08;
-        applyFontSizes(innerEl, next);
-        if (!fitsTopAndDetail(innerEl, guardX, guardY)) {
-          applyFontSizes(innerEl, grow); // stap terug naar laatste passende
-          return grow;
-        }
-        grow = next;
-      }
-      return grow; // plafond bereikt zonder clip
-    }
-
-    // 2) startHi paste al niet → binair omlaag tussen [minFs, startHi]
-    let lo = minFs,
-      hi = startHi,
-      best = lo;
-    while (hi - lo > 0.5) {
-      const mid = (lo + hi) / 2;
-      applyFontSizes(innerEl, mid);
-      if (fitsTopAndDetail(innerEl, guardX, guardY)) {
-        best = mid;
-        lo = mid;
-      } else {
-        hi = mid;
-      }
-    }
-    applyFontSizes(innerEl, best);
-    return best;
-  }
-
-  //const FONT_STEP_PX = 4;  // 1 stap = 4px, ERP = basis + 2 stappen
-
   function applyFontSizes(innerEl, fsPx) {
-    // Bodytekst (details, productomschrijving) = basis
-    const base = fsPx;
+    innerEl.style.setProperty("--fs", fsPx + "px");
 
-    // ERP/productnaam: ~1,4 × basis (tussen 1,3 en 1,6)
-    const erp = base * 1.4;
+    // Reset eventuele fallback-scale bij nieuwe metingen
+    const content = innerEl.querySelector(".label-content");
+    if (content) content.style.setProperty("--k", "1");
 
-    // Detailtekst: gelijk aan basis
-    const detail = base;
-
-    // Kleinere details (bijv. batch/datum): ~0,75 × basis
-    const small = base * 0.75;
-
-    innerEl.style.setProperty("--fs-base", base + "px");
-    innerEl.style.setProperty("--fs-erp", erp + "px");
-    innerEl.style.setProperty("--fs-detail", detail + "px");
-    innerEl.style.setProperty("--fs-small", small + "px");
-
-    // Backwards compatibiliteit
-    innerEl.style.setProperty("--fs", base + "px");
+    const codeEl = innerEl.querySelector(".code-box");
+    if (codeEl) {
+      codeEl.style.fontSize = fsPx * CODE_MULT + "px";
+    }
   }
 
-  /** zoek een passende fontgrootte (eerst groeien, daarna finetunen naar beneden) */
   function searchFontSize(innerEl, minFs, startHi, guardX, guardY) {
     // 1) agressief omhoog groeien vanaf startHi (groeifactor 1.08)
-    applyFontSizes(innerEl, startHi);
-    if (fitsWithGuard(innerEl, guardX, guardY)) {
-      let grow = startHi;
-      for (let i = 0; i < 48; i++) {
-        const next = grow * 1.08; // iets sneller groeien
-        applyFontSizes(innerEl, next);
-        if (!fitsWithGuard(innerEl, guardX, guardY)) {
-          applyFontSizes(innerEl, grow); // stap terug naar laatste passende
-          return grow;
-        }
-        grow = next;
+    let hi = Math.max(minFs, startHi);
+    applyFontSizes(innerEl, hi);
+
+    while (fitsWithGuard(innerEl, guardX, guardY) && hi < 500) {
+      const next = hi * 1.08;
+      applyFontSizes(innerEl, next);
+      if (!fitsWithGuard(innerEl, guardX, guardY)) {
+        applyFontSizes(innerEl, hi);
+        break;
       }
-      return grow; // plafond bereikt zonder clip
+      hi = next;
     }
 
-    // 2) paste startHi al niet? dan binair omlaag tussen [minFs, startHi]
-    let lo = minFs,
-      hi = startHi,
-      best = lo;
-    while (hi - lo > 0.5) {
+    // 2) binaire search naar max die past
+    let lo = minFs;
+    let best = lo;
+
+    // Zorg dat hi in elk geval "te groot" is (of gelijk)
+    applyFontSizes(innerEl, hi);
+    if (fitsWithGuard(innerEl, guardX, guardY)) {
+      best = hi;
+      return best;
+    }
+
+    // lo laten passen (minFs moet altijd passen, zo niet dan toch de bodem)
+    applyFontSizes(innerEl, lo);
+    if (!fitsWithGuard(innerEl, guardX, guardY)) {
+      return minFs;
+    }
+    best = lo;
+
+    for (let i = 0; i < 22; i++) {
       const mid = (lo + hi) / 2;
       applyFontSizes(innerEl, mid);
       if (fitsWithGuard(innerEl, guardX, guardY)) {
@@ -408,149 +233,129 @@
     return best;
   }
 
-  /** hoofd-fit: eerst no-wrap ≥ WRAP_THRESHOLD_PX, anders soft-wrap ≥ MIN_FS_PX */
+  // Laatste redmiddel: als zelfs MIN_FS_PX + (soft)wrap niet past, schaal de volledige content
+  // met CSS transform zodat alles altijd zichtbaar blijft.
+  function applyScaleFallback(innerEl, guardX, guardY) {
+    const content = innerEl.querySelector(".label-content") || innerEl;
+
+    const availW = Math.max(1, innerEl.clientWidth - guardX);
+    const availH = Math.max(1, innerEl.clientHeight - guardY);
+
+    const sw = Math.max(1, content.scrollWidth);
+    const sh = Math.max(1, content.scrollHeight);
+
+    let scaleW = availW / sw;
+    let scaleH = availH / sh;
+
+    // Extra: corrigeer voor overflow die alleen in grid-cellen zichtbaar is
+    let scaleVal = 1;
+    content.querySelectorAll(".specs-grid .val").forEach((v) => {
+      const vSw = v.scrollWidth;
+      const vCw = v.clientWidth;
+      if (vSw > vCw + 0.5) {
+        scaleVal = Math.min(scaleVal, vCw / vSw);
+      }
+    });
+
+    const k = Math.max(0.02, Math.min(1, scaleW, scaleH, scaleVal));
+    content.style.setProperty("--k", String(k));
+    return k;
+  }
+
   function fitContentToBoxConditional(innerEl) {
-    // Beschikbare ruimte in de label-inner
     const w = innerEl.clientWidth;
     const h = innerEl.clientHeight;
-    const minSide = Math.min(w, h);
 
-    // Guards: minimaal ±4px marge, of 1% van de afmeting
-    const guardX = Math.max(4, w * 0.01);
-    const guardY = Math.max(4, h * 0.01);
+    // Guard: kleiner minimum zodat mini-labels nog bruikbare ruimte hebben,
+    // maar wel voldoende marge tegen rand-clipping.
+    const guardX = Math.max(2, w * 0.015);
+    const guardY = Math.max(2, h * 0.015);
 
-    // Basisfont: ongeveer 10% van de kortste zijde van het label
-    // (grote dozen ⇒ grotere basis-font, kleine dozen ⇒ kleinere basis-font)
-    const baseFromBox = minSide * 0.1;
+    const baseFromBox = Math.min(w, h) * 0.11;
     const startHi = Math.max(16, baseFromBox);
 
-    // Fase 1: harde no-wrap modus
+    // Fase 1: no-wrap (voorkeur)
     innerEl.classList.add("nowrap-mode");
     innerEl.classList.remove("softwrap-mode");
 
-    let fs = searchBaseFontSize(
-      innerEl,
-      WRAP_THRESHOLD_PX, // onder deze grens mogen we soft-wrap overwegen
-      startHi,
-      guardX,
-      guardY
-    );
+    let best = searchFontSize(innerEl, MIN_FS_PX, startHi, guardX, guardY);
 
-    // Als we met no-wrap al boven de wrap-drempel blijven, is het goed zo
-    if (fs >= WRAP_THRESHOLD_PX) {
-      return;
+    // Fase 2: als erg klein, probeer soft-wrap (kan horizontale overflow oplossen)
+    if (best < WRAP_THRESHOLD_PX) {
+      innerEl.classList.remove("nowrap-mode");
+      innerEl.classList.add("softwrap-mode");
+
+      best = searchFontSize(innerEl, MIN_FS_PX, startHi, guardX, guardY);
     }
 
-    // Fase 2: zachte wrap toestaan om iets groter te kunnen blijven
-    innerEl.classList.remove("nowrap-mode");
-    innerEl.classList.add("softwrap-mode");
+    // Zorg dat omschrijving altijd binnen 2 regels past op dezelfde breedte als specs-grid
+      syncDescWidthToSpecs(innerEl);
+      shrinkDescToTwoLines(innerEl, best);
 
-    fs = searchBaseFontSize(
-      innerEl,
-      MIN_FS_PX,
-      fs, // start iets onder de gevonden waarde
-      guardX,
-      guardY
-    );
-
-    // Absolute ondergrens forceren als het écht krap is
-    if (fs < MIN_FS_PX) {
-      fs = MIN_FS_PX;
-      applyFontSizes(innerEl, fs);
+    // Fase 3 (altijd alles tonen): als het nog steeds niet past op MIN_FS_PX,
+    // schaal dan de volledige content met transform.
+    if (!fitsWithGuard(innerEl, guardX, guardY)) {
+      applyScaleFallback(innerEl, guardX, guardY);
+    } else {
+      const content = innerEl.querySelector(".label-content");
+      if (content) content.style.setProperty("--k", "1");
     }
+
+    return best;
   }
 
-  /* ====== UI OPBOUW ====== */
-  function buildLeftBlock(values, size) {
-    const rowsData = [
-      { label: "EAN:", value: values.ean || "" },
-      { label: "QTY:", value: values.qty || "" },
-      { label: "G.W:", value: values.gw || "" },
-      { label: "CBM:", value: values.cbm || "" },
-      { label: "Batch:", value: values.batch || "" },
-      { label: "C/N:", value: null, kind: "cn" },
-      { label: "Made in China", value: "", kind: "made" },
-    ];
-
-    const detailBoxInner = el("div", { class: "detail-box-inner" });
-
-    rowsData.forEach((r) => {
-      const rowClasses = ["detail-row"];
-      if (r.kind === "cn") rowClasses.push("cn-row");
-      if (r.kind === "made") rowClasses.push("made-row");
-
-      const row = el("div", { class: rowClasses.join(" ") });
-
-      const labelEl = el("div", { class: "detail-label" }, r.label);
-
-      let valueEl;
-      if (r.kind === "cn") {
-        // C/N: lijn om op te schrijven
-        const lineEl = el("span", { class: "cn-line" });
-        valueEl = el("div", { class: "detail-value" }, lineEl);
-      } else {
-        // normale cases, inclusief Made in China (lege value)
-        valueEl = el("div", { class: "detail-value" }, r.value || "");
-      }
-
-      row.append(labelEl, valueEl);
-      detailBoxInner.append(row);
-    });
-
-    return detailBoxInner;
+  async function mountThenFit(container) {
+    await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
+    fitAllIn(container);
   }
 
-  function createLabelEl(size, values, previewScale) {
-    // Afmeting in pixels voor de PREVIEW (geschaald naar het canvas)
-    const widthPx = Math.round(size.w * PX_PER_CM);
-    const heightPx = Math.round(size.h * PX_PER_CM);
-
-    const wrap = el("div", { class: "label-wrap" });
-    const label = el("div", {
-      class: "label",
-      "data-idx": String(size.idx),
-      style: {
-        width: widthPx + "px",
-        height: heightPx + "px",
-      },
+  function fitAllIn(container) {
+    container.querySelectorAll(".label-inner").forEach((inner) => {
+      inner.classList.add("nowrap-mode");
+      inner.classList.remove("softwrap-mode");
+      fitContentToBoxConditional(inner);
     });
+  }
 
-    const inner = el("div", { class: "label-inner nowrap-mode" });
+  /* ====== Build label DOM ====== */
+  function buildLeftBlock(values, size, largestTwo) {
+    const block = el("div", { class: "specs-grid" });
 
-    // Padding op de label-rand
-    const padPx = LABEL_PADDING_CM * PX_PER_CM;
-    label.style.padding = padPx + "px";
-
-    // --- TOP-BOX: ERP-box boven, daaronder productomschrijving ---
-    const topBox = el(
-      "div",
-      { class: "top-box" },
-      el(
-        "div",
-        { class: "erp-box" },
-        el("div", { class: "code-box line" }, values.code)
-      ),
-      el("div", { class: "product-desc line" }, values.desc)
+    block.append(
+      el("div", { class: "key" }, "EAN:"),
+      el("div", { class: "val" }, values.ean || ""),
+      el("div", { class: "key" }, "QTY:"),
+      el("div", { class: "val" }, `${values.qty || ""} PCS`),
+      el("div", { class: "key" }, "G.W:"),
+      el("div", { class: "val" }, `${values.gw || ""} KGS`),
+      el("div", { class: "key" }, "CBM:"),
+      el("div", { class: "val" }, values.cbm || "")
     );
 
-    // BOTTOM-BOX (detail-box met links/rechts)
-    const detailContent = buildLeftBlock(values, size);
-    const detailBox = el("div", { class: "detail-box" }, detailContent);
-    const bottomBox = el("div", { class: "bottom-box" }, detailBox);
+    // Als largestTwo null is => fallback naar default (oude gedrag: fb => C/N, side => Made in China)
+    const useMadeInChina =
+      largestTwo ? largestTwo.has(size.idx) : (size.type !== "fb");
 
-    inner.append(topBox, bottomBox);
-    label.append(inner);
+    if (useMadeInChina) {
+      block.append(
+        el("div", { class: "key" }, ""),
+        el("div", { class: "val" }, "Made in China")
+      );
+    } else {
+      block.append(
+        el("div", { class: "key" }, "C/N:"),
+        el("div", { class: "val" }, "___________________")
+      );
+    }
 
-    wrap.append(label, el("div", { class: "label-num" }, `Etiket ${size.idx}`));
-
-    return wrap;
+    return block;
   }
 
-  // Bouw een 1:1 label (cm → px, géén previewScale)
-  // Dit is de bron voor font-fit en PDF.
-  function createMasterLabelEl(size, values) {
-    const widthPx = Math.round(size.w * PX_PER_CM); // 1:1
-    const heightPx = Math.round(size.h * PX_PER_CM);
+
+  function createLabelEl(size, values, previewScale, largestTwo)  {
+    const widthPx = Math.round(size.w * PX_PER_CM * previewScale);
+    const heightPx = Math.round(size.h * PX_PER_CM * previewScale);
 
     const wrap = el("div", { class: "label-wrap" });
     const label = el("div", {
@@ -561,109 +366,86 @@
 
     const inner = el("div", { class: "label-inner nowrap-mode" });
 
-    // Padding op de label-rand (niet meegeschaald)
-    const padPx = LABEL_PADDING_CM * PX_PER_CM;
+    const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
     label.style.padding = padPx + "px";
 
-    // Referentiematen voor font-fit (kunnen blijven zoals je ze nu hebt)
-    const REF_W = 100;
-    const REF_H = 60;
-    inner.style.setProperty("--ref-w", REF_W + "px");
-    inner.style.setProperty("--ref-h", REF_H + "px");
-
-    // Geen --k meer nodig voor master; font-fit werkt op echte px
-    inner.style.removeProperty("--k");
-
-    // TOP-BOX: ERP boven, daaronder productomschrijving
-    const topBox = el(
+    const head = el(
       "div",
-      { class: "top-box" },
-      el(
-        "div",
-        { class: "erp-box" },
-        el("div", { class: "code-box line" }, values.code)
-      ),
-      el("div", { class: "product-desc line" }, values.desc)
+      { class: "label-head" },
+      el("div", { class: "code-box line" }, values.code),
+      el("div", { class: "line label-desc" }, values.desc)
     );
 
-    // BOTTOM-BOX: Detail-Box met bestaande left/right inhoud
-    const detailContent = buildLeftBlock(values, size);
-    const detailBox = el("div", { class: "detail-box" }, detailContent);
-    const bottomBox = el("div", { class: "bottom-box" }, detailBox);
-
-    inner.append(topBox, bottomBox);
+    const content = el("div", { class: "label-content" });
+    content.append(
+        head,
+        el("div", { class: "block-spacer" }),
+        buildLeftBlock(values, size, largestTwo)
+      );
+    inner.append(content);
     label.append(inner);
-
-    // In de factory hebben we label-num niet nodig, maar kan geen kwaad
     wrap.append(label, el("div", { class: "label-num" }, `Etiket ${size.idx}`));
+
     return wrap;
   }
 
-  // Maak een geschaalde preview op basis van een masterlabel
-  function createPreviewFromMaster(masterWrap, size, previewScale) {
-    // masterWrap is de <div class="label-wrap"> uit de factory
-    const masterLabel = masterWrap.querySelector(".label");
-    const clonedLabel = masterLabel.cloneNode(true);
+  /* ====== Preview render ====== */
+  function computePreviewScale(sizes) {
+    const labelsGrid = $("#labelsGrid");
+    if (!labelsGrid) return 1;
 
-    const widthPx = size.w * PX_PER_CM;
-    const heightPx = size.h * PX_PER_CM;
+    const containerWidth = labelsGrid.clientWidth || 900;
+    const maxWcm = Math.max(...sizes.map((s) => s.w));
+    const maxHcm = Math.max(...sizes.map((s) => s.h));
 
-    const scaledW = widthPx * previewScale;
-    const scaledH = heightPx * previewScale;
+    const maxWpx = maxWcm * PX_PER_CM;
+    const maxHpx = maxHcm * PX_PER_CM;
 
-    // Wrapper voor preview
-    const wrap = el("div", { class: "label-wrap" });
-    const num = el("div", { class: "label-num" }, `Etiket ${size.idx}`);
+    const cellW = containerWidth / 2;
+    const cellH = Math.max(280, window.innerHeight * 0.35);
 
-    // Schaal het volledige label uniform omlaag
-    clonedLabel.style.transformOrigin = "top left";
-    clonedLabel.style.transform = `scale(${previewScale})`;
+    const sW = cellW / maxWpx;
+    const sH = cellH / maxHpx;
 
-    // Zorg dat de wrapper de geschaalde afmetingen heeft
-    wrap.style.width = scaledW + "px";
-    wrap.style.height = scaledH + "px";
-
-    wrap.append(clonedLabel, num);
-    return wrap;
+    const s = Math.min(sW, sH) * 0.98;
+    return Math.max(0.08, Math.min(1, s));
   }
 
-  /* ====== PREVIEW PIPELINE (single & batch) ====== */
-  async function renderPreviewFor(vals) {
-    const sizes = computeLabelSizes(vals);
+  async function renderPreviewFor(values) {
+    const labelsGrid = $("#labelsGrid");
+    if (!labelsGrid) return;
+
+    const sizes = calcLabelSizes(values);
+    // Bepaal welke 2 etiketten “Made in China” krijgen op basis van grootste oppervlak.
+    // Als er een tie op de grens is, gebruiken we default gedrag (size.type).
+    function pickTwoLargestIdxOrNull(sizes) {
+      const eps = 1e-9;
+      const ranked = [...sizes]
+        .map(s => ({ idx: s.idx, area: (s.w || 0) * (s.h || 0) }))
+        .sort((a, b) => b.area - a.area);
+
+      // Tie op de grens (2e == 3e) => ambiguous => fallback naar default
+      if (Math.abs(ranked[1].area - ranked[2].area) <= eps) return null;
+
+      return new Set([ranked[0].idx, ranked[1].idx]);
+    }
+
+    const largestTwo = pickTwoLargestIdxOrNull(sizes);
+
+    renderDims(sizes);
+
     const scale = computePreviewScale(sizes);
     currentPreviewScale = scale;
 
-    updateControlInfo(sizes);
-
-    labelsGrid.style.gap = "0";
-    labelsGrid.style.transformOrigin = "top left";
-    labelsGrid.style.transform = "none";
     labelsGrid.innerHTML = "";
+    const fragments = document.createDocumentFragment();
 
-    // 1 & 3 boven, 2 & 4 onder
-    [0, 2, 1, 3].forEach((i) => {
-      labelsGrid.appendChild(createLabelEl(sizes[i], vals)); // 1:1 labels
+    sizes.forEach((size) => {
+      fragments.append(createLabelEl(size, values, scale, largestTwo));
     });
+    labelsGrid.append(fragments);
 
-    // Eerst op 1:1 grootte font-fitten
     await mountThenFit(labelsGrid);
-
-    // Hoogte van het ongeschaalde grid meten
-    const rect = labelsGrid.getBoundingClientRect();
-    const baseHeight = rect.height;
-
-    // Preview schalen
-    if (scale < 1) {
-      labelsGrid.style.transform = `scale(${scale})`;
-
-      // Canvashoogte aanpassen aan geschaalde content,
-      // zodat het “kader” niet gigantisch wordt
-      const scaledHeight = baseHeight * scale;
-      canvasEl.style.height = scaledHeight + 32 + "px"; // + beetje marge
-    } else {
-      labelsGrid.style.transform = "none";
-      canvasEl.style.height = baseHeight + 32 + "px";
-    }
 
     return { sizes, scale };
   }
@@ -675,115 +457,158 @@
 
   /* ====== jsPDF / html2canvas ====== */
   function loadJsPDF() {
-    return new Promise((res, rej) => {
-      if (window.jspdf?.jsPDF) return res(window.jspdf.jsPDF);
-      const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
-      s.onload = () => res(window.jspdf.jsPDF);
-      s.onerror = () => rej(new Error("Kon jsPDF niet laden."));
-      document.head.appendChild(s);
-    });
-  }
-  function loadHtml2Canvas() {
-    return new Promise((res, rej) => {
-      if (window.html2canvas) return res(window.html2canvas);
-      const s = document.createElement("script");
-      s.src =
-        "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
-      s.onload = () => res(window.html2canvas);
-      s.onerror = () => rej(new Error("Kon html2canvas niet laden."));
-      document.head.appendChild(s);
-    });
+    return window.jspdf?.jsPDF;
   }
 
-  async function capturePreviewLabelToImage(h2c, idx) {
-    // Eerst proberen in de factory (1:1 masterlabel)
-    let src = labelFactory
-      ? labelFactory.querySelector(`.label[data-idx="${idx}"]`)
-      : null;
+  function pad2(n) {
+    return String(n).padStart(2, "0");
+  }
 
-    // Fallback: gebruik de zichtbare preview zoals voorheen
-    if (!src) {
-      src = document.querySelector(`.label[data-idx="${idx}"]`);
-    }
-    if (!src) throw new Error("Label niet gevonden voor capture.");
+  function buildTimestamp(d = new Date()) {
+    return (
+      `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ` +
+      `${pad2(d.getHours())}.${pad2(d.getMinutes())}.${pad2(d.getSeconds())}`
+    );
+  }
+
+  function buildPdfFileName(code) {
+    const safeCode = (code || "export").trim() || "export";
+    return `${safeCode} - ${buildTimestamp()}.pdf`;
+  }
+
+  function rotateCanvas90CW(srcCanvas) {
+    const dst = document.createElement("canvas");
+    dst.width = srcCanvas.height;
+    dst.height = srcCanvas.width;
+
+    const ctx = dst.getContext("2d");
+    ctx.translate(dst.width, 0);
+    ctx.rotate(Math.PI / 2);
+    ctx.drawImage(srcCanvas, 0, 0);
+
+    return dst;
+  }
+
+  async function captureLabelToRotatedPng(labelIdx) {
+    const src = document.querySelector(`.label[data-idx="${labelIdx}"]`);
+    if (!src) throw new Error(`Label ${labelIdx} niet gevonden voor PDF-capture.`);
 
     const clone = src.cloneNode(true);
 
-    // Fysieke randen voor PDF
     clone.style.borderTop = `${BORDER_PX}px solid #000`;
     clone.style.borderRight = `${BORDER_PX}px solid #000`;
     clone.style.borderBottom = `${BORDER_PX}px solid #000`;
     clone.style.borderLeft = `${BORDER_PX}px solid #000`;
 
-    const wrap = document.createElement("div");
-    wrap.style.position = "fixed";
-    wrap.style.left = "-10000px";
-    wrap.style.top = "0";
-    wrap.style.background = "#fff";
+    const host = document.createElement("div");
+    host.style.position = "fixed";
+    host.style.left = "-10000px";
+    host.style.top = "0";
+    host.style.background = "#fff";
+    host.style.padding = "0";
+    host.style.margin = "0";
 
-    document.body.appendChild(wrap);
-    wrap.appendChild(clone);
+    document.body.appendChild(host);
+    host.appendChild(clone);
 
-    // Cap-scale hoeft geen rekening meer te houden met previewScale
-    const capScale = Math.max(2, window.devicePixelRatio || 1);
-    const canvas = await h2c(clone, {
-      backgroundColor: "#fff",
+    const capScale = Math.max(2, window.devicePixelRatio || 1, 1 / (currentPreviewScale || 1));
+
+    const canvas = await html2canvas(clone, {
       scale: capScale,
+      backgroundColor: "#ffffff",
+      useCORS: true,
     });
 
-    // 90° met de klok mee
-    const rot = document.createElement("canvas");
-    rot.width = canvas.height;
-    rot.height = canvas.width;
-    const ctx = rot.getContext("2d");
-    ctx.translate(rot.width, 0);
-    ctx.rotate(Math.PI / 2);
-    ctx.drawImage(canvas, 0, 0);
+    const rot = rotateCanvas90CW(canvas);
 
-    document.body.removeChild(wrap);
+    document.body.removeChild(host);
+
     return rot.toDataURL("image/png");
   }
 
-  /* ====== SINGLE PDF (via preview) ====== */
   async function generatePDFSingle() {
+    const JsPDF = loadJsPDF();
+    if (!JsPDF) throw new Error("jsPDF niet geladen");
+    if (!window.html2canvas) throw new Error("html2canvas niet geladen");
+
     const vals = getFormValues();
-    const { sizes } = await renderPreviewFor(vals);
+    const result = await renderPreviewFor(vals);
+    if (!result) throw new Error("Kon preview niet renderen voor PDF.");
+    const { sizes } = result;
 
-    const jsPDF = await loadJsPDF();
-    const h2c = await loadHtml2Canvas();
+    const order = [1, 3, 2, 4];
 
-    // Na rotatie: breedte = s.h, hoogte = s.w (cm)
-    const contentW = Math.max(...sizes.map((s) => s.h));
-    const contentH = sizes.reduce((sum, s) => sum + s.w, 0);
-    const pageW = contentW + PDF_MARGIN_CM * 2;
-    const pageH = contentH + PDF_MARGIN_CM * 2;
+    const pageW = Math.max(...sizes.map((s) => s.h)) + PDF_MARGIN_CM * 2;
+    const pageH = sizes.reduce((sum, s) => sum + s.w, 0) + PDF_MARGIN_CM * 2;
 
-    const A4W = 21.0,
-      A4H = 29.7;
-    const doc = new jsPDF({
+    const pdf = new JsPDF({
       unit: "cm",
       orientation: "portrait",
-      format: pageW <= A4W && pageH <= A4H ? "a4" : [pageW, pageH],
+      format: [pageW, pageH],
     });
-    doc.setFont("helvetica", "normal");
 
-    const orderIdx = [1, 3, 2, 4];
-    for (let i = 0, y = PDF_MARGIN_CM; i < orderIdx.length; i++) {
-      const img = await capturePreviewLabelToImage(h2c, orderIdx[i], i === 0);
-      const s = sizes[orderIdx[i] - 1];
-      const wRot = s.h,
-        hRot = s.w;
-      doc.addImage(img, "PNG", PDF_MARGIN_CM, y, wRot, hRot, undefined, "FAST");
+    let y = PDF_MARGIN_CM;
+
+    for (const idx of order) {
+      const s = sizes[idx - 1];
+      const imgData = await captureLabelToRotatedPng(idx);
+
+      const wRot = s.h;
+      const hRot = s.w;
+
+      pdf.addImage(imgData, "PNG", PDF_MARGIN_CM, y, wRot, hRot, undefined, "FAST");
       y += hRot;
     }
-    doc.save(`${vals.code} - ${ts()}.pdf`);
+
+    pdf.save(buildPdfFileName(vals.code));
   }
 
-  /* ====== BATCH PIPELINE (via dezelfde preview) ====== */
+
+  /* ====== BATCH (Excel / CSV) ======
+     Hersteld vanuit v0.70, passend gemaakt op v0.78:
+     - Leest XLSX/XLS/CSV (XLSX lib)
+     - Kolommen mappen (auto + handmatig)
+     - Genereert per rij dezelfde PDF als "PDF genereren" (v0.78 PDF pipeline)
+     - Bundelt alles in één ZIP (JSZip)
+  */
+
+  // Batch state
+  let parsedRows = [];
+  let headers = [];
+  let mapping = {};
+  let abortFlag = false;
+
+  // Batch DOM refs (worden in initBatchUI gezet)
+  let dropzone,
+    fileInput,
+    btnPickFile,
+    btnTemplateCsv,
+    btnTemplateXlsx,
+    mappingWrap,
+    mappingGrid,
+    previewWrap,
+    tablePreview,
+    normWrap,
+    chkComma,
+    chkTrim,
+    batchControls,
+    btnRunBatch,
+    btnAbortBatch,
+    progressWrap,
+    progressBar,
+    progressLabel,
+    progressPhase,
+    logWrap,
+    logList;
+
   function setHidden(elm, hidden) {
-    if (elm) elm.classList.toggle("hidden", hidden);
+    if (elm) elm.classList.toggle("hidden", !!hidden);
   }
+
+  function resetLog() {
+    if (logList) logList.innerHTML = "";
+  }
+
   function log(msg, type = "info") {
     if (!logList) return;
     const div = el(
@@ -793,11 +618,9 @@
     );
     logList.appendChild(div);
   }
-  function resetLog() {
-    if (logList) logList.innerHTML = "";
-  }
 
   async function parseFile(file) {
+    if (!window.XLSX) throw new Error("XLSX library niet geladen.");
     const data = await file.arrayBuffer();
     const wb = XLSX.read(data, { type: "array" });
     const sheet = wb.Sheets[wb.SheetNames[0]];
@@ -816,7 +639,6 @@
     ["hoogte", "Height (H)"],
     ["batch", "Batch"],
   ];
-  const ALL_FIELDS = [...REQUIRED_FIELDS];
 
   const SYNONYMS = {
     productcode: [
@@ -867,11 +689,13 @@
 
   function guessMapping(hdrs) {
     const m = {};
-    ALL_FIELDS.forEach(([key]) => (m[key] = ""));
+    REQUIRED_FIELDS.forEach(([key]) => (m[key] = ""));
     const slugs = hdrs.map((h) => slugify(String(h).replace(/\([^)]*\)/g, "")));
+
+    // exact synonym match
     for (let i = 0; i < hdrs.length; i++) {
-      const h = hdrs[i],
-        s = slugs[i];
+      const h = hdrs[i];
+      const s = slugs[i];
       for (const [key, syns] of Object.entries(SYNONYMS)) {
         if (syns.includes(s)) {
           m[key] = h;
@@ -879,19 +703,23 @@
         }
       }
     }
-    for (const [key] of ALL_FIELDS) {
+
+    // substring fallback
+    for (const [key] of REQUIRED_FIELDS) {
       if (!m[key]) {
         const sset = (SYNONYMS[key] || [key]).filter((tok) => tok.length >= 2);
         const idx = slugs.findIndex((s) => sset.some((tok) => s.includes(tok)));
         if (idx >= 0) m[key] = hdrs[idx];
       }
     }
+
     return m;
   }
 
-  function buildMappingUI(hdrs, mapping) {
+  function buildMappingUI(hdrs, mappingObj) {
     if (!mappingGrid) return;
     mappingGrid.innerHTML = "";
+
     const makeRow = (key, labelText) => {
       const row = el("div", { class: "map-row" });
       const lab = el("label", {}, labelText + " *");
@@ -899,16 +727,18 @@
       sel.appendChild(el("option", { value: "" }, "-- kies kolom --"));
       hdrs.forEach((h) => {
         const opt = el("option", { value: h }, h);
-        if (mapping[key] === h) opt.selected = true;
+        if (mappingObj[key] === h) opt.selected = true;
         sel.appendChild(opt);
       });
       row.append(lab, sel);
       mappingGrid.appendChild(row);
     };
+
     REQUIRED_FIELDS.forEach(([k, l]) => makeRow(k, l));
+
     mappingGrid.querySelectorAll("select").forEach((sel) => {
       sel.addEventListener("change", () => {
-        mapping[sel.getAttribute("data-key")] = sel.value;
+        mappingObj[sel.getAttribute("data-key")] = sel.value;
       });
     });
   }
@@ -929,9 +759,7 @@
     const tbody = el("tbody");
     for (let i = 0; i < n; i++) {
       const tr = el("tr");
-      cols.forEach((c) =>
-        tr.appendChild(el("td", {}, String(rows[i][c] ?? "")))
-      );
+      cols.forEach((c) => tr.appendChild(el("td", {}, String(rows[i][c] ?? ""))));
       tbody.appendChild(tr);
     }
     table.append(thead, tbody);
@@ -943,18 +771,18 @@
     if (typeof val !== "string") val = String(val ?? "");
     if (chkTrim?.checked) val = val.trim();
     if (chkComma?.checked) val = val.replace(",", ".");
-    if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(val)) {
-      val = val.replace(/\./g, "");
-    }
+    // 1.234.567,89 -> 1234567.89
+    if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(val)) val = val.replace(/\./g, "");
     const num = parseFloat(val);
     return isFinite(num) ? num : NaN;
   }
 
-  function readRowWithMapping(row, mapping) {
+  function readRowWithMapping(row, mappingObj) {
     const get = (key) => {
-      const hdr = mapping[key] || "";
+      const hdr = mappingObj[key] || "";
       return hdr ? row[hdr] ?? "" : "";
     };
+
     const vals = {
       code: String(get("productcode") ?? "").trim(),
       desc: String(get("omschrijving") ?? "").trim(),
@@ -965,80 +793,133 @@
         return isFinite(n) ? n.toFixed(2) : "";
       })(),
       cbm: String(get("cbm") ?? "").trim(),
-      L: normalizeNumber(String(get("lengte"))),
-      W: normalizeNumber(String(get("breedte"))),
-      H: normalizeNumber(String(get("hoogte"))),
+      len: normalizeNumber(String(get("lengte"))),
+      wid: normalizeNumber(String(get("breedte"))),
+      hei: normalizeNumber(String(get("hoogte"))),
       batch: String(get("batch") ?? "").trim(),
     };
 
     const missing = [];
-    if (!vals.code) missing.push("Productcode");
+    if (!vals.code) missing.push("ERP");
     if (!vals.desc) missing.push("Omschrijving");
     if (!vals.ean) missing.push("EAN");
     if (!vals.qty || isNaN(+vals.qty)) missing.push("QTY");
     if (!vals.gw) missing.push("G.W");
     if (!vals.cbm) missing.push("CBM");
-    if (!isFinite(vals.L) || vals.L <= 0) missing.push("Lengte");
-    if (!isFinite(vals.W) || vals.W <= 0) missing.push("Breedte");
-    if (!isFinite(vals.H) || vals.H <= 0) missing.push("Hoogte");
+    if (!isFinite(vals.len) || vals.len <= 0) missing.push("Length (L)");
+    if (!isFinite(vals.wid) || vals.wid <= 0) missing.push("Width (W)");
+    if (!isFinite(vals.hei) || vals.hei <= 0) missing.push("Height (H)");
     if (!vals.batch) missing.push("Batch");
 
     if (missing.length) {
-      return {
-        ok: false,
-        error: `Ontbrekende/ongeldige velden: ${missing.join(", ")}`,
-      };
+      return { ok: false, error: `Ontbrekende/ongeldige velden: ${missing.join(", ")}` };
     }
-    vals.L = +vals.L;
-    vals.W = +vals.W;
-    vals.H = +vals.H;
+
+    vals.len = +vals.len;
+    vals.wid = +vals.wid;
+    vals.hei = +vals.hei;
     return { ok: true, vals };
   }
 
-  // Render één PDF via de zichtbare PREVIEW (parity met single)
+  // Render één PDF als Blob via dezelfde pipeline als "PDF genereren"
   async function renderOnePdfBlobViaPreview(vals) {
-    const oldOpacity = canvasEl.style.opacity;
-    canvasEl.style.opacity = "0.15"; // demp UI tijdens batch-render (layout blijft zichtbaar)
+    const JsPDF = loadJsPDF();
+    if (!JsPDF) throw new Error("jsPDF niet geladen");
+    if (!window.html2canvas) throw new Error("html2canvas niet geladen");
 
-    const { sizes } = await renderPreviewFor(vals);
+    const result = await renderPreviewFor(vals);
+    if (!result) throw new Error("Kon preview niet renderen voor batch.");
+    const { sizes } = result;
 
-    const jsPDF = await loadJsPDF();
-    const h2c = await loadHtml2Canvas();
+    const order = [1, 3, 2, 4];
 
-    // Na rotatie: breedte = s.h, hoogte = s.w (cm)
-    const contentW = Math.max(...sizes.map((s) => s.h));
-    const contentH = sizes.reduce((sum, s) => sum + s.w, 0);
-    const pageW = contentW + PDF_MARGIN_CM * 2;
-    const pageH = contentH + PDF_MARGIN_CM * 2;
+    const pageW = Math.max(...sizes.map((s) => s.h)) + PDF_MARGIN_CM * 2;
+    const pageH = sizes.reduce((sum, s) => sum + s.w, 0) + PDF_MARGIN_CM * 2;
 
-    const A4W = 21.0,
-      A4H = 29.7;
-    const doc = new jsPDF({
+    const pdf = new JsPDF({
       unit: "cm",
       orientation: "portrait",
-      format: pageW <= A4W && pageH <= A4H ? "a4" : [pageW, pageH],
+      format: [pageW, pageH],
     });
-    doc.setFont("helvetica", "normal");
 
-    const orderIdx = [1, 3, 2, 4];
-    for (let i = 0, y = PDF_MARGIN_CM; i < orderIdx.length; i++) {
-      const img = await capturePreviewLabelToImage(h2c, orderIdx[i], i === 0);
-      const s = sizes[orderIdx[i] - 1];
-      const wRot = s.h,
-        hRot = s.w;
-      doc.addImage(img, "PNG", PDF_MARGIN_CM, y, wRot, hRot, undefined, "FAST");
+    let y = PDF_MARGIN_CM;
+    for (const idx of order) {
+      const s = sizes[idx - 1];
+      const imgData = await captureLabelToRotatedPng(idx);
+      const wRot = s.h;
+      const hRot = s.w;
+      pdf.addImage(imgData, "PNG", PDF_MARGIN_CM, y, wRot, hRot, undefined, "FAST");
       y += hRot;
     }
 
-    canvasEl.style.opacity = oldOpacity || "";
-    return doc.output("blob");
+    return pdf.output("blob");
   }
 
-  /* ====== BATCH UI EVENTS ====== */
-  if (btnPickFile && fileInput)
-    btnPickFile.addEventListener("click", () => fileInput.click());
+  function initBatchUI() {
+    // DOM refs
+    dropzone = $("#dropzone");
+    fileInput = $("#fileInput");
+    btnPickFile = $("#btnPickFile");
+    btnTemplateCsv = $("#btnTemplateCsv");
+    btnTemplateXlsx = $("#btnTemplateXlsx");
+    mappingWrap = $("#mappingWrap");
+    mappingGrid = $("#mappingGrid");
+    previewWrap = $("#previewWrap");
+    tablePreview = $("#tablePreview");
+    normWrap = $("#normWrap");
+    chkComma = $("#optCommaDecimal");
+    chkTrim = $("#optTrimSpaces");
+    batchControls = $("#batchControls");
+    btnRunBatch = $("#btnRunBatch");
+    btnAbortBatch = $("#btnAbortBatch");
+    progressWrap = $("#progressWrap");
+    progressBar = $("#progressBar");
+    progressLabel = $("#progressLabel");
+    progressPhase = $("#progressPhase");
+    logWrap = $("#logWrap");
+    logList = $("#logList");
 
-  if (dropzone) {
+    // Als batch-sectie niet aanwezig is, niets doen.
+    if (!dropzone || !fileInput || !btnRunBatch) return;
+
+    const handleFile = async (file) => {
+      resetLog();
+      setHidden(logWrap, false);
+
+      try {
+        log(`Bestand: ${file.name}`);
+        const rows = await parseFile(file);
+
+        if (!rows.length) {
+          log("Geen rijen gevonden.", "error");
+          return;
+        }
+
+        headers = Object.keys(rows[0]);
+        mapping = guessMapping(headers);
+
+        buildMappingUI(headers, mapping);
+        setHidden(mappingWrap, false);
+
+        showTablePreview(rows);
+        setHidden(previewWrap, false);
+
+        setHidden(normWrap, false);
+        setHidden(batchControls, false);
+        setHidden(progressWrap, true);
+
+        parsedRows = rows;
+
+        log(`Gelezen rijen: ${rows.length}`, "ok");
+      } catch (err) {
+        log(`Fout bij lezen bestand: ${err.message || err}`, "error");
+      }
+    };
+
+    // pick file button
+    btnPickFile?.addEventListener("click", () => fileInput.click());
+
+    // drag & drop
     ["dragover", "dragenter"].forEach((ev) => {
       dropzone.addEventListener(ev, (e) => {
         e.preventDefault();
@@ -1055,92 +936,32 @@
       const f = e.dataTransfer.files?.[0];
       if (f) await handleFile(f);
     });
-  }
 
-  if (fileInput) {
+    // input change
     fileInput.addEventListener("change", async () => {
       const f = fileInput.files?.[0];
       if (f) await handleFile(f);
     });
-  }
 
-  async function handleFile(file) {
-    resetLog();
-    if (logWrap) logWrap.classList.remove("hidden");
-    try {
-      log(`Bestand: ${file.name}`);
-      const rows = await parseFile(file);
-      if (!rows.length) {
-        log("Geen rijen gevonden.", "error");
-        return;
-      }
-
-      headers = Object.keys(rows[0]);
-      mapping = guessMapping(headers);
-
-      buildMappingUI(headers, mapping);
-      setHidden(mappingWrap, false);
-
-      showTablePreview(rows);
-      setHidden(previewWrap, false);
-
-      setHidden(normWrap, false);
-      setHidden(batchControls, false);
-      setHidden(progressWrap, true);
-
-      parsedRows = rows;
-      log(`Gelezen rijen: ${rows.length}`, "ok");
-    } catch (err) {
-      log(`Fout bij lezen bestand: ${err.message || err}`, "error");
-    }
-  }
-
-  if (btnTemplateCsv) {
-    btnTemplateCsv.addEventListener("click", () => {
-      // Alleen headers — géén voorbeeldregels
-      const hdrs = [
-        "ERP",
-        "Omschrijving",
-        "EAN",
-        "QTY",
-        "G.W",
-        "CBM",
-        "Length (L)",
-        "Width (W)",
-        "Height (H)",
-        "Batch",
-      ];
-      const blob = new Blob([hdrs.join(",") + "\n"], {
-        type: "text/csv;charset=utf-8;",
-      });
+    // templates
+    btnTemplateCsv?.addEventListener("click", () => {
+      const hdrs = ["ERP","Omschrijving","EAN","QTY","G.W","CBM","Length (L)","Width (W)","Height (H)","Batch"];
+      const blob = new Blob([hdrs.join(",") + "\n"], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = "etiketten-template.csv";
       document.body.appendChild(a);
       a.click();
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        a.remove();
-      }, 0);
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
     });
-  }
 
-  if (btnTemplateXlsx) {
-    btnTemplateXlsx.addEventListener("click", () => {
-      // Alleen headers — géén voorbeeldregels
-      const hdrs = [
-        "ERP",
-        "Omschrijving",
-        "EAN",
-        "QTY",
-        "G.W",
-        "CBM",
-        "Length (L)",
-        "Width (W)",
-        "Height (H)",
-        "Batch",
-      ];
+    btnTemplateXlsx?.addEventListener("click", () => {
+      if (!window.XLSX) {
+        alert("XLSX library niet geladen.");
+        return;
+      }
+      const hdrs = ["ERP","Omschrijving","EAN","QTY","G.W","CBM","Length (L)","Width (W)","Height (H)","Batch"];
       const ws = XLSX.utils.aoa_to_sheet([hdrs]);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Etiketten");
@@ -1154,23 +975,21 @@
       a.download = "etiketten-template.xlsx";
       document.body.appendChild(a);
       a.click();
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        a.remove();
-      }, 0);
+      setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
     });
-  }
 
-  if (btnRunBatch) {
+    // run batch
     btnRunBatch.addEventListener("click", async () => {
       if (!parsedRows.length) {
         log("Geen dataset geladen.", "error");
         return;
       }
+      if (!window.JSZip) {
+        log("JSZip library niet geladen.", "error");
+        return;
+      }
 
-      const missingMap = REQUIRED_FIELDS.filter(([k]) => !mapping[k]).map(
-        ([, label]) => label
-      );
+      const missingMap = REQUIRED_FIELDS.filter(([k]) => !mapping[k]).map(([, label]) => label);
       if (missingMap.length) {
         log(`Koppel alle verplichte velden: ${missingMap.join(", ")}`, "error");
         return;
@@ -1178,15 +997,16 @@
 
       abortFlag = false;
       if (btnAbortBatch) btnAbortBatch.disabled = false;
+
       setHidden(progressWrap, false);
-      progressBar.style.width = "0%";
-      progressLabel.textContent = `${0} / ${parsedRows.length}`;
-      progressPhase.textContent = "Voorbereiden…";
+      if (progressBar) progressBar.style.width = "0%";
+      if (progressLabel) progressLabel.textContent = `${0} / ${parsedRows.length}`;
+      if (progressPhase) progressPhase.textContent = "Voorbereiden…";
 
       const zip = new JSZip();
-      const batchTime = ts();
-      let okCount = 0,
-        errCount = 0;
+      const batchTime = buildTimestamp();
+      let okCount = 0;
+      let errCount = 0;
 
       for (let i = 0; i < parsedRows.length; i++) {
         if (abortFlag) {
@@ -1200,12 +1020,11 @@
           log(`Rij ${i + 1}: ${r.error}`, "error");
         } else {
           try {
-            progressPhase.textContent = `Rij ${i + 1}: PDF renderen…`;
-            const blob = await renderOnePdfBlobViaPreview(r.vals); // <<< parity pad
-            const safeCode = r.vals.code.replace(/[^\w.-]+/g, "_");
-            const name = `${safeCode} - ${batchTime} - R${String(
-              i + 1
-            ).padStart(3, "0")}.pdf`;
+            if (progressPhase) progressPhase.textContent = `Rij ${i + 1}: PDF renderen…`;
+            const blob = await renderOnePdfBlobViaPreview(r.vals);
+
+            const safeCode = String(r.vals.code || "export").replace(/[^\w.-]+/g, "_");
+            const name = `${safeCode} - ${batchTime} - R${String(i + 1).padStart(3, "0")}.pdf`;
             zip.file(name, blob);
             okCount++;
           } catch (err) {
@@ -1213,15 +1032,14 @@
             log(`Rij ${i + 1}: renderfout: ${err.message || err}`, "error");
           }
         }
-        progressBar.style.width = `${Math.round(
-          ((i + 1) / parsedRows.length) * 100
-        )}%`;
-        progressLabel.textContent = `${i + 1} / ${parsedRows.length}`;
-        await new Promise((r) => setTimeout(r, 0)); // UI ademruimte
+
+        if (progressBar) progressBar.style.width = `${Math.round(((i + 1) / parsedRows.length) * 100)}%`;
+        if (progressLabel) progressLabel.textContent = `${i + 1} / ${parsedRows.length}`;
+        await new Promise((r) => setTimeout(r, 0));
       }
 
       if (btnAbortBatch) btnAbortBatch.disabled = true;
-      progressPhase.textContent = "Bundelen als ZIP…";
+      if (progressPhase) progressPhase.textContent = "Bundelen als ZIP…";
 
       if (okCount > 0) {
         const zipBlob = await zip.generateAsync({ type: "blob" });
@@ -1231,56 +1049,48 @@
         a.download = `etiketten-batch - ${batchTime}.zip`;
         document.body.appendChild(a);
         a.click();
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-          a.remove();
-        }, 0);
+        setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 0);
         log(`Gereed: ${okCount} PDF’s succesvol, ${errCount} fouten.`, "ok");
       } else {
         log(`Geen PDF’s gegenereerd. (${errCount} fouten)`, "error");
       }
-      progressPhase.textContent = "Klaar.";
-    });
-  }
 
-  if (btnAbortBatch) {
-    btnAbortBatch.addEventListener("click", () => {
+      if (progressPhase) progressPhase.textContent = "Klaar.";
+    });
+
+    // abort
+    btnAbortBatch?.addEventListener("click", () => {
       abortFlag = true;
       btnAbortBatch.disabled = true;
-      progressPhase.textContent = "Afbreken…";
+      if (progressPhase) progressPhase.textContent = "Afbreken…";
     });
   }
 
-  /* ====== EVENTS & INIT ====== */
-  const safeRender = () => renderSingle().catch((e) => alert(e.message || e));
-  if (btnGen) btnGen.addEventListener("click", safeRender);
-  if (btnPDF)
-    btnPDF.addEventListener("click", async () => {
-      try {
-        await generatePDFSingle();
-      } catch (e) {
-        alert(e.message || e);
-      }
-    });
-  window.addEventListener("resize", () => {
-    renderSingle().catch(() => {});
-  });
+  /* ====== init ====== */
+  function init() {
+    initBatchUI();
 
-  // (optioneel) demo-waarden voor snelle start
-  try {
-    if (document.getElementById("prodCode")) {
-      document.getElementById("prodCode").value = "LG1000843";
-      document.getElementById("prodDesc").value =
-        "Combination Lock - Orange - 1 Pack (YF20610B)";
-      document.getElementById("ean").value = "8719632951889";
-      document.getElementById("qty").value = "12";
-      document.getElementById("gw").value = "18.00";
-      document.getElementById("cbm").value = "0.02";
-      document.getElementById("boxLength").value = "39";
-      document.getElementById("boxWidth").value = "19.5";
-      document.getElementById("boxHeight").value = "22";
-      document.getElementById("batch").value = "IOR2500307";
-      safeRender();
-    }
-  } catch (_) {}
+    const btnGen = $("#btnGen");
+    const btnPDF = $("#btnPDF");
+
+    const safeRender = () => renderSingle().catch((e) => alert(e.message || e));
+    if (btnGen) btnGen.addEventListener("click", safeRender);
+
+    if (btnPDF)
+      btnPDF.addEventListener("click", async () => {
+        try {
+          await generatePDFSingle();
+        } catch (e) {
+          alert(e.message || e);
+        }
+      });
+
+    window.addEventListener("resize", () => {
+      renderSingle().catch(() => {});
+    });
+
+    renderSingle().catch(() => {});
+  }
+
+  document.addEventListener("DOMContentLoaded", init);
 })();
