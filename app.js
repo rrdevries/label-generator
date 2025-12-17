@@ -288,6 +288,10 @@ function shrinkDescToTwoLines(innerEl, bodyFsPx) {
       best = searchFontSize(innerEl, MIN_FS_PX, startHi, guardX, guardY);
     }
 
+    // Zorg dat omschrijving altijd binnen 2 regels past op dezelfde breedte als specs-grid
+      syncDescWidthToSpecs(innerEl);
+      shrinkDescToTwoLines(innerEl, best);
+
     // Fase 3 (altijd alles tonen): als het nog steeds niet past op MIN_FS_PX,
     // schaal dan de volledige content met transform.
     if (!fitsWithGuard(innerEl, guardX, guardY)) {
