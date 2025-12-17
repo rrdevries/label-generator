@@ -113,14 +113,30 @@
 
   /* ====== Auto-fit logic (font sizing) ====== */
 
-  /** past alles binnen 'innerEl' met een veiligheidsmarge? */
+  // /** past alles binnen 'innerEl' met een veiligheidsmarge? */
+  // function fitsWithGuard(innerEl, guardX, guardY) {
+  //   const content = innerEl.querySelector(".label-content") || innerEl;
+  //   return (
+  //     content.scrollWidth <= innerEl.clientWidth - guardX &&
+  //     content.scrollHeight <= innerEl.clientHeight - guardY
+  //   );
+  // }
+
   function fitsWithGuard(innerEl, guardX, guardY) {
-    const content = innerEl.querySelector(".label-content") || innerEl;
-    return (
-      content.scrollWidth <= innerEl.clientWidth - guardX &&
-      content.scrollHeight <= innerEl.clientHeight - guardY
-    );
-  }
+  const content = innerEl.querySelector(".label-content") || innerEl;
+
+  // Belangrijk: detecteer overflow in grid-cellen (EAN/waarden)
+  const valOverflow = Array.from(
+    content.querySelectorAll(".specs-grid .val")
+  ).some((v) => v.scrollWidth > v.clientWidth + 0.5);
+
+  if (valOverflow) return false;
+
+  return (
+    content.scrollWidth <= innerEl.clientWidth - guardX &&
+    content.scrollHeight <= innerEl.clientHeight - guardY
+  );
+}
 
   /** zet actuele body-font (via --fs) + code-box (1.6× body) */
   function applyFontSizes(innerEl, fsPx) {

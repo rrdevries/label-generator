@@ -266,13 +266,22 @@ body {
 }
 
 /* Body specs */
-.specs-grid {
+/* .specs-grid {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 0.35em 0.9em;
   align-items: baseline;
   text-align: left;
+} */
+
+.specs-grid{
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.35em 0.9em;
+  align-items: baseline;
+  text-align: left;
 }
+
 
 .specs-grid .key {
   font-weight: 900;
