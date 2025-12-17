@@ -298,7 +298,7 @@
   }
 
 
-  function createLabelEl(size, values, previewScale) {
+  function createLabelEl(size, values, previewScale, largestTwo)  {
     const widthPx = Math.round(size.w * PX_PER_CM * previewScale);
     const heightPx = Math.round(size.h * PX_PER_CM * previewScale);
 
@@ -313,10 +313,6 @@
 
     const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
     label.style.padding = padPx + "px";
-
-    sizes.forEach((size) => {
-      fragments.append(createLabelEl(size, values, scale, largestTwo));
-    });
 
     const head = el(
       "div",
@@ -390,7 +386,7 @@
     const fragments = document.createDocumentFragment();
 
     sizes.forEach((size) => {
-      fragments.append(createLabelEl(size, values, scale));
+      fragments.append(createLabelEl(size, values, scale, largestTwo));
     });
     labelsGrid.append(fragments);
 
