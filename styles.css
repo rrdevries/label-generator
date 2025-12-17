@@ -138,12 +138,6 @@ body {
   color: #fff;
 }
 
-.btn.debug {
-  background: #111827; /* bijna-zwart */
-  color: #fff;
-}
-
-
 /* ===== Dims pills ===== */
 .pills {
   display: grid;

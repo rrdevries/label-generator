@@ -20,10 +20,6 @@
   /* ====== Helpers ====== */
   const $ = (sel) => document.querySelector(sel);
 
-  /* ====== Tester ====== */
-  const DEBUG = true; // zet op false voor productie
-
-
   function el(tag, attrs = {}, ...children) {
     const node = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -487,138 +483,10 @@
     pdf.save(buildPdfFileName(vals.code));
   }
 
-  function visualFitReport(labelEl) {
-  const inner = labelEl.querySelector(".label-inner");
-  const content = inner?.querySelector(".label-content") || inner;
-  if (!inner || !content) return { ok: false, reason: "missing inner/content" };
-
-  const ir = inner.getBoundingClientRect();
-  const cr = content.getBoundingClientRect();
-
-  const eps = 1.0; // subpixel toleranties
-
-  const okContent =
-    cr.left >= ir.left + eps &&
-    cr.right <= ir.right - eps &&
-    cr.top >= ir.top + eps &&
-    cr.bottom <= ir.bottom - eps;
-
-  // Check kritieke nodes op zichtbare “uitstulpingen”
-  const offenders = [];
-  const nodes = content.querySelectorAll(".code-box, .label-head, .specs-grid .key, .specs-grid .val");
-
-  nodes.forEach((node) => {
-    const r = node.getBoundingClientRect();
-    const ok =
-      r.left >= ir.left + eps &&
-      r.right <= ir.right - eps &&
-      r.top >= ir.top + eps &&
-      r.bottom <= ir.bottom - eps;
-
-    if (!ok) {
-      const t = (node.textContent || "").trim().replace(/\s+/g, " ").slice(0, 60);
-      offenders.push(t || node.className || node.tagName);
-    }
-  });
-
-  const ok = okContent && offenders.length === 0;
-
-  return {
-    ok,
-    fs: inner.style.getPropertyValue("--fs") || "(unset)",
-    k: (content.style.getPropertyValue("--k") || "1").trim(),
-    bad: offenders.slice(0, 4).join(" | "),
-  };
-}
-
-async function runOverflowTestSuite() {
-  const tests = [
-    { L: 5, W: 5, H: 5 },
-    { L: 100, W: 100, H: 100 },
-    { L: 10, W: 10, H: 50 },
-    { L: 50, W: 10, H: 10 },
-    { L: 10, W: 50, H: 10 },
-    { L: 5, W: 100, H: 5 },
-    { L: 100, W: 5, H: 5 },
-    { L: 5, W: 5, H: 100 },
-    { L: 12, W: 12, H: 90 },
-    { L: 90, W: 12, H: 12 },
-    { L: 12, W: 90, H: 12 },
-    { L: 33, W: 77, H: 12 },
-    { L: 77, W: 33, H: 12 },
-    { L: 15, W: 30, H: 90 },
-    { L: 38, W: 55.5, H: 13 },
-    { L: 60, W: 40, H: 25 },
-    { L: 25, W: 60, H: 40 },
-    { L: 8, W: 80, H: 20 },
-    { L: 80, W: 8, H: 20 },
-  ];
-
-  const results = [];
-
-  for (const t of tests) {
-    const values = { ...getFormValues(), len: t.L, wid: t.W, hei: t.H };
-
-    const r = await renderPreviewFor(values);
-    if (!r) {
-      results.push({ ...t, ok: false, failCount: 4, details: "render failed" });
-      continue;
-    }
-
-    // Extra tick zodat layout/transform echt “settled” is
-    await new Promise((rr) => requestAnimationFrame(rr));
-
-    const labels = Array.from(document.querySelectorAll(".label"));
-    const perLabel = labels.map((lab) => {
-      const rep = visualFitReport(lab);
-      return { idx: lab.dataset.idx || "?", ...rep };
-    });
-
-    const fails = perLabel.filter((x) => !x.ok);
-
-    results.push({
-      ...t,
-      ok: fails.length === 0,
-      failCount: fails.length,
-      details: fails.map((f) => `#${f.idx} fs=${f.fs} k=${f.k} bad=${f.bad}`).join(" || "),
-    });
-  }
-
-  console.table(results);
-
-  const failed = results.filter((r) => !r.ok);
-  if (failed.length) {
-    console.warn("FAILED CASES:", failed);
-    alert(`Layout test: ${failed.length} van ${results.length} cases FAIL. Zie console.table()`);
-  } else {
-    alert(`Layout test: alle ${results.length} cases OK`);
-  }
-}
-
-
   /* ====== init ====== */
   function init() {
     const btnGen = $("#btnGen");
     const btnPDF = $("#btnPDF");
-
-      if (DEBUG) {
-    const actions = document.querySelector(".actions");
-    if (actions) {
-      const btnTest = document.createElement("button");
-      btnTest.type = "button";
-      btnTest.className = "btn debug";
-      btnTest.textContent = "Layout test (debug)";
-      btnTest.addEventListener("click", async () => {
-        try {
-          await runOverflowTestSuite();
-        } catch (e) {
-          alert(e.message || e);
-        }
-      });
-      actions.appendChild(btnTest);
-    }
-  }
-
 
     const safeRender = () => renderSingle().catch((e) => alert(e.message || e));
     if (btnGen) btnGen.addEventListener("click", safeRender);
