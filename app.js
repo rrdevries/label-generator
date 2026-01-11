@@ -220,9 +220,17 @@
   }
 
   function syncDescWidthToSpecs(innerEl) {
-    const grid = innerEl.querySelector(".specs-grid");
     const desc = innerEl.querySelector(".label-desc");
-    if (!grid || !desc) return;
+    if (!desc) return;
+
+    // In columns-layout the description should use the natural left-column width.
+    if (innerEl.classList.contains("layout-columns")) {
+      desc.style.setProperty("--desc-w", "auto");
+      return;
+    }
+
+    const grid = innerEl.querySelector(".specs-grid");
+    if (!grid) return;
 
     // offsetWidth is layout-breedte (niet beïnvloed door transform scale)
     const w = grid.offsetWidth || grid.getBoundingClientRect().width;
@@ -295,6 +303,23 @@
     ];
   }
 
+  function layoutToUiName(layout) {
+    const l = String(layout || "").toUpperCase();
+    if (l === "STACKED") return "Stacked";
+    if (l === "COLUMNS") return "Columns";
+    return "Standard";
+  }
+
+  function determineBucket(W_cm, H_cm) {
+    // UI helper: return the effective bucket key (incl. fallbacks) and layout.
+    const anchor = BUCKET_CONFIG ? getBucketAnchorFor(W_cm, H_cm) : null;
+    const bucketKey = String(
+      anchor?.key || selectBucketKeyFor(W_cm, H_cm) || ""
+    );
+    const layout = layoutForBucketKey(bucketKey);
+    return { bucketKey, layout };
+  }
+
   function renderDims(sizes, opts = {}) {
     const { includeBucket = false } = opts;
     const dims = $("#dims");
@@ -306,7 +331,9 @@
       let bucketUi = "—";
       if (includeBucket) {
         const picked = determineBucket(s.w, s.h);
-        bucketUi = bucketKeyToUiName(picked.bucketKey);
+        const name = bucketKeyToUiName(picked.bucketKey);
+        bucketUi =
+          name === "—" ? "—" : `${name} (${layoutToUiName(picked.layout)})`;
       }
 
       dims.append(
@@ -356,6 +383,17 @@
     if (family === "LANDSCAPE")
       return variant === "SHORT" ? "COLUMNS" : "STANDARD";
     return "STANDARD";
+  }
+
+  function applyBucketLayout(innerEl, bucketKey) {
+    const layout = layoutForBucketKey(bucketKey);
+
+    innerEl.classList.remove("layout-stacked", "layout-columns");
+    if (layout === "STACKED") innerEl.classList.add("layout-stacked");
+    if (layout === "COLUMNS") innerEl.classList.add("layout-columns");
+
+    innerEl.dataset.layout = layout;
+    return layout;
   }
 
   function readCurrentVariants(labelsGrid) {
@@ -477,10 +515,11 @@
   }
 
   /* ====== Build label DOM ====== */
-  function buildLeftBlock(values, size, largestTwo) {
-    const block = el("div", { class: "specs-grid" });
 
-    block.append(
+  function buildSpecsGrid(values) {
+    const grid = el("div", { class: "specs-grid" });
+
+    grid.append(
       el("div", { class: "key" }, "EAN:"),
       el("div", { class: "val" }, values.ean || ""),
       el("div", { class: "key" }, "QTY:"),
@@ -491,24 +530,15 @@
       el("div", { class: "val" }, values.cbm || "")
     );
 
-    // Als largestTwo null is => fallback naar default (oude gedrag: fb => C/N, side => Made in China)
+    return grid;
+  }
+
+  function footerTextForLabel(size, largestTwo) {
+    // If largestTwo is null => fallback to old behavior (fb => C/N, side => Made in China)
     const useMadeInChina = largestTwo
       ? largestTwo.has(size.idx)
       : size.type !== "fb";
-
-    if (useMadeInChina) {
-      block.append(
-        el("div", { class: "key footer-key" }, ""),
-        el("div", { class: "val footer-val" }, "Made in China")
-      );
-    } else {
-      block.append(
-        el("div", { class: "key footer-key" }, "C/N:"),
-        el("div", { class: "val footer-val" }, "___________________")
-      );
-    }
-
-    return block;
+    return useMadeInChina ? "MADE IN CHINA" : "C/N: ___________________";
   }
 
   function createLabelEl(size, values, previewScale, largestTwo) {
@@ -529,20 +559,44 @@
     const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
     label.style.padding = padPx + "px";
 
-    const head = el(
+    const erpBox = el(
       "div",
-      { class: "label-head" },
-      el("div", { class: "code-box line" }, values.code),
-      el("div", { class: "line label-desc" }, values.desc)
+      { class: "erp-box" },
+      el("div", { class: "code-box line" }, values.code)
     );
 
-    const content = el("div", { class: "label-content" });
-    content.append(
-      head,
-      el("div", { class: "block-spacer" }),
-      buildLeftBlock(values, size, largestTwo)
+    const descEl = el(
+      "div",
+      { class: "line label-desc product-desc" },
+      values.desc
     );
+
+    const specs = buildSpecsGrid(values);
+
+    const footerEl = el(
+      "div",
+      { class: "footer-text" },
+      footerTextForLabel(size, largestTwo)
+    );
+
+    const content = el(
+      "div",
+      { class: "label-content" },
+      erpBox,
+      descEl,
+      specs,
+      footerEl
+    );
+
+    // Apply an initial bucket/layout guess early (helps preview layout before fitting).
+    const guessedKey = selectBucketKeyFor(size.w, size.h);
+    if (guessedKey) {
+      inner.dataset.bucketKey = guessedKey;
+      applyBucketLayout(inner, guessedKey);
+    }
+
     inner.append(content);
+
     label.append(inner);
     wrap.append(label, el("div", { class: "label-num" }, `Etiket ${size.idx}`));
 

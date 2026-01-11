@@ -226,7 +226,7 @@ body {
   will-change: transform;
 }
 
-.label-head .line {
+.label-content .line {
   text-align: center;
   line-height: 1.15;
 }
@@ -241,6 +241,18 @@ body {
   min-height: calc(2 * 1.15em); /* altijd ruimte voor 2 regels */
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+/* Structural wrappers (needed for bucket layouts) */
+.erp-box {
+  display: flex;
+  justify-content: center;
+}
+
+.footer-text {
+  font-size: var(--fs-footer);
+  line-height: 1.1;
+  text-transform: uppercase;
 }
 
 /* Bucket-scaled ERP box */
@@ -336,6 +348,7 @@ body {
 .label-inner.layout-columns .erp-box {
   grid-area: erp;
   justify-self: start;
+  justify-content: flex-start;
   margin: 0;
 }
 
@@ -357,15 +370,6 @@ body {
   justify-self: start;
   text-align: left;
   margin: 0;
-}
-
-.specs-grid .key.footer,
-.specs-grid .val.footer {
-  font-size: var(--fs-footer);
-}
-
-.specs-grid .val.footer {
-  text-transform: uppercase;
 }
 
 .nowrap-mode .specs-grid .val {
