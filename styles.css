@@ -278,6 +278,87 @@ body {
   font-size: var(--fs-text);
 }
 
+/* ===== Bucket-dependent layouts ===== */
+/* Standard is the default (centered, 2-column specs). */
+
+/* Stacked: keys/values stacked vertically, left-aligned. */
+.label-inner.layout-stacked .label-content {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.label-inner.layout-stacked .erp-box {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.label-inner.layout-stacked .product-desc {
+  text-align: left;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+.label-inner.layout-stacked .specs-grid {
+  grid-template-columns: 1fr;
+  justify-items: start;
+  column-gap: 0;
+  row-gap: 0.25em;
+}
+
+.label-inner.layout-stacked .specs-grid .key {
+  margin-top: 0.55em;
+}
+
+.label-inner.layout-stacked .specs-grid .val {
+  margin-bottom: 0.55em;
+}
+
+.label-inner.layout-stacked .footer-text {
+  text-align: left;
+  margin-left: 0;
+  margin-right: auto;
+}
+
+/* Columns: product description left, specs column on the right. */
+.label-inner.layout-columns .label-content {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "erp specs"
+    "desc specs"
+    "footer specs";
+  align-items: start;
+  gap: 0.5em 0.8em;
+  text-align: left;
+}
+
+.label-inner.layout-columns .erp-box {
+  grid-area: erp;
+  justify-self: start;
+  margin: 0;
+}
+
+.label-inner.layout-columns .product-desc {
+  grid-area: desc;
+  justify-self: start;
+  text-align: left;
+  margin: 0;
+}
+
+.label-inner.layout-columns .specs-grid {
+  grid-area: specs;
+  width: 100%;
+  justify-items: start;
+}
+
+.label-inner.layout-columns .footer-text {
+  grid-area: footer;
+  justify-self: start;
+  text-align: left;
+  margin: 0;
+}
+
 .specs-grid .key.footer,
 .specs-grid .val.footer {
   font-size: var(--fs-footer);
@@ -326,10 +407,30 @@ body {
   font-size: 18px;
 }
 
+.dims-grid-head,
 .dims-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-columns: 1fr 0.6fr 0.6fr 1fr;
+  gap: 6px 10px;
+}
+
+.dims-grid-head {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.dim {
+  background: #f6f7f9;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.dim:nth-child(4n + 2),
+.dim:nth-child(4n + 3) {
+  text-align: right;
 }
 
 /* Buttons */

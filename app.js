@@ -295,17 +295,25 @@
     ];
   }
 
-  function renderDims(sizes) {
+  function renderDims(sizes, opts = {}) {
+    const { includeBucket = false } = opts;
     const dims = $("#dims");
     if (!dims) return;
+
     dims.innerHTML = "";
+
     sizes.forEach((s) => {
+      let bucketUi = "—";
+      if (includeBucket) {
+        const picked = determineBucket(s.w, s.h);
+        bucketUi = bucketKeyToUiName(picked.bucketKey);
+      }
+
       dims.append(
-        el(
-          "div",
-          { class: "pill" },
-          `${s.name}: ${format2(s.w)} × ${format2(s.h)} cm`
-        )
+        el("div", { class: "dim" }, s.name),
+        el("div", { class: "dim" }, format2(s.w)),
+        el("div", { class: "dim" }, format2(s.h)),
+        el("div", { class: "dim" }, bucketUi)
       );
     });
   }
@@ -331,6 +339,23 @@
 
     const rest = parts.slice(idx).map(cap);
     return [family, size, ...rest].filter(Boolean).join("-");
+  }
+
+  function layoutForBucketKey(bucketKey) {
+    const parts = String(bucketKey || "").split("_");
+    const family = (parts[0] || "").toUpperCase();
+    const variant = parts.slice(2).join("_").toUpperCase();
+
+    // Layout mapping (per bucket family + variant)
+    // Square: always Standard
+    // Portrait: Narrow + Standard => Stacked, Wide => Standard
+    // Landscape: Short => Columns, Standard + High => Standard
+    if (family === "SQUARE") return "STANDARD";
+    if (family === "PORTRAIT")
+      return variant === "WIDE" ? "STANDARD" : "STACKED";
+    if (family === "LANDSCAPE")
+      return variant === "SHORT" ? "COLUMNS" : "STANDARD";
+    return "STANDARD";
   }
 
   function readCurrentVariants(labelsGrid) {
@@ -407,6 +432,11 @@
 
     // 1) apply bucket typography
     const info = applyBucketTypography(innerEl);
+
+    // 1b) apply bucket layout (standard / stacked / columns)
+    if (innerEl.dataset.bucketKey) {
+      applyBucketLayout(innerEl, innerEl.dataset.bucketKey);
+    }
 
     // 2) wrap mode: start no-wrap; enable soft-wrap when text becomes small
     innerEl.classList.add("nowrap-mode");
@@ -561,7 +591,7 @@
 
     const largestTwo = pickTwoLargestIdxOrNull(sizes);
 
-    renderDims(sizes);
+    renderDims(sizes, { includeBucket: !!opts.showVariant });
 
     const scale = computePreviewScale(sizes);
     currentPreviewScale = scale;
@@ -574,11 +604,6 @@
     labelsGrid.append(fragments);
 
     await mountThenFit(labelsGrid);
-
-    // Alleen voor UI-debug bij single-generate.
-    if (opts.showVariant) {
-      renderVariants(readCurrentVariants(labelsGrid));
-    }
 
     return { sizes, scale };
   }
