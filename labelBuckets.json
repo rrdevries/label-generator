@@ -1,0 +1,454 @@
+{
+  "bucketRules": {
+    "units": "cm for dimensions, pt for fonts",
+    "inputs": { "W_cm": "breedte labelvlak", "H_cm": "hoogte labelvlak" },
+    "computed": {
+      "r": "W_cm / H_cm",
+      "q": "H_cm / W_cm",
+      "D_long_cm": "max(W_cm, H_cm)"
+    },
+    "familySelection": {
+      "squareTolerance": { "eps": 0.1, "squareIf": "0.90 <= r <= 1.10" },
+      "portraitIf": "r < 0.90",
+      "landscapeIf": "r > 1.10"
+    },
+    "variantSelection": {
+      "portrait": {
+        "basis": "r=W/H",
+        "narrowIf": "r < 0.40",
+        "standardIf": "0.40 <= r < 0.65",
+        "wideIf": "0.65 <= r < 0.90"
+      },
+      "landscape": {
+        "basis": "q=H/W",
+        "shortIf": "q < 0.40",
+        "standardIf": "0.40 <= q < 0.65",
+        "highIf": "0.65 <= q < 0.90"
+      },
+      "square": { "variant": "none" }
+    },
+    "sizeClassSelection": {
+      "basis": "D_long_cm=max(W_cm,H_cm)",
+      "micro": "5.0 <= D_long_cm < 10.0",
+      "small": "10.0 <= D_long_cm < 25.0",
+      "medium": "25.0 <= D_long_cm < 40.0",
+      "large": "40.0 <= D_long_cm < 70.0",
+      "extraLarge": "70.0 <= D_long_cm <= 100.0",
+      "refMidpointsCm": {
+        "MICRO": 7.5,
+        "SMALL": 17.5,
+        "MEDIUM": 32.5,
+        "LARGE": 55.0,
+        "EXTRA_LARGE": 85.0
+      }
+    },
+    "typographyRules": {
+      "boldFlags": {
+        "erp_text": true,
+        "product_description": false,
+        "content_label": true,
+        "content_text": false,
+        "footer": false
+      }
+    }
+  },
+
+  "anchors": [
+    {
+      "key": "SQUARE_MICRO",
+      "D_ref_cm": 7.5,
+      "anchors": {
+        "erp_text": { "pt": 20.2, "bold": true },
+        "product_description": { "pt": 14.1, "bold": false },
+        "content_label": { "pt": 11.1, "bold": true },
+        "content_text": { "pt": 11.1, "bold": false },
+        "footer": { "pt": 7.9, "bold": false }
+      }
+    },
+    {
+      "key": "SQUARE_SMALL",
+      "D_ref_cm": 17.5,
+      "anchors": {
+        "erp_text": { "pt": 47.1, "bold": true },
+        "product_description": { "pt": 32.9, "bold": false },
+        "content_label": { "pt": 25.8, "bold": true },
+        "content_text": { "pt": 25.8, "bold": false },
+        "footer": { "pt": 18.5, "bold": false }
+      }
+    },
+    {
+      "key": "SQUARE_MEDIUM",
+      "D_ref_cm": 32.5,
+      "anchors": {
+        "erp_text": { "pt": 87.5, "bold": true },
+        "product_description": { "pt": 61.1, "bold": false },
+        "content_label": { "pt": 47.9, "bold": true },
+        "content_text": { "pt": 47.9, "bold": false },
+        "footer": { "pt": 34.3, "bold": false }
+      }
+    },
+    {
+      "key": "SQUARE_LARGE",
+      "D_ref_cm": 55.0,
+      "anchors": {
+        "erp_text": { "pt": 148.1, "bold": true },
+        "product_description": { "pt": 103.4, "bold": false },
+        "content_label": { "pt": 81.1, "bold": true },
+        "content_text": { "pt": 81.1, "bold": false },
+        "footer": { "pt": 58.0, "bold": false }
+      }
+    },
+    {
+      "key": "SQUARE_EXTRA_LARGE",
+      "D_ref_cm": 85.0,
+      "anchors": {
+        "erp_text": { "pt": 228.8, "bold": true },
+        "product_description": { "pt": 159.8, "bold": false },
+        "content_label": { "pt": 125.3, "bold": true },
+        "content_text": { "pt": 125.3, "bold": false },
+        "footer": { "pt": 89.6, "bold": false }
+      }
+    },
+
+    {
+      "key": "PORTRAIT_MICRO_NARROW",
+      "enabled": false,
+      "D_ref_cm": 7.5,
+      "anchors": {
+        "erp_text": { "pt": 14.3, "bold": true },
+        "product_description": { "pt": 10.0, "bold": false },
+        "content_label": { "pt": 7.8, "bold": true },
+        "content_text": { "pt": 7.8, "bold": false },
+        "footer": { "pt": 5.6, "bold": false }
+      }
+    },
+    {
+      "key": "PORTRAIT_MICRO_STANDARD",
+      "D_ref_cm": 7.5,
+      "anchors": {
+        "erp_text": { "pt": 20.2, "bold": true },
+        "product_description": { "pt": 14.1, "bold": false },
+        "content_label": { "pt": 11.1, "bold": true },
+        "content_text": { "pt": 11.1, "bold": false },
+        "footer": { "pt": 7.9, "bold": false }
+      }
+    },
+    {
+      "key": "PORTRAIT_MICRO_WIDE",
+      "D_ref_cm": 7.5,
+      "anchors": {
+        "erp_text": { "pt": 23.0, "bold": true },
+        "product_description": { "pt": 16.0, "bold": false },
+        "content_label": { "pt": 12.7, "bold": true },
+        "content_text": { "pt": 12.7, "bold": false },
+        "footer": { "pt": 9.1, "bold": false }
+      }
+    },
+
+    {
+      "key": "PORTRAIT_SMALL_NARROW",
+      "D_ref_cm": 17.5,
+      "anchors": {
+        "erp_text": { "pt": 33.3, "bold": true },
+        "product_description": { "pt": 23.3, "bold": false },
+        "content_label": { "pt": 18.2, "bold": true },
+        "content_text": { "pt": 18.2, "bold": false },
+        "footer": { "pt": 13.0, "bold": false }
+      }
+    },
+    {
+      "key": "PORTRAIT_SMALL_STANDARD",
+      "D_ref_cm": 17.5,
+      "anchors": {
+        "erp_text": { "pt": 47.1, "bold": true },
+        "product_description": { "pt": 32.9, "bold": false },
+        "content_label": { "pt": 25.8, "bold": true },
+        "content_text": { "pt": 25.8, "bold": false },
+        "footer": { "pt": 18.5, "bold": false }
+      }
+    },
+    {
+      "key": "PORTRAIT_SMALL_WIDE",
+      "D_ref_cm": 17.5,
+      "anchors": {
+        "erp_text": { "pt": 53.7, "bold": true },
+        "product_description": { "pt": 37.5, "bold": false },
+        "content_label": { "pt": 29.4, "bold": true },
+        "content_text": { "pt": 29.4, "bold": false },
+        "footer": { "pt": 21.0, "bold": false }
+      }
+    },
+
+    {
+      "key": "PORTRAIT_MEDIUM_NARROW",
+      "D_ref_cm": 32.5,
+      "anchors": {
+        "erp_text": { "pt": 61.9, "bold": true },
+        "product_description": { "pt": 43.2, "bold": false },
+        "content_label": { "pt": 33.9, "bold": true },
+        "content_text": { "pt": 33.9, "bold": false },
+        "footer": { "pt": 24.3, "bold": false }
+      }
+    },
+    {
+      "key": "PORTRAIT_MEDIUM_STANDARD",
+      "D_ref_cm": 32.5,
+      "anchors": {
+        "erp_text": { "pt": 87.5, "bold": true },
+        "product_description": { "pt": 61.1, "bold": false },
+        "content_label": { "pt": 47.9, "bold": true },
+        "content_text": { "pt": 47.9, "bold": false },
+        "footer": { "pt": 34.3, "bold": false }
+      }
+    },
+    {
+      "key": "PORTRAIT_MEDIUM_WIDE",
+      "D_ref_cm": 32.5,
+      "anchors": {
+        "erp_text": { "pt": 99.8, "bold": true },
+        "product_description": { "pt": 69.7, "bold": false },
+        "content_label": { "pt": 54.6, "bold": true },
+        "content_text": { "pt": 54.6, "bold": false },
+        "footer": { "pt": 39.1, "bold": false }
+      }
+    },
+
+    {
+      "key": "PORTRAIT_LARGE_NARROW",
+      "D_ref_cm": 55.0,
+      "anchors": {
+        "erp_text": { "pt": 104.7, "bold": true },
+        "product_description": { "pt": 73.1, "bold": false },
+        "content_label": { "pt": 57.3, "bold": true },
+        "content_text": { "pt": 57.3, "bold": false },
+        "footer": { "pt": 41.0, "bold": false }
+      }
+    },
+    {
+      "key": "PORTRAIT_LARGE_STANDARD",
+      "D_ref_cm": 55.0,
+      "anchors": {
+        "erp_text": { "pt": 148.1, "bold": true },
+        "product_description": { "pt": 103.4, "bold": false },
+        "content_label": { "pt": 81.1, "bold": true },
+        "content_text": { "pt": 81.1, "bold": false },
+        "footer": { "pt": 58.0, "bold": false }
+      }
+    },
+    {
+      "key": "PORTRAIT_LARGE_WIDE",
+      "D_ref_cm": 55.0,
+      "anchors": {
+        "erp_text": { "pt": 168.9, "bold": true },
+        "product_description": { "pt": 117.9, "bold": false },
+        "content_label": { "pt": 92.5, "bold": true },
+        "content_text": { "pt": 92.5, "bold": false },
+        "footer": { "pt": 66.2, "bold": false }
+      }
+    },
+
+    {
+      "key": "PORTRAIT_EXTRA_LARGE_NARROW",
+      "D_ref_cm": 85.0,
+      "anchors": {
+        "erp_text": { "pt": 161.8, "bold": true },
+        "product_description": { "pt": 113.0, "bold": false },
+        "content_label": { "pt": 88.6, "bold": true },
+        "content_text": { "pt": 88.6, "bold": false },
+        "footer": { "pt": 63.4, "bold": false }
+      }
+    },
+    {
+      "key": "PORTRAIT_EXTRA_LARGE_STANDARD",
+      "D_ref_cm": 85.0,
+      "anchors": {
+        "erp_text": { "pt": 228.8, "bold": true },
+        "product_description": { "pt": 159.8, "bold": false },
+        "content_label": { "pt": 125.3, "bold": true },
+        "content_text": { "pt": 125.3, "bold": false },
+        "footer": { "pt": 89.6, "bold": false }
+      }
+    },
+    {
+      "key": "PORTRAIT_EXTRA_LARGE_WIDE",
+      "D_ref_cm": 85.0,
+      "anchors": {
+        "erp_text": { "pt": 260.9, "bold": true },
+        "product_description": { "pt": 182.2, "bold": false },
+        "content_label": { "pt": 142.9, "bold": true },
+        "content_text": { "pt": 142.9, "bold": false },
+        "footer": { "pt": 102.2, "bold": false }
+      }
+    },
+
+    {
+      "key": "LANDSCAPE_MICRO_SHORT",
+      "D_ref_cm": 7.5,
+      "anchors": {
+        "erp_text": { "pt": 12.9, "bold": true },
+        "product_description": { "pt": 9.0, "bold": false },
+        "content_label": { "pt": 6.6, "bold": true },
+        "content_text": { "pt": 6.6, "bold": false },
+        "footer": { "pt": 4.7, "bold": false }
+      }
+    },
+    {
+      "key": "LANDSCAPE_MICRO_STANDARD",
+      "D_ref_cm": 7.5,
+      "anchors": {
+        "erp_text": { "pt": 18.3, "bold": true },
+        "product_description": { "pt": 12.8, "bold": false },
+        "content_label": { "pt": 9.4, "bold": true },
+        "content_text": { "pt": 9.4, "bold": false },
+        "footer": { "pt": 6.7, "bold": false }
+      }
+    },
+    {
+      "key": "LANDSCAPE_MICRO_HIGH",
+      "D_ref_cm": 7.5,
+      "anchors": {
+        "erp_text": { "pt": 20.9, "bold": true },
+        "product_description": { "pt": 14.6, "bold": false },
+        "content_label": { "pt": 10.7, "bold": true },
+        "content_text": { "pt": 10.7, "bold": false },
+        "footer": { "pt": 7.7, "bold": false }
+      }
+    },
+
+    {
+      "key": "LANDSCAPE_SMALL_SHORT",
+      "D_ref_cm": 17.5,
+      "anchors": {
+        "erp_text": { "pt": 30.2, "bold": true },
+        "product_description": { "pt": 21.1, "bold": false },
+        "content_label": { "pt": 15.5, "bold": true },
+        "content_text": { "pt": 15.5, "bold": false },
+        "footer": { "pt": 11.1, "bold": false }
+      }
+    },
+    {
+      "key": "LANDSCAPE_SMALL_STANDARD",
+      "D_ref_cm": 17.5,
+      "anchors": {
+        "erp_text": { "pt": 42.7, "bold": true },
+        "product_description": { "pt": 29.8, "bold": false },
+        "content_label": { "pt": 21.9, "bold": true },
+        "content_text": { "pt": 21.9, "bold": false },
+        "footer": { "pt": 15.7, "bold": false }
+      }
+    },
+    {
+      "key": "LANDSCAPE_SMALL_HIGH",
+      "D_ref_cm": 17.5,
+      "anchors": {
+        "erp_text": { "pt": 48.7, "bold": true },
+        "product_description": { "pt": 34.0, "bold": false },
+        "content_label": { "pt": 25.0, "bold": true },
+        "content_text": { "pt": 25.0, "bold": false },
+        "footer": { "pt": 17.9, "bold": false }
+      }
+    },
+
+    {
+      "key": "LANDSCAPE_MEDIUM_SHORT",
+      "D_ref_cm": 32.5,
+      "anchors": {
+        "erp_text": { "pt": 56.1, "bold": true },
+        "product_description": { "pt": 39.1, "bold": false },
+        "content_label": { "pt": 28.7, "bold": true },
+        "content_text": { "pt": 28.7, "bold": false },
+        "footer": { "pt": 20.5, "bold": false }
+      }
+    },
+    {
+      "key": "LANDSCAPE_MEDIUM_STANDARD",
+      "D_ref_cm": 32.5,
+      "anchors": {
+        "erp_text": { "pt": 79.4, "bold": true },
+        "product_description": { "pt": 55.4, "bold": false },
+        "content_label": { "pt": 40.6, "bold": true },
+        "content_text": { "pt": 40.6, "bold": false },
+        "footer": { "pt": 29.1, "bold": false }
+      }
+    },
+    {
+      "key": "LANDSCAPE_MEDIUM_HIGH",
+      "D_ref_cm": 32.5,
+      "anchors": {
+        "erp_text": { "pt": 90.5, "bold": true },
+        "product_description": { "pt": 63.2, "bold": false },
+        "content_label": { "pt": 46.3, "bold": true },
+        "content_text": { "pt": 46.3, "bold": false },
+        "footer": { "pt": 33.1, "bold": false }
+      }
+    },
+
+    {
+      "key": "LANDSCAPE_LARGE_SHORT",
+      "D_ref_cm": 55.0,
+      "anchors": {
+        "erp_text": { "pt": 95.0, "bold": true },
+        "product_description": { "pt": 66.3, "bold": false },
+        "content_label": { "pt": 48.7, "bold": true },
+        "content_text": { "pt": 48.7, "bold": false },
+        "footer": { "pt": 34.9, "bold": false }
+      }
+    },
+    {
+      "key": "LANDSCAPE_LARGE_STANDARD",
+      "D_ref_cm": 55.0,
+      "anchors": {
+        "erp_text": { "pt": 134.3, "bold": true },
+        "product_description": { "pt": 93.8, "bold": false },
+        "content_label": { "pt": 68.8, "bold": true },
+        "content_text": { "pt": 68.8, "bold": false },
+        "footer": { "pt": 49.2, "bold": false }
+      }
+    },
+    {
+      "key": "LANDSCAPE_LARGE_HIGH",
+      "D_ref_cm": 55.0,
+      "anchors": {
+        "erp_text": { "pt": 153.2, "bold": true },
+        "product_description": { "pt": 106.9, "bold": false },
+        "content_label": { "pt": 78.5, "bold": true },
+        "content_text": { "pt": 78.5, "bold": false },
+        "footer": { "pt": 56.2, "bold": false }
+      }
+    },
+
+    {
+      "key": "LANDSCAPE_EXTRA_LARGE_SHORT",
+      "D_ref_cm": 85.0,
+      "anchors": {
+        "erp_text": { "pt": 146.8, "bold": true },
+        "product_description": { "pt": 102.4, "bold": false },
+        "content_label": { "pt": 75.1, "bold": true },
+        "content_text": { "pt": 75.1, "bold": false },
+        "footer": { "pt": 53.8, "bold": false }
+      }
+    },
+    {
+      "key": "LANDSCAPE_EXTRA_LARGE_STANDARD",
+      "D_ref_cm": 85.0,
+      "anchors": {
+        "erp_text": { "pt": 207.6, "bold": true },
+        "product_description": { "pt": 144.9, "bold": false },
+        "content_label": { "pt": 106.2, "bold": true },
+        "content_text": { "pt": 106.2, "bold": false },
+        "footer": { "pt": 76.0, "bold": false }
+      }
+    },
+    {
+      "key": "LANDSCAPE_EXTRA_LARGE_HIGH",
+      "D_ref_cm": 85.0,
+      "anchors": {
+        "erp_text": { "pt": 236.7, "bold": true },
+        "product_description": { "pt": 165.2, "bold": false },
+        "content_label": { "pt": 121.1, "bold": true },
+        "content_text": { "pt": 121.1, "bold": false },
+        "footer": { "pt": 86.6, "bold": false }
+      }
+    }
+  ]
+}
