@@ -310,6 +310,50 @@
     });
   }
 
+  function bucketKeyToUiName(bucketKey) {
+    if (!bucketKey) return "—";
+    const parts = String(bucketKey).split("_").filter(Boolean);
+    if (parts.length === 0) return "—";
+
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    const family = cap(parts[0]);
+
+    // Keys like: LANDSCAPE_SMALL_HIGH, SQUARE_EXTRA_LARGE, PORTRAIT_SMALL_NARROW
+    let size = "";
+    let idx = 1;
+    if (parts[1] === "EXTRA" && parts[2] === "LARGE") {
+      size = "Extra-Large";
+      idx = 3;
+    } else if (parts[1]) {
+      size = cap(parts[1]);
+      idx = 2;
+    }
+
+    const rest = parts.slice(idx).map(cap);
+    return [family, size, ...rest].filter(Boolean).join("-");
+  }
+
+  function readCurrentVariants(labelsGrid) {
+    const out = [];
+    for (let i = 1; i <= 4; i++) {
+      const inner = labelsGrid?.querySelector(`#label${i} .label-inner`);
+      const key = inner?.dataset?.bucketKey || "";
+      out.push({ label: i, bucketKey: key, name: bucketKeyToUiName(key) });
+    }
+    return out;
+  }
+
+  function renderVariants(variantItems) {
+    const variant = $("#variant");
+    if (!variant) return;
+    variant.innerHTML = "";
+    (variantItems || []).forEach((v) => {
+      variant.append(
+        el("div", { class: "pill" }, `Label ${v.label}: ${v.name}`)
+      );
+    });
+  }
+
   /* ====== Fit / guard / fallback ====== */
   function fitsWithGuard(innerEl, guardX, guardY) {
     const content = innerEl.querySelector(".label-content") || innerEl;
@@ -497,7 +541,7 @@
     return Math.max(0.08, Math.min(1, s));
   }
 
-  async function renderPreviewFor(values) {
+  async function renderPreviewFor(values, opts = {}) {
     const labelsGrid = $("#labelsGrid");
     if (!labelsGrid) return;
 
@@ -530,12 +574,18 @@
     labelsGrid.append(fragments);
 
     await mountThenFit(labelsGrid);
+
+    // Alleen voor UI-debug bij single-generate.
+    if (opts.showVariant) {
+      renderVariants(readCurrentVariants(labelsGrid));
+    }
+
     return { sizes, scale };
   }
 
   async function renderSingle() {
     const vals = getFormValues();
-    await renderPreviewFor(vals);
+    await renderPreviewFor(vals, { showVariant: true });
   }
 
   /* ====== jsPDF / html2canvas ====== */
@@ -1044,6 +1094,9 @@
           alert("Ontbrekende mapping: " + missing.join(", "));
           return;
         }
+
+        // Bulk: geen debug-variant tonen.
+        renderVariants([]);
 
         abortFlag = false;
         btnAbortBatch.disabled = false;
