@@ -11,7 +11,7 @@
       <header class="app-header">
         <div class="brand">
           <div class="brand-text">
-            <h1>Etiketten Generator<span class="version-badge">v0.94</span></h1>
+            <h1>Etiketten Generator<span class="version-badge">v0.95</span></h1>
             <p class="subtitle">
               Vul de gegevens in en klik op
               <strong>“Genereer etiketten”</strong>. Voor PDF:
@@ -78,86 +78,87 @@
             role="tabpanel"
             aria-labelledby="tabBtnSingle"
           >
-            <section class="panel">
-              <h2>Gegevens</h2>
+            <div class="single-split">
+              <section class="panel panel-form">
+                <h2>Gegevens</h2>
 
-              <div class="form-grid">
-                <label class="field">
-                  <span>ERP</span>
-                  <input id="erp" type="text" value="LG1000843" />
-                </label>
+                <div class="form-grid">
+                  <label class="field">
+                    <span>ERP</span>
+                    <input id="erp" type="text" value="LG1000843" />
+                  </label>
 
-                <label class="field">
-                  <span>Omschrijving</span>
-                  <input
-                    id="desc"
-                    type="text"
-                    value="Combination Lock - Orange - 1 Pack (YF20610B)"
-                  />
-                </label>
+                  <label class="field span-2">
+                    <span>Productomschrijving</span>
+                    <textarea id="desc" rows="3">
+Combination Lock - Orange - 1 Pack (YF20610B)</textarea
+                    >
+                  </label>
 
-                <label class="field">
-                  <span>EAN</span>
-                  <input id="ean" type="text" value="8719632951889" />
-                </label>
+                  <label class="field">
+                    <span>EAN</span>
+                    <input id="ean" type="text" value="8719632951889" />
+                  </label>
 
-                <label class="field">
-                  <span>QTY (PCS)</span>
-                  <input id="qty" type="text" value="12" />
-                </label>
+                  <label class="field">
+                    <span>QTY (PCS)</span>
+                    <input id="qty" type="text" value="12" />
+                  </label>
 
-                <label class="field">
-                  <span>G.W (KGS)</span>
-                  <input id="gw" type="text" value="18,00" />
-                </label>
+                  <label class="field">
+                    <span>G.W (KGS)</span>
+                    <input id="gw" type="text" value="18,00" />
+                  </label>
 
-                <label class="field">
-                  <span>CBM</span>
-                  <input id="cbm" type="text" value="0.02" />
-                </label>
+                  <label class="field">
+                    <span>CBM</span>
+                    <input id="cbm" type="text" value="0.02" />
+                  </label>
 
-                <label class="field">
-                  <span>Length (L)</span>
-                  <input id="len" type="text" value="39" />
-                </label>
+                  <label class="field">
+                    <span>Length (L)</span>
+                    <input id="len" type="text" value="39" />
+                  </label>
 
-                <label class="field">
-                  <span>Width (W)</span>
-                  <input id="wid" type="text" value="19,5" />
-                </label>
+                  <label class="field">
+                    <span>Width (W)</span>
+                    <input id="wid" type="text" value="19,5" />
+                  </label>
 
-                <label class="field">
-                  <span>Height (H)</span>
-                  <input id="hei" type="text" value="22" />
-                </label>
+                  <label class="field">
+                    <span>Height (H)</span>
+                    <input id="hei" type="text" value="22" />
+                  </label>
 
-                <label class="field">
-                  <span>Batch</span>
-                  <input id="batch" type="text" value="IOR2500307" />
-                </label>
-              </div>
-
-              <div class="actions">
-                <button id="btnGen" class="btn primary">
-                  Genereer etiketten
-                </button>
-                <button id="btnPDF" class="btn success">PDF genereren</button>
-              </div>
-            </section>
-
-            <section class="panel panel-preview">
-              <div class="calc-box">
-                <h3>Berekende labelafmetingen (werkelijke cm)</h3>
-                <div class="dims-grid-head">
-                  <div>Label</div>
-                  <div>W</div>
-                  <div>H</div>
-                  <div>Variant</div>
+                  <label class="field">
+                    <span>Batch</span>
+                    <input id="batch" type="text" value="IOR2500307" />
+                  </label>
                 </div>
-                <div id="dims" class="dims-grid"></div>
-              </div>
 
-              <div id="labelsGrid" class="labels-grid"></div>
+                <div class="actions">
+                  <button id="btnGen" class="btn primary">
+                    Genereer etiketten
+                  </button>
+                  <button id="btnPDF" class="btn success">PDF genereren</button>
+                </div>
+              </section>
+
+              <section class="panel panel-preview">
+                <h2>Preview</h2>
+                <div id="labelsGrid" class="labels-grid"></div>
+              </section>
+            </div>
+
+            <section class="panel panel-dims">
+              <h2>Berekende labelafmetingen (werkelijke cm)</h2>
+              <div class="dims-grid-head">
+                <div>Label</div>
+                <div>W</div>
+                <div>H</div>
+                <div>Variant</div>
+              </div>
+              <div id="dims" class="dims-grid"></div>
             </section>
           </div>
 
