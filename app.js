@@ -220,53 +220,67 @@
   }
 
   function syncDescWidthToSpecs(innerEl) {
-    const grid = innerEl.querySelector(".specs-grid");
     const desc = innerEl.querySelector(".label-desc");
-    if (!grid || !desc) return;
+    if (!desc) return;
+
+    // In columns-layout the description should use the natural left-column width.
+    if (innerEl.classList.contains("layout-columns")) {
+      desc.style.setProperty("--desc-w", "auto");
+      return;
+    }
+
+    const grid = innerEl.querySelector(".specs-grid");
+    if (!grid) return;
 
     // offsetWidth is layout-breedte (niet beïnvloed door transform scale)
     const w = grid.offsetWidth || grid.getBoundingClientRect().width;
     desc.style.setProperty("--desc-w", w + "px");
   }
 
-  const MAX_DESC_LINES = 3;
-
   function descFitsInMaxLines(descEl, maxLines) {
     const cs = getComputedStyle(descEl);
-    const lh = parseFloat(cs.lineHeight);
-    if (!Number.isFinite(lh) || lh <= 0) return true; // fallback
+    let lh = parseFloat(cs.lineHeight);
+
+    // If line-height is 'normal' or invalid, approximate.
+    const fs = parseFloat(cs.fontSize) || 0;
+    if (!Number.isFinite(lh) || lh <= 0) lh = fs * 1.15;
 
     const maxH = lh * maxLines + 0.5; // toleranties
     return descEl.scrollHeight <= maxH;
   }
 
-  function shrinkDescToMaxLines(innerEl, maxLines) {
+  function shrinkDescToMaxLines(innerEl, maxLines = 3) {
     const desc = innerEl.querySelector(".label-desc");
     if (!desc) return;
 
-    // Eerst breedte syncen, anders klopt wrap niet
+    // Eerst breedte syncen, anders klopt wrap niet (m.n. bij Standard/Stacked).
     syncDescWidthToSpecs(innerEl);
 
     // Reset naar CSS var
     desc.style.fontSize = "";
 
+    // Als het al past: klaar.
     if (descFitsInMaxLines(desc, maxLines)) return;
 
     const basePx = parseFloat(getComputedStyle(desc).fontSize) || 12;
 
-    // Binary search: verklein alleen de omschrijving tot hij binnen max regels past
-    let lo = 2;
-    let hi = Math.max(2, basePx);
-    let best = lo;
+    // Niet onder deze drempel gaan (voorkomt onleesbaar klein).
+    const minPx = Math.max(6, basePx * 0.6);
+
+    // Binary search: zoek de grootste font-size die nog binnen maxLines past.
+    let lo = minPx;
+    let hi = basePx;
+    let best = minPx;
 
     for (let i = 0; i < 18; i++) {
       const mid = (lo + hi) / 2;
       desc.style.fontSize = mid + "px";
+
       if (descFitsInMaxLines(desc, maxLines)) {
         best = mid;
-        hi = mid;
+        lo = mid; // probeer groter
       } else {
-        lo = mid;
+        hi = mid; // moet kleiner
       }
     }
 
@@ -297,17 +311,116 @@
     ];
   }
 
-  function renderDims(sizes) {
+  function layoutToUiName(layout) {
+    const l = String(layout || "").toUpperCase();
+    if (l === "STACKED") return "Stacked";
+    if (l === "COLUMNS") return "Columns";
+    return "Standard";
+  }
+
+  function determineBucket(W_cm, H_cm) {
+    // UI helper: return the effective bucket key (incl. fallbacks) and layout.
+    const anchor = BUCKET_CONFIG ? getBucketAnchorFor(W_cm, H_cm) : null;
+    const bucketKey = String(
+      anchor?.key || selectBucketKeyFor(W_cm, H_cm) || ""
+    );
+    const layout = layoutForBucketKey(bucketKey);
+    return { bucketKey, layout };
+  }
+
+  function renderDims(sizes, opts = {}) {
+    const { includeBucket = false } = opts;
     const dims = $("#dims");
     if (!dims) return;
+
     dims.innerHTML = "";
+
     sizes.forEach((s) => {
+      let bucketUi = "—";
+      if (includeBucket) {
+        const picked = determineBucket(s.w, s.h);
+        const name = bucketKeyToUiName(picked.bucketKey);
+        bucketUi =
+          name === "—" ? "—" : `${name} (${layoutToUiName(picked.layout)})`;
+      }
+
       dims.append(
-        el(
-          "div",
-          { class: "pill" },
-          `${s.name}: ${format2(s.w)} × ${format2(s.h)} cm`
-        )
+        el("div", { class: "dim" }, s.name),
+        el("div", { class: "dim" }, format2(s.w)),
+        el("div", { class: "dim" }, format2(s.h)),
+        el("div", { class: "dim" }, bucketUi)
+      );
+    });
+  }
+
+  function bucketKeyToUiName(bucketKey) {
+    if (!bucketKey) return "—";
+    const parts = String(bucketKey).split("_").filter(Boolean);
+    if (parts.length === 0) return "—";
+
+    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    const family = cap(parts[0]);
+
+    // Keys like: LANDSCAPE_SMALL_HIGH, SQUARE_EXTRA_LARGE, PORTRAIT_SMALL_NARROW
+    let size = "";
+    let idx = 1;
+    if (parts[1] === "EXTRA" && parts[2] === "LARGE") {
+      size = "Extra-Large";
+      idx = 3;
+    } else if (parts[1]) {
+      size = cap(parts[1]);
+      idx = 2;
+    }
+
+    const rest = parts.slice(idx).map(cap);
+    return [family, size, ...rest].filter(Boolean).join("-");
+  }
+
+  function layoutForBucketKey(bucketKey) {
+    const parts = String(bucketKey || "").split("_");
+    const family = (parts[0] || "").toUpperCase();
+    const variant = parts.slice(2).join("_").toUpperCase();
+
+    // Layout mapping (per bucket family + variant)
+    // Square: always Standard
+    // Portrait: Narrow + Standard => Stacked, Wide => Standard
+    // Landscape: Short => Columns, Standard + High => Standard
+    if (family === "SQUARE") return "STANDARD";
+    if (family === "PORTRAIT")
+      return variant === "WIDE" ? "STANDARD" : "STACKED";
+    if (family === "LANDSCAPE")
+      return variant === "SHORT" ? "COLUMNS" : "STANDARD";
+    return "STANDARD";
+  }
+
+  function applyBucketLayout(innerEl, bucketKey) {
+    const layout = layoutForBucketKey(bucketKey);
+
+    innerEl.classList.remove("layout-stacked", "layout-columns");
+    if (layout === "STACKED") innerEl.classList.add("layout-stacked");
+    if (layout === "COLUMNS") innerEl.classList.add("layout-columns");
+
+    innerEl.dataset.layout = layout;
+    return layout;
+  }
+
+  function readCurrentVariants(labelsGrid) {
+    const out = [];
+    for (let i = 1; i <= 4; i++) {
+      const inner = labelsGrid?.querySelector(`#label${i} .label-inner`);
+      const key = inner?.dataset?.bucketKey || "";
+      out.push({ label: i, bucketKey: key, name: bucketKeyToUiName(key) });
+    }
+    return out;
+  }
+
+  function renderVariants(variantItems) {
+    const variant = $("#variant");
+    if (!variant) return;
+    variant.innerHTML = "";
+    (variantItems || []).forEach((v) => {
+      variant.append(
+        el("div", { class: "pill" }, `Label ${v.label}: ${v.name}`)
       );
     });
   }
@@ -366,6 +479,11 @@
     // 1) apply bucket typography
     const info = applyBucketTypography(innerEl);
 
+    // 1b) apply bucket layout (standard / stacked / columns)
+    if (innerEl.dataset.bucketKey) {
+      applyBucketLayout(innerEl, innerEl.dataset.bucketKey);
+    }
+
     // 2) wrap mode: start no-wrap; enable soft-wrap when text becomes small
     innerEl.classList.add("nowrap-mode");
     innerEl.classList.remove("softwrap-mode");
@@ -380,9 +498,9 @@
     const content = innerEl.querySelector(".label-content");
     if (content) content.style.setProperty("--k", "1");
 
-    // 3) ensure desc is max N lines
+    // 3) ensure desc is max 2 lines
     syncDescWidthToSpecs(innerEl);
-    shrinkDescToMaxLines(innerEl, MAX_DESC_LINES);
+    shrinkDescToMaxLines(innerEl, 3);
 
     // 4) final safety net: scale down whole content if needed
     if (!fitsWithGuard(innerEl, guardX, guardY)) {
@@ -405,10 +523,11 @@
   }
 
   /* ====== Build label DOM ====== */
-  function buildLeftBlock(values, size, largestTwo) {
-    const block = el("div", { class: "specs-grid" });
 
-    block.append(
+  function buildSpecsGrid(values) {
+    const grid = el("div", { class: "specs-grid" });
+
+    grid.append(
       el("div", { class: "key" }, "EAN:"),
       el("div", { class: "val" }, values.ean || ""),
       el("div", { class: "key" }, "QTY:"),
@@ -419,24 +538,15 @@
       el("div", { class: "val" }, values.cbm || "")
     );
 
-    // Als largestTwo null is => fallback naar default (oude gedrag: fb => C/N, side => Made in China)
+    return grid;
+  }
+
+  function footerTextForLabel(size, largestTwo) {
+    // If largestTwo is null => fallback to old behavior (fb => C/N, side => Made in China)
     const useMadeInChina = largestTwo
       ? largestTwo.has(size.idx)
       : size.type !== "fb";
-
-    if (useMadeInChina) {
-      block.append(
-        el("div", { class: "key footer-key" }, ""),
-        el("div", { class: "val footer-val" }, "Made in China")
-      );
-    } else {
-      block.append(
-        el("div", { class: "key footer-key" }, "C/N:"),
-        el("div", { class: "val footer-val" }, "___________________")
-      );
-    }
-
-    return block;
+    return useMadeInChina ? "MADE IN CHINA" : "C/N: ___________________";
   }
 
   function createLabelEl(size, values, previewScale, largestTwo) {
@@ -457,20 +567,44 @@
     const padPx = LABEL_PADDING_CM * PX_PER_CM * previewScale;
     label.style.padding = padPx + "px";
 
-    const head = el(
+    const erpBox = el(
       "div",
-      { class: "label-head" },
-      el("div", { class: "code-box line" }, values.code),
-      el("div", { class: "line label-desc" }, values.desc)
+      { class: "erp-box" },
+      el("div", { class: "code-box line" }, values.code)
     );
 
-    const content = el("div", { class: "label-content" });
-    content.append(
-      head,
-      el("div", { class: "block-spacer" }),
-      buildLeftBlock(values, size, largestTwo)
+    const descEl = el(
+      "div",
+      { class: "line label-desc product-desc" },
+      values.desc
     );
+
+    const specs = buildSpecsGrid(values);
+
+    const footerEl = el(
+      "div",
+      { class: "footer-text" },
+      footerTextForLabel(size, largestTwo)
+    );
+
+    const content = el(
+      "div",
+      { class: "label-content" },
+      erpBox,
+      descEl,
+      specs,
+      footerEl
+    );
+
+    // Apply an initial bucket/layout guess early (helps preview layout before fitting).
+    const guessedKey = selectBucketKeyFor(size.w, size.h);
+    if (guessedKey) {
+      inner.dataset.bucketKey = guessedKey;
+      applyBucketLayout(inner, guessedKey);
+    }
+
     inner.append(content);
+
     label.append(inner);
     wrap.append(label, el("div", { class: "label-num" }, `Etiket ${size.idx}`));
 
@@ -499,7 +633,7 @@
     return Math.max(0.08, Math.min(1, s));
   }
 
-  async function renderPreviewFor(values) {
+  async function renderPreviewFor(values, opts = {}) {
     const labelsGrid = $("#labelsGrid");
     if (!labelsGrid) return;
 
@@ -519,7 +653,7 @@
 
     const largestTwo = pickTwoLargestIdxOrNull(sizes);
 
-    renderDims(sizes);
+    renderDims(sizes, { includeBucket: !!opts.showVariant });
 
     const scale = computePreviewScale(sizes);
     currentPreviewScale = scale;
@@ -532,12 +666,13 @@
     labelsGrid.append(fragments);
 
     await mountThenFit(labelsGrid);
+
     return { sizes, scale };
   }
 
   async function renderSingle() {
     const vals = getFormValues();
-    await renderPreviewFor(vals);
+    await renderPreviewFor(vals, { showVariant: true });
   }
 
   /* ====== jsPDF / html2canvas ====== */
@@ -1046,6 +1181,9 @@
           alert("Ontbrekende mapping: " + missing.join(", "));
           return;
         }
+
+        // Bulk: geen debug-variant tonen.
+        renderVariants([]);
 
         abortFlag = false;
         btnAbortBatch.disabled = false;
