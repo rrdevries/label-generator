@@ -407,7 +407,8 @@ body {
 /* ===== Single-PDF split layout ===== */
 .single-split {
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(420px, 1fr);
+  /* Links 1/3 (invoer), rechts 2/3 (preview) */
+  grid-template-columns: minmax(320px, 1fr) minmax(520px, 2fr);
   gap: 14px;
   align-items: start;
 }
@@ -427,6 +428,10 @@ body {
 
 .panel-preview .labels-grid {
   padding-top: 6px;
+}
+
+.panel-dims {
+  margin-top: 18px;
 }
 
 @media (max-width: 980px) {
