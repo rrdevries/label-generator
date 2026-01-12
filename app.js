@@ -609,8 +609,8 @@
   }
 
   /* ====== Preview render ====== */
-  function computePreviewScale(sizes) {
-    const labelsGrid = $("#labelsGrid");
+  function computePreviewScale(sizes, containerEl) {
+    const labelsGrid = containerEl || $("#labelsGrid");
     if (!labelsGrid) return 1;
 
     const containerWidth = labelsGrid.clientWidth || 900;
@@ -631,8 +631,9 @@
   }
 
   async function renderPreviewFor(values, opts = {}) {
-    const labelsGrid = $("#labelsGrid");
-    if (!labelsGrid) return;
+    const visibleGrid = $("#labelsGrid");
+    const target = opts.targetEl || visibleGrid;
+    if (!target) return;
 
     const sizes = calcLabelSizes(values);
 
@@ -650,23 +651,29 @@
 
     const largestTwo = pickTwoLargestIdxOrNull(sizes);
 
-    renderDims(sizes, { includeBucket: !!opts.showVariant });
+    // UI-updates alleen als expliciet gewenst
+    if (opts.renderDims !== false) {
+      renderDims(sizes, { includeBucket: !!opts.showVariant });
+    }
 
-    const scale = computePreviewScale(sizes);
+    const scale =
+      typeof opts.previewScale === "number"
+        ? opts.previewScale
+        : computePreviewScale(sizes, target);
+
     currentPreviewScale = scale;
 
-    labelsGrid.innerHTML = "";
+    target.innerHTML = "";
     const fragments = document.createDocumentFragment();
     sizes.forEach((size) => {
       fragments.append(createLabelEl(size, values, scale, largestTwo));
     });
-    labelsGrid.append(fragments);
+    target.append(fragments);
 
-    await mountThenFit(labelsGrid);
+    await mountThenFit(target);
 
-    return { sizes, scale };
+    return { sizes, scale, container: target };
   }
-
   async function renderSingle() {
     const vals = getFormValues();
     await renderPreviewFor(vals, { showVariant: true });
@@ -706,8 +713,9 @@
     return dst;
   }
 
-  async function captureLabelToRotatedPng(labelIdx) {
-    const src = document.querySelector(`.label[data-idx="${labelIdx}"]`);
+  async function captureLabelToRotatedPng(labelIdx, scopeEl) {
+    const scope = scopeEl || document;
+    const src = scope.querySelector(`.label[data-idx="${labelIdx}"]`);
     if (!src)
       throw new Error(`Label ${labelIdx} niet gevonden voor PDF-capture.`);
 
@@ -756,7 +764,7 @@
     const vals = getFormValues();
     const result = await renderPreviewFor(vals);
     if (!result) throw new Error("Kon preview niet renderen voor PDF.");
-    const { sizes } = result;
+    const { sizes, container } = result;
 
     const order = [1, 3, 2, 4];
 
@@ -773,7 +781,7 @@
 
     for (const idx of order) {
       const s = sizes[idx - 1];
-      const imgData = await captureLabelToRotatedPng(idx);
+      const imgData = await captureLabelToRotatedPng(idx, container);
 
       const wRot = s.h;
       const hRot = s.w;
@@ -797,6 +805,7 @@
   /* ====== BATCH (Excel / CSV) ====== */
   // Batch state
   let parsedRows = [];
+  let isBatchRunning = false;
   let headers = [];
   let mapping = {};
   let abortFlag = false;
@@ -826,6 +835,20 @@
 
   function setHidden(elm, hidden) {
     if (elm) elm.classList.toggle("hidden", !!hidden);
+  }
+
+  // Offscreen render host for batch: avoids UI reflow/jumping by rendering labels outside viewport.
+  let batchRenderHost = null;
+
+  function ensureBatchRenderHost() {
+    if (batchRenderHost) return batchRenderHost;
+    const host = document.createElement("div");
+    host.id = "batchRenderHost";
+    host.className = "batch-render-host";
+    host.setAttribute("aria-hidden", "true");
+    document.body.appendChild(host);
+    batchRenderHost = host;
+    return host;
   }
 
   function resetLog() {
@@ -1183,6 +1206,7 @@
         renderVariants([]);
 
         abortFlag = false;
+        isBatchRunning = true;
         btnAbortBatch.disabled = false;
         setHidden(progressWrap, false);
         setHidden(logWrap, false);
@@ -1194,6 +1218,7 @@
 
         const zip = new JSZip();
         const batchTime = buildTimestamp();
+        const batchHost = ensureBatchRenderHost();
 
         let okCount = 0;
         let errCount = 0;
@@ -1204,11 +1229,14 @@
           try {
             const vals = readRowWithMapping(row, mapping);
             // Render en capture met dezelfde pipeline als single
-            const result = await renderPreviewFor(vals);
+            const result = await renderPreviewFor(vals, {
+              targetEl: batchHost,
+              renderDims: false,
+            });
             if (!result) throw new Error("Kon preview niet renderen.");
 
             // Maak PDF als blob
-            const { sizes } = result;
+            const { sizes, container } = result;
             const order = [1, 3, 2, 4];
 
             const pageW =
@@ -1226,7 +1254,7 @@
             let y = PDF_MARGIN_CM;
             for (const idx of order) {
               const s = sizes[idx - 1];
-              const imgData = await captureLabelToRotatedPng(idx);
+              const imgData = await captureLabelToRotatedPng(idx, container);
               pdf.addImage(
                 imgData,
                 "PNG",
@@ -1276,8 +1304,11 @@
           log(`Geen PDF’s gegenereerd. (${errCount} fouten)`, "error");
         }
 
+        isBatchRunning = false;
+
         if (progressPhase) progressPhase.textContent = "Klaar.";
       } catch (e) {
+        isBatchRunning = false;
         alert(e.message || e);
       }
     });
@@ -1318,6 +1349,7 @@
     });
 
     window.addEventListener("resize", () => {
+      if (isBatchRunning) return;
       renderSingle().catch(() => {});
     });
 

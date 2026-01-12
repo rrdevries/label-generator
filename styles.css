@@ -489,6 +489,17 @@ body {
   display: none !important;
 }
 
+/* Offscreen render host (batch): keep it out of view without display:none (html2canvas needs it rendered) */
+.batch-render-host {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 1100px; /* stable width for computePreviewScale */
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .mapping-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
