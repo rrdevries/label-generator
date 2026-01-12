@@ -238,7 +238,7 @@ body {
   max-width: 100%;
   font-size: var(--fs-desc);
   line-height: 1.15;
-  min-height: calc(3 * 1.15em); /* altijd ruimte voor 3 regels */
+  min-height: calc(2 * 1.15em); /* altijd ruimte voor 2 regels */
   overflow-wrap: anywhere;
   word-break: break-word;
 }

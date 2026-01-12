@@ -237,15 +237,14 @@
     desc.style.setProperty("--desc-w", w + "px");
   }
 
-  function descFitsInMaxLines(descEl, maxLines) {
+  function descFitsInMaxLines(descEl, maxLines = 3) {
     const cs = getComputedStyle(descEl);
-    let lh = parseFloat(cs.lineHeight);
-
-    // If line-height is 'normal' or invalid, approximate.
-    const fs = parseFloat(cs.fontSize) || 0;
-    if (!Number.isFinite(lh) || lh <= 0) lh = fs * 1.15;
-
-    const maxH = lh * maxLines + 0.5; // toleranties
+    const lh = parseFloat(cs.lineHeight);
+    const lineH =
+      Number.isFinite(lh) && lh > 0
+        ? lh
+        : (parseFloat(cs.fontSize) || 12) * 1.15;
+    const maxH = lineH * maxLines + 0.5; // tolerantie
     return descEl.scrollHeight <= maxH;
   }
 
@@ -253,34 +252,32 @@
     const desc = innerEl.querySelector(".label-desc");
     if (!desc) return;
 
-    // Eerst breedte syncen, anders klopt wrap niet (m.n. bij Standard/Stacked).
+    // Eerst breedte syncen, anders klopt wrap niet (zeker bij Standard/Stacked)
     syncDescWidthToSpecs(innerEl);
 
-    // Reset naar CSS var
+    // Reset naar CSS var (anchor-typografie)
     desc.style.fontSize = "";
 
-    // Als het al past: klaar.
     if (descFitsInMaxLines(desc, maxLines)) return;
 
     const basePx = parseFloat(getComputedStyle(desc).fontSize) || 12;
 
-    // Niet onder deze drempel gaan (voorkomt onleesbaar klein).
-    const minPx = Math.max(6, basePx * 0.6);
+    // Binary search: verklein alleen de omschrijving tot hij binnen maxLines past
+    // Begrens: nooit kleiner dan 70% van het anchor, en nooit onder 8px.
+    const minPx = Math.max(8, basePx * 0.7);
 
-    // Binary search: zoek de grootste font-size die nog binnen maxLines past.
     let lo = minPx;
-    let hi = basePx;
-    let best = minPx;
+    let hi = Math.max(minPx, basePx);
+    let best = lo;
 
     for (let i = 0; i < 18; i++) {
       const mid = (lo + hi) / 2;
       desc.style.fontSize = mid + "px";
-
       if (descFitsInMaxLines(desc, maxLines)) {
         best = mid;
-        lo = mid; // probeer groter
+        hi = mid;
       } else {
-        hi = mid; // moet kleiner
+        lo = mid;
       }
     }
 
@@ -336,7 +333,7 @@
     dims.innerHTML = "";
 
     sizes.forEach((s) => {
-      let bucketUi = "—";
+      let bucketUi = "";
       if (includeBucket) {
         const picked = determineBucket(s.w, s.h);
         const name = bucketKeyToUiName(picked.bucketKey);
