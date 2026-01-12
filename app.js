@@ -175,6 +175,77 @@
   /* ====== Helpers ====== */
   const $ = (sel) => document.querySelector(sel);
 
+  function initTabs() {
+    const tabButtons = Array.from(
+      document.querySelectorAll(".tab-btn[data-tab-target]")
+    );
+    const panels = Array.from(document.querySelectorAll(".tab-panel"));
+
+    if (!tabButtons.length || !panels.length) return;
+
+    const idToHash = (id) => {
+      if (id === "tab-bulk") return "bulk";
+      if (id === "tab-doc") return "doc";
+      return "single";
+    };
+
+    const hashToId = (hash) => {
+      const h = (hash || "").replace("#", "").toLowerCase();
+      if (h === "bulk") return "tab-bulk";
+      if (h === "doc" || h === "docs" || h === "documentatie") return "tab-doc";
+      return "tab-single";
+    };
+
+    const setActive = (targetId, { updateHash = true } = {}) => {
+      // Panels
+      panels.forEach((p) => {
+        const isActive = p.id === targetId;
+        p.classList.toggle("hidden", !isActive);
+      });
+
+      // Buttons + ARIA
+      tabButtons.forEach((b) => {
+        const isActive = b.dataset.tabTarget === targetId;
+        b.classList.toggle("active", isActive);
+        b.setAttribute("aria-selected", isActive ? "true" : "false");
+        b.tabIndex = isActive ? 0 : -1;
+      });
+
+      if (updateHash) {
+        const newHash = idToHash(targetId);
+        if (location.hash !== "#" + newHash) {
+          history.replaceState(null, "", "#" + newHash);
+        }
+      }
+    };
+
+    tabButtons.forEach((b) => {
+      b.addEventListener("click", () => {
+        setActive(b.dataset.tabTarget, { updateHash: true });
+      });
+
+      // Keyboard nav (Left/Right)
+      b.addEventListener("keydown", (e) => {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        e.preventDefault();
+        const idx = tabButtons.indexOf(b);
+        const delta = e.key === "ArrowRight" ? 1 : -1;
+        const next =
+          tabButtons[(idx + delta + tabButtons.length) % tabButtons.length];
+        next.focus();
+        setActive(next.dataset.tabTarget, { updateHash: true });
+      });
+    });
+
+    // Initial state from hash
+    setActive(hashToId(location.hash), { updateHash: false });
+
+    // React on hash changes (back/forward)
+    window.addEventListener("hashchange", () => {
+      setActive(hashToId(location.hash), { updateHash: false });
+    });
+  }
+
   function el(tag, attrs = {}, ...children) {
     const node = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -1331,6 +1402,7 @@
       // Zonder config kan de rest nog draaien, maar bucket-typografie zal ontbreken.
     }
 
+    initTabs();
     initBatchUI();
 
     const btnGen = $("#btnGen");
