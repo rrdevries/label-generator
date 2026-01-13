@@ -1123,20 +1123,27 @@
 
   function validateRequiredRowValues(rows, mappingObj) {
     const errors = [];
+
+    // Build "Field label (Excel column name)" messages so users can fix their sheet quickly.
+    const fmt = (key, label) => {
+      const col = mappingObj[key];
+      return col ? `${label} (kolom: ${col})` : `${label} (kolom: —)`;
+    };
+
     for (let i = 0; i < rows.length; i++) {
       const vals = readRowWithMapping(rows[i], mappingObj);
       const missing = [];
 
-      if (!vals.code) missing.push("ERP");
-      if (!vals.desc) missing.push("Omschrijving");
-      if (!vals.ean) missing.push("EAN");
-      if (!vals.qty) missing.push("QTY");
-      if (!vals.gw) missing.push("G.W");
-      if (!vals.cbm) missing.push("CBM");
-      if (!isFinite(vals.len)) missing.push("Length (L)");
-      if (!isFinite(vals.wid)) missing.push("Width (W)");
-      if (!isFinite(vals.hei)) missing.push("Height (H)");
-      if (!vals.batch) missing.push("Batch");
+      if (!vals.code) missing.push(fmt("productcode", "ERP"));
+      if (!vals.desc) missing.push(fmt("omschrijving", "Omschrijving"));
+      if (!vals.ean) missing.push(fmt("ean", "EAN"));
+      if (!vals.qty) missing.push(fmt("qty", "QTY"));
+      if (!vals.gw) missing.push(fmt("gw", "G.W"));
+      if (!vals.cbm) missing.push(fmt("cbm", "CBM"));
+      if (!isFinite(vals.len)) missing.push(fmt("lengte", "Length (L)"));
+      if (!isFinite(vals.wid)) missing.push(fmt("breedte", "Width (W)"));
+      if (!isFinite(vals.hei)) missing.push(fmt("hoogte", "Height (H)"));
+      if (!vals.batch) missing.push(fmt("batch", "Batch"));
 
       // +1 for header row in the uploaded sheet (Excel is 1-indexed and row 1 is headers)
       if (missing.length) {
