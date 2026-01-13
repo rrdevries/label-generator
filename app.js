@@ -1121,6 +1121,30 @@
     return missing.map(([, label]) => label);
   }
 
+  function validateRequiredRowValues(rows, mappingObj) {
+    const errors = [];
+    for (let i = 0; i < rows.length; i++) {
+      const vals = readRowWithMapping(rows[i], mappingObj);
+      const missing = [];
+
+      if (!vals.code) missing.push("ERP");
+      if (!vals.desc) missing.push("Omschrijving");
+      if (!vals.ean) missing.push("EAN");
+      if (!vals.qty) missing.push("QTY");
+      if (!vals.gw) missing.push("G.W");
+      if (!vals.cbm) missing.push("CBM");
+      if (!isFinite(vals.len)) missing.push("Length (L)");
+      if (!isFinite(vals.wid)) missing.push("Width (W)");
+      if (!isFinite(vals.hei)) missing.push("Height (H)");
+      if (!vals.batch) missing.push("Batch");
+
+      if (missing.length) {
+        errors.push({ row: i + 1, missing });
+      }
+    }
+    return errors;
+  }
+
   function buildTemplateRows() {
     return [
       {
@@ -1270,6 +1294,32 @@
         const missing = validateMapping(mapping);
         if (missing.length) {
           alert("Ontbrekende mapping: " + missing.join(", "));
+          return;
+        }
+
+        const rowErrors = validateRequiredRowValues(parsedRows, mapping);
+        if (rowErrors.length) {
+          resetLog();
+          setHidden(logWrap, false);
+          log(
+            `Fout: ${rowErrors.length} rij(en) missen verplichte velden. Er worden geen PDF’s gegenereerd.`,
+            "error"
+          );
+          rowErrors.slice(0, 20).forEach((e) => {
+            log(`Rij ${e.row}: ontbreekt ${e.missing.join(", ")}`, "error");
+          });
+          if (rowErrors.length > 20) {
+            log(`... en nog ${rowErrors.length - 20} rijen.`, "error");
+          }
+
+          alert(
+            `Bulk-upload bevat ${rowErrors.length} rij(en) met lege verplichte velden.\n` +
+              `Er worden geen PDF’s gegenereerd.\n\n` +
+              rowErrors
+                .slice(0, 10)
+                .map((e) => `Rij ${e.row}: ${e.missing.join(", ")}`)
+                .join("\n")
+          );
           return;
         }
 
