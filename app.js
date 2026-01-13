@@ -1138,8 +1138,9 @@
       if (!isFinite(vals.hei)) missing.push("Height (H)");
       if (!vals.batch) missing.push("Batch");
 
+      // +1 for header row in the uploaded sheet (Excel is 1-indexed and row 1 is headers)
       if (missing.length) {
-        errors.push({ row: i + 1, missing });
+        errors.push({ row: i + 2, missing });
       }
     }
     return errors;
