@@ -1300,9 +1300,18 @@
           try {
             const vals = readRowWithMapping(row, mapping);
             // Render en capture met dezelfde pipeline als single
+            // Zorg dat Bulk exact dezelfde previewScale gebruikt als Single,
+            // zodat wrapping/fitting/bucket-typografie identiek uitpakken.
+            const visibleGrid = document.querySelector("#labelsGrid");
+            const stableScale = computePreviewScale(
+              calcLabelSizes(vals),
+              visibleGrid || batchHost
+            );
+
             const result = await renderPreviewFor(vals, {
               targetEl: batchHost,
               renderDims: false,
+              previewScale: stableScale,
             });
             if (!result) throw new Error("Kon preview niet renderen.");
 
