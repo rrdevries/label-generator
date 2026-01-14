@@ -19,7 +19,14 @@
 
 html,
 body {
-  height: 100%;
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text);
+  background: #fff;
+
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 body {
@@ -37,8 +44,13 @@ select {
 
 /* ===== Layout ===== */
 .app {
+  flex: 1;
+  width: 100%;
   max-width: 1400px;
   margin: 0 auto;
+
+  display: flex;
+  flex-direction: column;
 }
 
 .app-header {
@@ -79,9 +91,7 @@ select {
 }
 
 .app-main {
-  padding: 18px;
-  display: grid;
-  gap: 14px;
+  flex: 1;
 }
 
 .card {
@@ -723,28 +733,29 @@ body {
 }
 
 .app-footer {
-  background: #e6e6e6;
-  border-top: 3px solid var(--brand-accent);
-  padding: 14px 18px;
-  color: var(--brand-text);
+  width: 100%;
+  background: #f6f7fa;
+  border-top: 1px solid var(--ui-border);
+  padding: 10px 0;
+  color: var(--muted);
   font-size: 12px;
 }
 
 .app-footer__inner {
   max-width: 1400px;
   margin: 0 auto;
+  padding: 0 18px;
+
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  text-align: center;
 }
 
 .app-footer a {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  color: var(--brand-text);
+  text-decoration: none;
 }
 
 .app-footer a:focus-visible {
@@ -755,4 +766,6 @@ body {
 
 .app-footer a:hover {
   color: var(--brand-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
