@@ -270,6 +270,14 @@ select {
   white-space: pre-line;
 }
 
+/* Alleen voor variant STANDARD mag de productomschrijving de volle breedte gebruiken,
+   met een kleine interne padding zodat tekst niet tegen het kader aan komt. */
+.label-inner[data-variant="STANDARD"] .label-desc {
+  box-sizing: border-box;
+  padding-left: 0.35em;
+  padding-right: 0.35em;
+}
+
 /* Structural wrappers (needed for bucket layouts) */
 .erp-box {
   display: flex;

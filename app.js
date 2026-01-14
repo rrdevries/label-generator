@@ -294,6 +294,15 @@
     const desc = innerEl.querySelector(".label-desc");
     if (!desc) return;
 
+    // Alleen voor *variant* STANDARD mag de productomschrijving de volle breedte gebruiken.
+    // (Dus niet voor NARROW/WIDE/SHORT/HIGH.)
+    const variant = String(innerEl.dataset.variant || "").toUpperCase();
+    if (variant === "STANDARD") {
+      // 100% binnen de label-padding; extra padding wordt via CSS gedaan.
+      desc.style.setProperty("--desc-w", "100%");
+      return;
+    }
+
     // In columns-layout the description should use the natural left-column width.
     if (innerEl.classList.contains("layout-columns")) {
       desc.style.setProperty("--desc-w", "auto");
