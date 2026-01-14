@@ -26,6 +26,12 @@ body {
   color: var(--text);
   background: #ffffff;
 }
+/* Ensure all form controls use the same base font */
+input,
+textarea,
+select {
+  font-family: inherit;
+}
 
 /* ===== Layout ===== */
 .app {
@@ -111,6 +117,7 @@ body {
   padding: 10px 10px;
   font-size: 13px;
   background: #fff;
+  font-family: inherit;
 }
 
 .field > span {
@@ -130,6 +137,7 @@ body {
   background: #fff;
   resize: vertical;
   min-height: 68px;
+  font-family: inherit;
 }
 
 .actions {
