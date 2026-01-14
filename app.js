@@ -230,11 +230,13 @@
       return;
     }
 
-    // Only for the STANDARD variant (not WIDE / NARROW / SHORT / HIGH):
-    // Let product description use full label width, with a small horizontal padding
-    // so text doesn't touch the border.
-    const variant = String(innerEl.dataset.variant || "").toUpperCase();
-    if (variant === "STANDARD") {
+    // Only for the "STANDARD" bucket-variant (not WIDE / NARROW / SHORT / HIGH):
+    // In this project the variant is encoded in the bucket key (e.g.
+    // LANDSCAPE_EXTRA_LARGE_STANDARD). The earlier `dataset.variant` is often empty
+    // because the anchors JSON doesn't carry `requirements.variant`.
+    const bucketKey = String(innerEl.dataset.bucketKey || "").toUpperCase();
+    const isStandardVariant = /_STANDARD$/.test(bucketKey);
+    if (isStandardVariant) {
       desc.style.setProperty("--desc-w", "100%");
       desc.style.setProperty("--desc-pad-x", "0.65em");
       return;
