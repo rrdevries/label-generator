@@ -17,7 +17,7 @@
 
 html,
 body {
-  min-height: 100vh;
+  height: 100%;
 }
 
 body {
@@ -37,9 +37,6 @@ select {
 .app {
   max-width: 1400px;
   margin: 0 auto;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 
 .app-header {
@@ -82,7 +79,6 @@ select {
   padding: 18px;
   display: grid;
   gap: 14px;
-  flex: 1 1 auto;
 }
 
 .card {
@@ -691,27 +687,15 @@ select {
   }
 }
 
-/* Footer */
-.app-footer {
-  border-top: 1px solid var(--ui-border);
-  padding: 14px 18px;
-  color: var(--muted);
+/* Single UI validation */
+.field input.is-invalid {
+  border-color: #d32f2f;
+  box-shadow: 0 0 0 3px rgba(211, 47, 47, 0.12);
+}
+
+.field-error {
+  margin-top: 6px;
+  color: #d32f2f;
   font-size: 12px;
-}
-
-.app-footer__inner {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.app-footer a {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.app-footer a:hover {
-  color: var(--text);
+  line-height: 1.2;
 }

@@ -22,6 +22,9 @@
   const BORDER_PX = 1;
   let currentPreviewScale = 1;
 
+  // Enforce allowed box dimension range (cm)
+  const BOX_CM_MIN = 5;
+  const BOX_CM_MAX = 100;
   /* ====== Bucket config ====== */
   let BUCKET_CONFIG = null;
   let BUCKET_BY_KEY = new Map();
@@ -273,6 +276,85 @@
     const n = parseNumber(val);
     if (n === "") return "";
     return n.toFixed(2);
+  }
+
+  /* ====== Single UI: box dimension validation (5–100 cm) ====== */
+  function ensureInlineError(inputEl) {
+    if (!inputEl) return null;
+    const host = inputEl.closest(".field") || inputEl.parentElement;
+    if (!host) return null;
+
+    let el = host.querySelector(`.field-error[data-for="${inputEl.id}"]`);
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "field-error";
+      el.dataset.for = inputEl.id;
+      el.setAttribute("aria-live", "polite");
+      host.appendChild(el);
+    }
+    return el;
+  }
+
+  function setFieldError(inputEl, msg) {
+    const errEl = ensureInlineError(inputEl);
+    if (!inputEl) return;
+
+    const isInvalid = Boolean(msg);
+    inputEl.classList.toggle("is-invalid", isInvalid);
+    inputEl.setAttribute("aria-invalid", isInvalid ? "true" : "false");
+
+    if (errEl) errEl.textContent = msg || "";
+  }
+
+  function validateBoxFieldCm(inputEl) {
+    if (!inputEl) return true;
+
+    const raw = inputEl.value;
+    const n = parseNumber(raw);
+
+    if (n === "") {
+      setFieldError(inputEl, "Vul een getal in (cm).");
+      return false;
+    }
+    if (n < BOX_CM_MIN || n > BOX_CM_MAX) {
+      setFieldError(
+        inputEl,
+        `Moet tussen ${BOX_CM_MIN} en ${BOX_CM_MAX} cm liggen.`
+      );
+      return false;
+    }
+
+    setFieldError(inputEl, "");
+    return true;
+  }
+
+  function validateSingleBoxFields({ focusFirst = true } = {}) {
+    const ids = ["len", "wid", "hei"];
+    let firstInvalid = null;
+    let ok = true;
+
+    ids.forEach((id) => {
+      const el = document.getElementById(id);
+      const valid = validateBoxFieldCm(el);
+      if (!valid && !firstInvalid) firstInvalid = el;
+      ok = ok && valid;
+    });
+
+    if (!ok && focusFirst && firstInvalid) firstInvalid.focus();
+    return ok;
+  }
+
+  function initSingleBoxValidation() {
+    ["len", "wid", "hei"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      // Show error on blur; clear as soon as the value becomes valid again.
+      el.addEventListener("blur", () => validateBoxFieldCm(el));
+      el.addEventListener("input", () => {
+        if (el.classList.contains("is-invalid")) validateBoxFieldCm(el);
+      });
+    });
   }
 
   function getFormValues() {
@@ -1472,15 +1554,19 @@
     initTabs();
     initBatchUI();
 
+    initSingleBoxValidation();
     const btnGen = $("#btnGen");
     const btnPDF = $("#btnPDF");
 
-    const safeRender = () =>
+    const safeRender = () => {
+      if (!validateSingleBoxFields()) return;
       renderSingle().catch((err) => alert(err.message || err));
+    };
     btnGen?.addEventListener("click", safeRender);
 
     btnPDF?.addEventListener("click", async () => {
       try {
+        if (!validateSingleBoxFields()) return;
         await generatePDFSingle();
       } catch (err) {
         alert(err.message || err);
