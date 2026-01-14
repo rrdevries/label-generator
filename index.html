@@ -12,7 +12,7 @@
         <div class="brand">
           <div class="brand-text">
             <h1>
-              Etiketten Generator<span class="version-badge">v0.104</span>
+              Etiketten Generator<span class="version-badge">v0.109</span>
             </h1>
             <p class="subtitle">
               Vul de gegevens in en klik op
@@ -330,6 +330,16 @@ Combination Lock - Orange - 1 Pack (YF20610B)</textarea
           </div>
         </div>
       </main>
+
+      <footer class="app-footer" role="contentinfo">
+        <div class="app-footer__inner">
+          © <span id="copyrightYear"></span>
+          <a href="http://studiord.nl" target="_blank" rel="noopener noreferrer"
+            >Studio RD</a
+          >
+          – onderdeel van Renée de Vries.
+        </div>
+      </footer>
     </div>
 
     <!-- libs -->
@@ -339,5 +349,10 @@ Combination Lock - Orange - 1 Pack (YF20610B)</textarea
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 
     <script src="app.js"></script>
+
+    <script>
+      document.getElementById("copyrightYear").textContent =
+        new Date().getFullYear();
+    </script>
   </body>
 </html>
