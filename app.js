@@ -220,6 +220,12 @@
           history.replaceState(null, "", "#" + newHash);
         }
       }
+
+      // UX: keep all tabs starting at the same viewport position.
+      // This prevents perceived "jumping" between tabs caused by retained scroll.
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      });
     };
 
     tabButtons.forEach((b) => {

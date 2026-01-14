@@ -29,6 +29,17 @@ body {
   flex-direction: column;
 }
 
+/* Prevent layout "jump" when switching between tabs with/without vertical scrollbar */
+html {
+  scrollbar-gutter: stable;
+}
+
+@supports not (scrollbar-gutter: stable) {
+  html {
+    overflow-y: scroll;
+  }
+}
+
 body {
   margin: 0;
   font-family: Arial, Helvetica, sans-serif;
