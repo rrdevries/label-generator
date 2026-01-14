@@ -22,15 +22,10 @@ body {
 
 body {
   margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+    "Noto Sans", "Liberation Sans", sans-serif;
   color: var(--text);
   background: #ffffff;
-}
-/* Ensure all form controls use the same base font */
-input,
-textarea,
-select {
-  font-family: inherit;
 }
 
 /* ===== Layout ===== */
@@ -117,7 +112,6 @@ select {
   padding: 10px 10px;
   font-size: 13px;
   background: #fff;
-  font-family: inherit;
 }
 
 .field > span {
@@ -137,7 +131,6 @@ select {
   background: #fff;
   resize: vertical;
   min-height: 68px;
-  font-family: inherit;
 }
 
 .actions {
@@ -261,6 +254,8 @@ select {
   display: block;
   margin: 0 auto;
   width: var(--desc-w, auto); /* wordt door JS gezet op specs-grid breedte */
+  box-sizing: border-box;
+  padding: 0 var(--desc-pad-x, 0);
   max-width: 100%;
   font-size: var(--fs-desc);
   line-height: 1.15;
@@ -268,14 +263,6 @@ select {
   overflow-wrap: anywhere;
   word-break: break-word;
   white-space: pre-line;
-}
-
-/* Alleen voor variant STANDARD mag de productomschrijving de volle breedte gebruiken,
-   met een kleine interne padding zodat tekst niet tegen het kader aan komt. */
-.label-inner[data-variant="STANDARD"] .label-desc {
-  box-sizing: border-box;
-  padding-left: 0.35em;
-  padding-right: 0.35em;
 }
 
 /* Structural wrappers (needed for bucket layouts) */

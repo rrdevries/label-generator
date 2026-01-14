@@ -175,77 +175,6 @@
   /* ====== Helpers ====== */
   const $ = (sel) => document.querySelector(sel);
 
-  function initTabs() {
-    const tabButtons = Array.from(
-      document.querySelectorAll(".tab-btn[data-tab-target]")
-    );
-    const panels = Array.from(document.querySelectorAll(".tab-panel"));
-
-    if (!tabButtons.length || !panels.length) return;
-
-    const idToHash = (id) => {
-      if (id === "tab-bulk") return "bulk";
-      if (id === "tab-doc") return "doc";
-      return "single";
-    };
-
-    const hashToId = (hash) => {
-      const h = (hash || "").replace("#", "").toLowerCase();
-      if (h === "bulk") return "tab-bulk";
-      if (h === "doc" || h === "docs" || h === "documentatie") return "tab-doc";
-      return "tab-single";
-    };
-
-    const setActive = (targetId, { updateHash = true } = {}) => {
-      // Panels
-      panels.forEach((p) => {
-        const isActive = p.id === targetId;
-        p.classList.toggle("hidden", !isActive);
-      });
-
-      // Buttons + ARIA
-      tabButtons.forEach((b) => {
-        const isActive = b.dataset.tabTarget === targetId;
-        b.classList.toggle("active", isActive);
-        b.setAttribute("aria-selected", isActive ? "true" : "false");
-        b.tabIndex = isActive ? 0 : -1;
-      });
-
-      if (updateHash) {
-        const newHash = idToHash(targetId);
-        if (location.hash !== "#" + newHash) {
-          history.replaceState(null, "", "#" + newHash);
-        }
-      }
-    };
-
-    tabButtons.forEach((b) => {
-      b.addEventListener("click", () => {
-        setActive(b.dataset.tabTarget, { updateHash: true });
-      });
-
-      // Keyboard nav (Left/Right)
-      b.addEventListener("keydown", (e) => {
-        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-        e.preventDefault();
-        const idx = tabButtons.indexOf(b);
-        const delta = e.key === "ArrowRight" ? 1 : -1;
-        const next =
-          tabButtons[(idx + delta + tabButtons.length) % tabButtons.length];
-        next.focus();
-        setActive(next.dataset.tabTarget, { updateHash: true });
-      });
-    });
-
-    // Initial state from hash
-    setActive(hashToId(location.hash), { updateHash: false });
-
-    // React on hash changes (back/forward)
-    window.addEventListener("hashchange", () => {
-      setActive(hashToId(location.hash), { updateHash: false });
-    });
-  }
-
   function el(tag, attrs = {}, ...children) {
     const node = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -294,21 +223,26 @@
     const desc = innerEl.querySelector(".label-desc");
     if (!desc) return;
 
-    // Alleen voor *variant* STANDARD mag de productomschrijving de volle breedte gebruiken.
-    // (Dus niet voor NARROW/WIDE/SHORT/HIGH.)
-    const variant = String(innerEl.dataset.variant || "").toUpperCase();
-    if (variant === "STANDARD") {
-      // 100% binnen de label-padding; extra padding wordt via CSS gedaan.
-      desc.style.setProperty("--desc-w", "100%");
-      return;
-    }
-
     // In columns-layout the description should use the natural left-column width.
     if (innerEl.classList.contains("layout-columns")) {
       desc.style.setProperty("--desc-w", "auto");
+      desc.style.setProperty("--desc-pad-x", "0");
       return;
     }
 
+    // Only for the STANDARD variant (not WIDE / NARROW / SHORT / HIGH):
+    // Let product description use full label width, with a small horizontal padding
+    // so text doesn't touch the border.
+    const variant = String(innerEl.dataset.variant || "").toUpperCase();
+    if (variant === "STANDARD") {
+      desc.style.setProperty("--desc-w", "100%");
+      desc.style.setProperty("--desc-pad-x", "0.65em");
+      return;
+    }
+
+    // Default behavior: keep description width equal to the specs grid width
+    // to maintain visual alignment.
+    desc.style.setProperty("--desc-pad-x", "0");
     const grid = innerEl.querySelector(".specs-grid");
     if (!grid) return;
 
@@ -1130,38 +1064,6 @@
     return missing.map(([, label]) => label);
   }
 
-  function validateRequiredRowValues(rows, mappingObj) {
-    const errors = [];
-
-    // Build "Field label (Excel column name)" messages so users can fix their sheet quickly.
-    const fmt = (key, label) => {
-      const col = mappingObj[key];
-      return col ? `${label} (kolom: ${col})` : `${label} (kolom: —)`;
-    };
-
-    for (let i = 0; i < rows.length; i++) {
-      const vals = readRowWithMapping(rows[i], mappingObj);
-      const missing = [];
-
-      if (!vals.code) missing.push(fmt("productcode", "ERP"));
-      if (!vals.desc) missing.push(fmt("omschrijving", "Omschrijving"));
-      if (!vals.ean) missing.push(fmt("ean", "EAN"));
-      if (!vals.qty) missing.push(fmt("qty", "QTY"));
-      if (!vals.gw) missing.push(fmt("gw", "G.W"));
-      if (!vals.cbm) missing.push(fmt("cbm", "CBM"));
-      if (!isFinite(vals.len)) missing.push(fmt("lengte", "Length (L)"));
-      if (!isFinite(vals.wid)) missing.push(fmt("breedte", "Width (W)"));
-      if (!isFinite(vals.hei)) missing.push(fmt("hoogte", "Height (H)"));
-      if (!vals.batch) missing.push(fmt("batch", "Batch"));
-
-      // +1 for header row in the uploaded sheet (Excel is 1-indexed and row 1 is headers)
-      if (missing.length) {
-        errors.push({ row: i + 2, missing });
-      }
-    }
-    return errors;
-  }
-
   function buildTemplateRows() {
     return [
       {
@@ -1314,32 +1216,6 @@
           return;
         }
 
-        const rowErrors = validateRequiredRowValues(parsedRows, mapping);
-        if (rowErrors.length) {
-          resetLog();
-          setHidden(logWrap, false);
-          log(
-            `Fout: ${rowErrors.length} rij(en) missen verplichte velden. Er worden geen PDF’s gegenereerd.`,
-            "error"
-          );
-          rowErrors.slice(0, 20).forEach((e) => {
-            log(`Rij ${e.row}: ontbreekt ${e.missing.join(", ")}`, "error");
-          });
-          if (rowErrors.length > 20) {
-            log(`... en nog ${rowErrors.length - 20} rijen.`, "error");
-          }
-
-          alert(
-            `Bulk-upload bevat ${rowErrors.length} rij(en) met lege verplichte velden.\n` +
-              `Er worden geen PDF’s gegenereerd.\n\n` +
-              rowErrors
-                .slice(0, 10)
-                .map((e) => `Rij ${e.row}: ${e.missing.join(", ")}`)
-                .join("\n")
-          );
-          return;
-        }
-
         // Bulk: geen debug-variant tonen.
         renderVariants([]);
 
@@ -1367,18 +1243,9 @@
           try {
             const vals = readRowWithMapping(row, mapping);
             // Render en capture met dezelfde pipeline als single
-            // Zorg dat Bulk exact dezelfde previewScale gebruikt als Single,
-            // zodat wrapping/fitting/bucket-typografie identiek uitpakken.
-            const visibleGrid = document.querySelector("#labelsGrid");
-            const stableScale = computePreviewScale(
-              calcLabelSizes(vals),
-              visibleGrid || batchHost
-            );
-
             const result = await renderPreviewFor(vals, {
               targetEl: batchHost,
               renderDims: false,
-              previewScale: stableScale,
             });
             if (!result) throw new Error("Kon preview niet renderen.");
 
@@ -1478,7 +1345,6 @@
       // Zonder config kan de rest nog draaien, maar bucket-typografie zal ontbreken.
     }
 
-    initTabs();
     initBatchUI();
 
     const btnGen = $("#btnGen");
