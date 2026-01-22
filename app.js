@@ -497,12 +497,16 @@
 
     dims.innerHTML = "";
 
+    // Render as explicit 3-cell rows to avoid any accidental extra/empty column.
     sizes.forEach((s) => {
-      dims.append(
-        el("div", { class: "dim" }, s.name),
-        el("div", { class: "dim" }, format2(s.w)),
-        el("div", { class: "dim" }, format2(s.h))
+      const row = el(
+        "div",
+        { class: "dims-row", role: "row" },
+        el("div", { class: "dim", role: "cell" }, s.name),
+        el("div", { class: "dim", role: "cell" }, format2(s.w)),
+        el("div", { class: "dim", role: "cell" }, format2(s.h))
       );
+      dims.append(row);
     });
   }
 
@@ -1598,8 +1602,11 @@
     };
     btnGen?.addEventListener("click", safeRender);
 
-    btnClear?.addEventListener("click", () => {
-      // Clear all Single inputs and previous results
+    btnClear?.addEventListener("click", (ev) => {
+      // Clear all Single inputs + results
+      ev?.preventDefault?.();
+      ev?.stopPropagation?.();
+
       const ids = [
         "len",
         "wid",
@@ -1615,15 +1622,44 @@
       ids.forEach((id) => {
         const input = $("#" + id);
         if (!input) return;
+
         input.value = "";
-        // Remove inline validation state/message if present
-        try {
-          setFieldError(input, "");
-        } catch (_) {}
+
+        // Clear validation UI (only if present)
+        input.classList.remove("is-invalid");
+        input.removeAttribute("aria-invalid");
+        const host = input.closest(".field") || input.parentElement;
+        const errEl = host?.querySelector(
+          `.field-error[data-for="${input.id}"]`
+        );
+        if (errEl) errEl.textContent = "";
       });
 
-      // Reset preview + calculated dims to the empty state placeholder
-      renderSingle().catch((err) => alert(err.message || err));
+      // Reset preview + calculated dims to the empty state
+      const grid = $("#labelsGrid");
+      const dims = $("#dims");
+
+      if (grid) {
+        grid.innerHTML = "";
+        grid.append(
+          el(
+            "div",
+            {
+              class: "preview-placeholder",
+              style: {
+                gridColumn: "1 / -1",
+                textAlign: "center",
+                padding: "28px 16px",
+                border: "1px dashed rgba(49, 60, 108, 0.35)",
+                borderRadius: "10px",
+                opacity: "0.8",
+              },
+            },
+            "Hier komt de preview"
+          )
+        );
+      }
+      if (dims) dims.innerHTML = "";
     });
 
     btnPDF?.addEventListener("click", async () => {

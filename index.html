@@ -12,7 +12,7 @@
         <div class="brand">
           <div class="brand-text">
             <h1>
-              Etiketten Generator<span class="version-badge">v0.127</span>
+              Etiketten Generator<span class="version-badge">v0.129</span>
             </h1>
           </div>
           <a
@@ -140,9 +140,15 @@
                 </div>
 
                 <div class="actions">
-                  <button id="btnGen" class="btn primary">Preview</button>
-                  <button id="btnClear" class="btn">Leegmaken</button>
-                  <button id="btnPDF" class="btn success">Maak PDF</button>
+                  <button type="button" id="btnGen" class="btn primary">
+                    Preview
+                  </button>
+                  <button type="button" id="btnClear" class="btn">
+                    Leegmaken
+                  </button>
+                  <button type="button" id="btnPDF" class="btn success">
+                    Maak PDF
+                  </button>
                 </div>
               </section>
 
@@ -154,12 +160,12 @@
 
             <section class="panel panel-dims">
               <h2>Berekende labelafmetingen (werkelijke cm)</h2>
-              <div class="dims-grid-head">
-                <div>Label</div>
-                <div>W</div>
-                <div>H</div>
+              <div class="dims-head-row" role="row">
+                <div class="dims-head-cell" role="columnheader">Label</div>
+                <div class="dims-head-cell" role="columnheader">W</div>
+                <div class="dims-head-cell" role="columnheader">H</div>
               </div>
-              <div id="dims" class="dims-grid"></div>
+              <div id="dims" class="dims-rows" role="rowgroup"></div>
             </section>
           </div>
 

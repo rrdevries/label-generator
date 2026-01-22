@@ -521,17 +521,30 @@ select {
   color: var(--brand-text);
 }
 
-.dims-grid-head,
-.dims-grid {
+/* ===== Calculated label dimensions: clean 3-column rows (no extra/empty column) ===== */
+.dims-head-row {
   display: grid;
   grid-template-columns: 1fr 0.6fr 0.6fr;
   gap: 6px 10px;
-}
-
-.dims-grid-head {
   font-size: 12px;
   color: #666;
   margin-bottom: 6px;
+}
+
+.dims-head-cell {
+  padding: 0 2px;
+}
+
+.dims-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dims-row {
+  display: grid;
+  grid-template-columns: 1fr 0.6fr 0.6fr;
+  gap: 6px 10px;
 }
 
 .dim {
@@ -542,8 +555,8 @@ select {
   font-size: 13px;
 }
 
-.dim:nth-child(3n + 2),
-.dim:nth-child(3n + 3) {
+.dims-row .dim:nth-child(2),
+.dims-row .dim:nth-child(3) {
   text-align: right;
 }
 
