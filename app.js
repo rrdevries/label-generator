@@ -1600,12 +1600,41 @@
     initSingleBoxValidation();
     const btnGen = $("#btnGen");
     const btnPDF = $("#btnPDF");
+    const btnClear = $("#btnClear");
 
     const safeRender = () => {
       if (!validateSingleBoxFields()) return;
       renderSingle().catch((err) => alert(err.message || err));
     };
     btnGen?.addEventListener("click", safeRender);
+
+    btnClear?.addEventListener("click", () => {
+      // Clear all Single inputs and previous results
+      const ids = [
+        "len",
+        "wid",
+        "hei",
+        "gw",
+        "cbm",
+        "erp",
+        "desc",
+        "ean",
+        "qty",
+        "batch",
+      ];
+      ids.forEach((id) => {
+        const input = $("#" + id);
+        if (!input) return;
+        input.value = "";
+        // Remove inline validation state/message if present
+        try {
+          setFieldError(input, "");
+        } catch (_) {}
+      });
+
+      // Reset preview + calculated dims to the empty state placeholder
+      renderSingle().catch((err) => alert(err.message || err));
+    });
 
     btnPDF?.addEventListener("click", async () => {
       try {

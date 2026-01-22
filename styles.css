@@ -188,6 +188,7 @@ select {
   gap: 12px;
   justify-content: center;
   margin-top: 12px;
+  flex-wrap: wrap;
 }
 
 .btn {
