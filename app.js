@@ -492,7 +492,7 @@
   }
 
   function renderDims(sizes, opts = {}) {
-    const { includeBucket = false } = opts;
+    const includeBucket = false; // debug variant UI disabled
     const dims = $("#dims");
     if (!dims) return;
 
@@ -872,7 +872,7 @@
       return;
     }
 
-    await renderPreviewFor(vals, { showVariant: true });
+    await renderPreviewFor(vals);
   }
 
   /* ====== jsPDF / html2canvas ====== */
