@@ -127,6 +127,22 @@ select {
   align-items: end;
 }
 
+/* Single input grouping */
+.form-section {
+  margin-top: 10px;
+}
+
+.form-section + .form-section {
+  margin-top: 14px;
+}
+
+.form-section-title {
+  margin: 2px 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand-text);
+}
+
 .field label {
   display: block;
   font-size: 12px;
