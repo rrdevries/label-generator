@@ -842,6 +842,36 @@
   }
   async function renderSingle() {
     const vals = getFormValues();
+
+    // Empty state: no box dimensions entered yet
+    if (vals.len === "" && vals.wid === "" && vals.hei === "") {
+      const grid = $("#labelsGrid");
+      const dims = $("#dims");
+
+      if (grid) {
+        grid.innerHTML = "";
+        grid.append(
+          el(
+            "div",
+            {
+              class: "preview-placeholder",
+              style: {
+                gridColumn: "1 / -1",
+                textAlign: "center",
+                padding: "28px 16px",
+                border: "1px dashed rgba(49, 60, 108, 0.35)",
+                borderRadius: "10px",
+                opacity: "0.8",
+              },
+            },
+            "Hier komt de preview"
+          )
+        );
+      }
+      if (dims) dims.innerHTML = "";
+      return;
+    }
+
     await renderPreviewFor(vals, { showVariant: true });
   }
 
