@@ -188,14 +188,21 @@
 
     const idToHash = (id) => {
       if (id === "tab-bulk") return "bulk";
-      if (id === "tab-doc") return "doc";
+      if (id === "tab-doc") return "help";
       return "single";
     };
 
     const hashToId = (hash) => {
       const h = (hash || "").replace("#", "").toLowerCase();
       if (h === "bulk") return "tab-bulk";
-      if (h === "doc" || h === "docs" || h === "documentatie") return "tab-doc";
+      if (
+        h === "help" ||
+        h === "hulp" ||
+        h === "doc" ||
+        h === "docs" ||
+        h === "documentatie"
+      )
+        return "tab-doc";
       return "tab-single";
     };
 

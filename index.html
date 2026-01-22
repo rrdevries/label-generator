@@ -12,7 +12,7 @@
         <div class="brand">
           <div class="brand-text">
             <h1>
-              Etiketten Generator<span class="version-badge">v0.115</span>
+              Etiketten Generator<span class="version-badge">v0.116</span>
             </h1>
           </div>
           <a
@@ -64,7 +64,7 @@
             aria-controls="tab-doc"
             data-tab-target="tab-doc"
           >
-            Documentatie
+            Help
           </button>
         </nav>
 
@@ -256,69 +256,61 @@ Combination Lock - Orange - 1 Pack (YF20610B)</textarea
             aria-labelledby="tabBtnDoc"
           >
             <section class="panel">
-              <h2>Documentatie</h2>
+              <h2>Help</h2>
 
               <p class="muted">
-                Deze pagina beschrijft de invoervelden, de batch-upload
-                (Excel/CSV) en de PDF-output.
+                Snel starten en later snel terugvinden. De tool kiest
+                automatisch de juiste layout op basis van de doosverhoudingen.
               </p>
 
-              <h3>Single-PDF</h3>
-              <p>
-                Vul de velden in en klik op
-                <strong>Preview</strong> voor de preview. Klik daarna op
-                <strong>Maak PDF</strong> om een PDF te downloaden.
-              </p>
-
-              <h3>Invoervelden</h3>
-              <ul class="doc-list">
-                <li><strong>ERP</strong>: interne ERP-code (tekst).</li>
-                <li>
-                  <strong>Productomschrijving</strong>: korte omschrijving
-                  (tekst).
-                </li>
-                <li>
-                  <strong>EAN</strong>: EAN/GTIN code (tekst of numeriek).
-                </li>
-                <li><strong>Aantal</strong>: aantal stuks (numeriek).</li>
-                <li><strong>GW</strong>: brutogewicht (kg).</li>
-                <li><strong>CBM</strong>: kubieke meter (m³).</li>
-                <li>
-                  <strong>Afmetingen doos</strong>: <strong>L</strong>,
-                  <strong>B</strong>, <strong>H</strong> (cm).
-                </li>
-                <li><strong>Batch</strong>: batch/lot nummer (tekst).</li>
-              </ul>
-
-              <h3>Bulk-Upload</h3>
-              <p>
-                Upload een XLSX/XLS/CSV en koppel daarna de kolommen aan de
-                velden. Gebruik de template-knoppen om een voorbeeldbestand te
-                downloaden.
-              </p>
-
-              <h3>Normalisatie</h3>
+              <h3>Snel starten</h3>
               <ul class="doc-list">
                 <li>
-                  <strong>Komma als decimaal</strong>: zet <code>1,25</code> om
-                  naar <code>1.25</code> indien aangevinkt.
+                  Kies <strong>Single-PDF</strong> of
+                  <strong>Bulk-Upload</strong>.
+                </li>
+                <li>Vul de doosmaten in (cm).</li>
+                <li>
+                  Single-PDF: klik <strong>Preview</strong> om te controleren.
                 </li>
                 <li>
-                  <strong>Spaties trimmen</strong>: verwijdert spaties rondom
-                  waarden.
+                  Klik <strong>Maak PDF</strong> voor de definitieve export.
                 </li>
               </ul>
 
-              <h3>Links</h3>
-              <p>
-                LifeGoods Group website:
-                <a
-                  href="https://lifegoodsgroup.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  >lifegoodsgroup.com</a
-                >
-              </p>
+              <h3>Belangrijkste regels</h3>
+              <ul class="doc-list">
+                <li>
+                  Doosmaten moeten tussen <strong>5</strong> en
+                  <strong>100</strong> cm liggen. Buiten dit bereik wordt het
+                  veld rood en verschijnt een melding.
+                </li>
+                <li>
+                  Labels zijn altijd <strong>10% kleiner</strong> dan het
+                  bijbehorende doosvlak (schaalfactor <strong>0,9</strong>).
+                </li>
+                <li>
+                  Bulk-Upload toont geen zichtbare preview per item; je krijgt
+                  alleen de eindresultaten (PDF’s/ZIP).
+                </li>
+              </ul>
+
+              <h3>Problemen oplossen</h3>
+              <ul class="doc-list">
+                <li>
+                  <strong>Veld rood / foutmelding</strong>: controleer of de
+                  waarde een getal is en tussen 5 en 100 cm ligt.
+                </li>
+                <li>
+                  <strong>Tekst past niet</strong>: verkort de
+                  productomschrijving of controleer of je doosmaten correct zijn
+                  (cm).
+                </li>
+                <li>
+                  <strong>PDF ontbreekt of lijkt leeg</strong>: meestal is één
+                  veld ongeldig; corrigeer de invoer en genereer opnieuw.
+                </li>
+              </ul>
             </section>
           </div>
         </div>
