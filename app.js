@@ -492,26 +492,16 @@
   }
 
   function renderDims(sizes, opts = {}) {
-    const includeBucket = false; // debug variant UI disabled
     const dims = $("#dims");
     if (!dims) return;
 
     dims.innerHTML = "";
 
     sizes.forEach((s) => {
-      let bucketUi = "";
-      if (includeBucket) {
-        const picked = determineBucket(s.w, s.h);
-        const name = bucketKeyToUiName(picked.bucketKey);
-        bucketUi =
-          name === "—" ? "—" : `${name} (${layoutToUiName(picked.layout)})`;
-      }
-
       dims.append(
         el("div", { class: "dim" }, s.name),
         el("div", { class: "dim" }, format2(s.w)),
-        el("div", { class: "dim" }, format2(s.h)),
-        el("div", { class: "dim" }, bucketUi)
+        el("div", { class: "dim" }, format2(s.h))
       );
     });
   }
