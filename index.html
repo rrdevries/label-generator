@@ -12,7 +12,7 @@
         <div class="brand">
           <div class="brand-text">
             <h1>
-              Etiketten Generator<span class="version-badge">v0.117</span>
+              Etiketten Generator<span class="version-badge">v0.118</span>
             </h1>
           </div>
           <a
@@ -291,6 +291,241 @@ Combination Lock - Orange - 1 Pack (YF20610B)</textarea
                   alleen de eindresultaten (PDF’s/ZIP).
                 </li>
               </ul>
+
+              <h3>Families, varianten en layouts (automatisch)</h3>
+              <p class="muted" style="margin-top: 6px">
+                Bepaald door de labelverhouding en de grootste maat:
+                <strong>ratio = W/H</strong>,
+                <strong>D = max(W,H)</strong> (cm).
+              </p>
+
+              <div style="overflow-x: auto">
+                <table
+                  style="
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 8px;
+                  "
+                >
+                  <thead>
+                    <tr>
+                      <th
+                        style="
+                          text-align: left;
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.18);
+                        "
+                      >
+                        Family
+                      </th>
+                      <th
+                        style="
+                          text-align: left;
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.18);
+                        "
+                      >
+                        Variant-regel
+                      </th>
+                      <th
+                        style="
+                          text-align: left;
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.18);
+                        "
+                      >
+                        Layout
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        <strong>Square</strong>
+                      </td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        ratio ligt dicht bij 1 (±0,10)
+                      </td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        Standard
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        <strong>Portrait</strong>
+                      </td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        Narrow: ratio &lt; 0,40
+                      </td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        Stacked
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      ></td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        Standard: 0,40 ≤ ratio &lt; 0,65
+                      </td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        Stacked
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      ></td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        Wide: ratio ≥ 0,65
+                      </td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        Standard
+                      </td>
+                    </tr>
+
+                    <tr>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        <strong>Landscape</strong>
+                      </td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        Short: H/W &lt; 0,40
+                      </td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        Columns
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      ></td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        Standard: 0,40 ≤ H/W &lt; 0,65
+                      </td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        Standard
+                      </td>
+                    </tr>
+                    <tr>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      ></td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        High: H/W ≥ 0,65
+                      </td>
+                      <td
+                        style="
+                          padding: 8px;
+                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
+                        "
+                      >
+                        Standard
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <p class="muted" style="margin-top: 8px">
+                Size class (op basis van D): <strong>Micro</strong> 5–&lt;10,
+                <strong>Small</strong> 10–&lt;25,
+                <strong>Medium</strong> 25–&lt;40,
+                <strong>Large</strong> 40–&lt;70,
+                <strong>Extra-Large</strong> 70–100 (cm).
+              </p>
 
               <h3>Problemen oplossen</h3>
               <ul class="doc-list">
