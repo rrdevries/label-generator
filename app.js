@@ -34,7 +34,7 @@
     if (!res.ok) {
       throw new Error(
         `Bucket-config kon niet worden geladen (${res.status} ${res.statusText}). ` +
-          `Tip: open dit via een (lokale) webserver i.p.v. file://.`
+          `Tip: open dit via een (lokale) webserver i.p.v. file://.`,
       );
     }
     const cfg = await res.json();
@@ -139,6 +139,8 @@
   function applyBucketTypography(innerEl) {
     const W_cm = Number(innerEl.dataset.wcm);
     const H_cm = Number(innerEl.dataset.hcm);
+    // Key bepaald op basis van ratio (drijft layout). Anchor kan daarop fallbacken (drijft typografie).
+    const selectedKey = selectBucketKeyFor(W_cm, H_cm);
     const anchor = getBucketAnchorFor(W_cm, H_cm);
 
     // Fallback: geen bucket -> zet niets (oude auto-fit kan dan nog werken)
@@ -162,7 +164,9 @@
     innerEl.style.setProperty("--fs-text", `${textPx}px`);
     innerEl.style.setProperty("--fs-footer", `${footerPx}px`);
 
-    innerEl.dataset.bucketKey = String(anchor.key || "");
+    // Layout moet volgen uit de berekende key (incl. SHORT/COLUMNS), ook als de anchor fallbackt.
+    innerEl.dataset.bucketKey = String(selectedKey || anchor.key || "");
+    innerEl.dataset.anchorKey = String(anchor.key || "");
     innerEl.dataset.bucketK = String(k);
     innerEl.dataset.family = String(anchor.requirements?.family || "");
     innerEl.dataset.variant = String(anchor.requirements?.variant || "");
@@ -180,7 +184,7 @@
 
   function initTabs() {
     const tabButtons = Array.from(
-      document.querySelectorAll(".tab-btn[data-tab-target]")
+      document.querySelectorAll(".tab-btn[data-tab-target]"),
     );
     const panels = Array.from(document.querySelectorAll(".tab-panel"));
 
@@ -332,7 +336,7 @@
     if (n < BOX_CM_MIN || n > BOX_CM_MAX) {
       setFieldError(
         inputEl,
-        `Moet tussen ${BOX_CM_MIN} en ${BOX_CM_MAX} cm liggen.`
+        `Moet tussen ${BOX_CM_MIN} en ${BOX_CM_MAX} cm liggen.`,
       );
       return false;
     }
@@ -485,7 +489,7 @@
     // UI helper: return the effective bucket key (incl. fallbacks) and layout.
     const anchor = BUCKET_CONFIG ? getBucketAnchorFor(W_cm, H_cm) : null;
     const bucketKey = String(
-      anchor?.key || selectBucketKeyFor(W_cm, H_cm) || ""
+      anchor?.key || selectBucketKeyFor(W_cm, H_cm) || "",
     );
     const layout = layoutForBucketKey(bucketKey);
     return { bucketKey, layout };
@@ -511,7 +515,7 @@
         el("div", { class: "dim" }, s.name),
         el("div", { class: "dim" }, format2(s.w)),
         el("div", { class: "dim" }, format2(s.h)),
-        el("div", { class: "dim" }, bucketUi)
+        el("div", { class: "dim" }, bucketUi),
       );
     });
   }
@@ -540,9 +544,19 @@
   }
 
   function layoutForBucketKey(bucketKey) {
-    const parts = String(bucketKey || "").split("_");
+    const parts = String(bucketKey || "")
+      .split("_")
+      .filter(Boolean);
     const family = (parts[0] || "").toUpperCase();
-    const variant = parts.slice(2).join("_").toUpperCase();
+
+    // bucketKey format: FAMILY_SIZECLASS[_VARIANT]
+    // Sizeclass "EXTRA_LARGE" bevat een underscore -> parts: [FAMILY, EXTRA, LARGE, VARIANT]
+    let variant = "";
+    if (parts[1] === "EXTRA" && parts[2] === "LARGE") {
+      variant = (parts[3] || "").toUpperCase();
+    } else {
+      variant = (parts[2] || "").toUpperCase();
+    }
 
     // Layout mapping (per bucket family + variant)
     // Square: always Standard
@@ -583,7 +597,7 @@
     variant.innerHTML = "";
     (variantItems || []).forEach((v) => {
       variant.append(
-        el("div", { class: "pill" }, `Label ${v.label}: ${v.name}`)
+        el("div", { class: "pill" }, `Label ${v.label}: ${v.name}`),
       );
     });
   }
@@ -594,7 +608,7 @@
 
     // Detecteer overflow in grid-cellen (EAN/waarden)
     const valOverflow = Array.from(
-      content.querySelectorAll(".specs-grid .val")
+      content.querySelectorAll(".specs-grid .val"),
     ).some((v) => v.scrollWidth > v.clientWidth + 0.5);
     if (valOverflow) return false;
 
@@ -698,7 +712,7 @@
       el("div", { class: "key" }, "G.W:"),
       el("div", { class: "val" }, `${values.gw || ""} KGS`),
       el("div", { class: "key" }, "CBM:"),
-      el("div", { class: "val" }, values.cbm || "")
+      el("div", { class: "val" }, values.cbm || ""),
     );
 
     return grid;
@@ -733,13 +747,13 @@
     const erpBox = el(
       "div",
       { class: "erp-box" },
-      el("div", { class: "code-box line" }, values.code)
+      el("div", { class: "code-box line" }, values.code),
     );
 
     const descEl = el(
       "div",
       { class: "line label-desc product-desc" },
-      values.desc
+      values.desc,
     );
 
     const specs = buildSpecsGrid(values);
@@ -747,7 +761,7 @@
     const footerEl = el(
       "div",
       { class: "footer-text" },
-      footerTextForLabel(size, largestTwo)
+      footerTextForLabel(size, largestTwo),
     );
 
     const content = el(
@@ -756,7 +770,7 @@
       erpBox,
       descEl,
       specs,
-      footerEl
+      footerEl,
     );
 
     // Apply an initial bucket/layout guess early (helps preview layout before fitting).
@@ -864,8 +878,8 @@
                 opacity: "0.8",
               },
             },
-            "Hier komt de preview"
-          )
+            "Hier komt de preview",
+          ),
         );
       }
       if (dims) dims.innerHTML = "";
@@ -936,7 +950,7 @@
     const capScale = Math.max(
       2,
       window.devicePixelRatio || 1,
-      1 / (currentPreviewScale || 1)
+      1 / (currentPreviewScale || 1),
     );
 
     const canvas = await html2canvas(clone, {
@@ -990,7 +1004,7 @@
         wRot,
         hRot,
         undefined,
-        "FAST"
+        "FAST",
       );
       y += hRot;
     }
@@ -1056,7 +1070,7 @@
     const div = el(
       "div",
       { class: type === "error" ? "err" : type === "ok" ? "ok" : "" },
-      msg
+      msg,
     );
     logList.appendChild(div);
   }
@@ -1202,7 +1216,7 @@
     for (let i = 0; i < n; i++) {
       const tr = el("tr");
       cols.forEach((c) =>
-        tr.appendChild(el("td", {}, String(rows[i][c] ?? "")))
+        tr.appendChild(el("td", {}, String(rows[i][c] ?? ""))),
       );
       tbody.appendChild(tr);
     }
@@ -1224,7 +1238,7 @@
   function readRowWithMapping(row, mappingObj) {
     const get = (key) => {
       const hdr = mappingObj[key] || "";
-      return hdr ? row[hdr] ?? "" : "";
+      return hdr ? (row[hdr] ?? "") : "";
     };
 
     return {
@@ -1313,8 +1327,8 @@
     const cols = Object.keys(rows[0]);
     const lines = [cols.join(";")].concat(
       rows.map((r) =>
-        cols.map((c) => String(r[c] ?? "").replace(/;/g, ",")).join(";")
-      )
+        cols.map((c) => String(r[c] ?? "").replace(/;/g, ",")).join(";"),
+      ),
     );
     const blob = new Blob([lines.join("\n")], {
       type: "text/csv;charset=utf-8",
@@ -1436,7 +1450,7 @@
           setHidden(logWrap, false);
           log(
             `Fout: ${rowErrors.length} rij(en) missen verplichte velden. Er worden geen PDF’s gegenereerd.`,
-            "error"
+            "error",
           );
           rowErrors.slice(0, 20).forEach((e) => {
             log(`Rij ${e.row}: ontbreekt ${e.missing.join(", ")}`, "error");
@@ -1451,7 +1465,7 @@
               rowErrors
                 .slice(0, 10)
                 .map((e) => `Rij ${e.row}: ${e.missing.join(", ")}`)
-                .join("\n")
+                .join("\n"),
           );
           return;
         }
@@ -1488,7 +1502,7 @@
             const visibleGrid = document.querySelector("#labelsGrid");
             const stableScale = computePreviewScale(
               calcLabelSizes(vals),
-              visibleGrid || batchHost
+              visibleGrid || batchHost,
             );
 
             const result = await renderPreviewFor(vals, {
@@ -1526,7 +1540,7 @@
                 s.h,
                 s.w,
                 undefined,
-                "FAST"
+                "FAST",
               );
               y += s.w;
             }
@@ -1534,7 +1548,7 @@
             const blob = pdf.output("blob");
             const safeCode = (vals.code || "export").trim() || "export";
             const name = `${safeCode} - ${batchTime} - R${String(
-              i + 1
+              i + 1,
             ).padStart(3, "0")}.pdf`;
             zip.file(name, blob);
             okCount++;
@@ -1545,7 +1559,7 @@
 
           if (progressBar)
             progressBar.style.width = `${Math.round(
-              ((i + 1) / parsedRows.length) * 100
+              ((i + 1) / parsedRows.length) * 100,
             )}%`;
           if (progressLabel)
             progressLabel.textContent = `${i + 1} / ${parsedRows.length}`;
