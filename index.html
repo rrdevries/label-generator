@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="nl">
   <head>
-<!--
+    <!--
 ================================================================================
 LABEL GENERATOR — index.html (UI skeleton)
 --------------------------------------------------------------------------------
@@ -29,11 +29,11 @@ Key containers app.js writes into:
   <body>
     <div class="app">
       <!-- App header: title/branding and primary navigation (tabs) -->
-<header class="app-header">
+      <header class="app-header">
         <div class="brand">
           <div class="brand-text">
             <h1>
-              Etiketten Generator<span class="version-badge">v0.139</span>
+              Etiketten Generator<span class="version-badge">v0.140</span>
             </h1>
           </div>
           <a
@@ -90,9 +90,9 @@ Key containers app.js writes into:
         </nav>
 
         <div class="tab-panels">
+          <!-- TAB: Single — manual input -> preview -> PDF generation -->
           <div
-            <!-- TAB: Single — manual input -> preview -> PDF generation -->
-id="tab-single"
+            id="tab-single"
             class="tab-panel"
             role="tabpanel"
             aria-labelledby="tabBtnSingle"
@@ -169,14 +169,14 @@ id="tab-single"
 
               <section class="panel panel-preview">
                 <!-- Preview area: app.js renders 4 labels as cards into #labelsGrid -->
-<h2>Preview</h2>
+                <h2>Preview</h2>
                 <div id="labelsGrid" class="labels-grid"></div>
               </section>
             </div>
 
             <section class="panel panel-dims">
               <!-- Calculated dimensions: app.js writes label W/H (cm) rows into #dims -->
-<h2>Berekende labelafmetingen (werkelijke cm)</h2>
+              <h2>Berekende labelafmetingen (werkelijke cm)</h2>
               <div class="dims-grid-head">
                 <div>Label</div>
                 <div>W</div>
@@ -187,9 +187,9 @@ id="tab-single"
             </section>
           </div>
 
+          <!-- TAB: Bulk upload — file parsing, column mapping, bulk PDF generation -->
           <div
-            <!-- TAB: Bulk upload — file parsing, column mapping, bulk PDF generation -->
-id="tab-bulk"
+            id="tab-bulk"
             class="tab-panel hidden"
             role="tabpanel"
             aria-labelledby="tabBtnBulk"
@@ -280,9 +280,9 @@ id="tab-bulk"
             </section>
           </div>
 
+          <!-- TAB: Help — user-facing instructions + layout table (static content) -->
           <div
-            <!-- TAB: Help — user-facing instructions + layout table (static content) -->
-id="tab-doc"
+            id="tab-doc"
             class="tab-panel hidden"
             role="tabpanel"
             aria-labelledby="tabBtnDoc"
@@ -441,7 +441,7 @@ id="tab-doc"
     </div>
 
     <!-- Footer: versioning / attribution / notes (static) -->
-<footer class="app-footer" role="contentinfo">
+    <footer class="app-footer" role="contentinfo">
       <div class="app-footer__inner">
         © <span id="copyrightYear"></span>
         <a href="http://studiord.nl" target="_blank" rel="noopener noreferrer"
