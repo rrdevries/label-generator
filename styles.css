@@ -1,40 +1,55 @@
 :root {
   /* Brand (huisstijl) */
-  --brand-accent: #2c3a6b; /* primary / CTA */
-  --brand-text: #313c6c; /* headings / active states */
+  --brand-primary: #2c3a6b;
+  --brand-primary-2: #313c6c;
 
-  /* Neutrals (rollen) */
-  --bg: #ffffff; /* page */
-  --surface: #f6f7fa; /* panels / cards */
-  --surface-2: #ffffff; /* inputs / tables */
-  --border: #d7dbe6;
-  --border-soft: #e6e8ee;
+  /* Semantiek & UI-kleuren (toegepast volgens beperkte, rol-gebaseerde palette) */
+  --color-page-bg: #f6f7fa;
+  --color-surface: #ffffff;
+  --color-surface-2: #f8fafc;
+  --color-surface-3: #eef2f7;
 
-  /* Typography */
-  --text: #111111;
-  --muted: #6b7280;
+  --color-border: #dde3ee;
+  --color-border-strong: #cbd5e1;
 
-  /* States */
-  --focus: rgba(44, 58, 107, 0.28);
-  --danger: #b91c1c;
-  --danger-soft: rgba(185, 28, 28, 0.16);
-  --success: #166534;
+  --color-text: #111;
+  --color-muted: #6b7280;
 
-  /* Metrics */
+  --color-focus: #6366f1;
+  --color-danger: #d32f2f;
+  --color-success: #166534;
+
+  /* Backwards-compatible names used elsewhere */
+  --brand-accent: var(--brand-primary);
+  --brand-text: var(--brand-primary-2);
+
   --px-per-cm: 37.7952755906;
   --ui-radius: 12px;
+  --ui-border: var(--color-border);
+  --ui-bg: var(--color-surface);
+  --text: var(--color-text);
+  --muted: var(--color-muted);
   --shadow: 0 12px 28px rgba(0, 0, 0, 0.06);
 
-  /* Compat */
-  --ui-border: var(--border);
-  --ui-bg: var(--surface);
+  /* compat voor oudere batch styles */
   --panel: var(--ui-bg);
   --bd: var(--ui-border);
 
   --border-1px: 1px;
   --code-radius: 0;
-}
 
+  /* Aliases for legacy variable names (used in v14 layout) */
+  --bg: var(--color-page-bg); /* page background */
+  --surface: var(--color-surface); /* cards/panels */
+  --surface-2: var(--color-surface-2); /* inputs/secondary */
+  --surface-3: var(--color-surface-3); /* hover */
+  --border: var(--color-border);
+  --border-soft: var(--color-border);
+  --focus: rgba(99, 102, 241, 0.28); /* derived from --color-focus */
+  --danger: var(--color-danger);
+  --danger-soft: rgba(211, 47, 47, 0.16);
+  --success: var(--color-success);
+}
 html,
 body {
   margin: 0;
@@ -209,33 +224,58 @@ select {
 }
 
 .btn {
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   padding: 10px 16px;
   border-radius: 10px;
   font-weight: 700;
   cursor: pointer;
-  background: var(--surface-2);
+  background: var(--color-surface-2);
   color: var(--brand-text);
 }
 
 .btn:hover {
-  filter: brightness(0.98);
+  background: var(--color-surface-3);
 }
 
-.btn.primary,
-.btn.primary:hover,
+.btn:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.btn.primary {
+  background: var(--brand-primary);
+  border-color: transparent;
+  color: #fff;
+}
+
+.btn.primary:hover {
+  background: var(--brand-primary-2);
+}
+
+.btn.success {
+  /* behoud bestaande class, maar maak ‘m gelijk aan primary (merk-CTA) */
+  background: var(--brand-primary);
+  border-color: transparent;
+  color: #fff;
+}
+
 .btn.success:hover {
-  filter: brightness(0.95);
+  background: var(--brand-primary-2);
 }
 
 .btn.danger {
-  background: var(--danger);
-  color: #fff;
+  background: var(--color-danger);
   border-color: transparent;
+  color: #fff;
 }
 
 .btn.danger:hover {
-  filter: brightness(0.95);
+  background: #991b1b;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* ===== Dims pills ===== */
