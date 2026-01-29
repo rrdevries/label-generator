@@ -12,7 +12,7 @@
         <div class="brand">
           <div class="brand-text">
             <h1>
-              Etiketten Generator<span class="version-badge">v0.133</span>
+              Etiketten Generator<span class="version-badge">v0.134</span>
             </h1>
           </div>
           <a
@@ -264,34 +264,32 @@
             <section class="panel">
               <h2>Help</h2>
 
-              <p class="muted"></p>
+              <div class="help-quickstart-grid">
+                <div class="help-quickstart-col">
+                  <h3>Snel starten (Single)</h3>
+                  <ul class="doc-list">
+                    <li>Vul alle gegevens in.</li>
+                    <li>
+                      Klik op <strong>Preview</strong> om het etiket te
+                      controleren.
+                    </li>
+                    <li>
+                      Klik <strong>Maak PDF</strong> voor de definitieve export.
+                    </li>
+                  </ul>
+                </div>
 
-              <h3>Snel starten</h3>
-              <ul class="doc-list">
-                <li>
-                  Kies <strong>Single-PDF</strong> of
-                  <strong>Bulk-Upload</strong>.
-                </li>
-                <li>Vul de doosmaten in (cm).</li>
-                <li>
-                  Single-PDF: klik <strong>Preview</strong> om te controleren.
-                </li>
-                <li>
-                  Klik <strong>Maak PDF</strong> voor de definitieve export.
-                </li>
-              </ul>
-
-              <h3>Invoer (velden)</h3>
-              <ul class="doc-list">
-                <li>
-                  <strong>Doosspecificaties</strong>: lengte (cm), breedte (cm),
-                  hoogte (cm), GW (kg), CBM (m³).
-                </li>
-                <li>
-                  <strong>Etiketgegevens</strong>: ERP, productomschrijving,
-                  EAN, quantity, batch.
-                </li>
-              </ul>
+                <div class="help-quickstart-col">
+                  <h3>Snel starten (Bulk)</h3>
+                  <ul class="doc-list">
+                    <li>Kies <strong>Bulk-Upload</strong>.</li>
+                    <li>Kies of sleep een bestand hier naar toe.</li>
+                    <li>Controleer of de kolommen goed gematched worden.</li>
+                    <li>Klik op <strong>PDF&apos;s genereren</strong>.</li>
+                    <li>Wacht tot het renderen klaar is.</li>
+                  </ul>
+                </div>
+              </div>
 
               <h3>Belangrijkste regels</h3>
               <ul class="doc-list">
@@ -310,7 +308,42 @@
                 </li>
               </ul>
 
-              <h3>Families, varianten en layouts (automatisch)</h3>
+              <h3>Problemen oplossen</h3>
+              <ul class="doc-list">
+                <li>
+                  <strong>Veld rood / foutmelding</strong>: controleer of de
+                  waarde een getal is en tussen 5 en 100 cm ligt.
+                </li>
+                <li>
+                  <strong>Tekst past niet</strong>: verkort de
+                  productomschrijving of controleer of je doosmaten correct zijn
+                  (cm).
+                </li>
+                <li>
+                  <strong>PDF ontbreekt of lijkt leeg</strong>: meestal is één
+                  veld ongeldig; corrigeer de invoer en genereer opnieuw.
+                </li>
+              </ul>
+
+              <h3>Op ware grootte printen (voor drukker)</h3>
+              <ul class="doc-list">
+                <li>
+                  De PDF moet altijd op <strong>100%</strong> geprint worden
+                  (geen “Aanpassen”, “Fit”, “Shrink”, “Schaal naar papier”).
+                </li>
+                <li>
+                  Controleer de labelafmetingen in de tool bij
+                  <em>“Berekende labelafmetingen (werkelijke cm)”</em> en
+                  gebruik die maat als referentie.
+                </li>
+                <li>
+                  Vraag de leverancier om de PDF <strong>1:1</strong> te
+                  verwerken in hun printsoftware/RIP en geen automatische schaal
+                  toe te passen.
+                </li>
+              </ul>
+
+              <h3>Mogelijkheden lay-outs</h3>
               <p class="muted" style="margin-top: 6px">
                 Bepaald door de labelverhouding en de grootste maat:
                 <strong>ratio = W/H</strong>,
@@ -544,52 +577,6 @@
                 <strong>Large</strong> 40–&lt;70,
                 <strong>Extra-Large</strong> 70–100 (cm).
               </p>
-
-              <h3>Problemen oplossen</h3>
-              <ul class="doc-list">
-                <li>
-                  <strong>Veld rood / foutmelding</strong>: controleer of de
-                  waarde een getal is en tussen 5 en 100 cm ligt.
-                </li>
-                <li>
-                  <strong>Tekst past niet</strong>: verkort de
-                  productomschrijving of controleer of je doosmaten correct zijn
-                  (cm).
-                </li>
-                <li>
-                  <strong>PDF ontbreekt of lijkt leeg</strong>: meestal is één
-                  veld ongeldig; corrigeer de invoer en genereer opnieuw.
-                </li>
-              </ul>
-
-              <h3>
-                Op ware grootte printen (voor drukker/etikettenleverancier)
-              </h3>
-              <ul class="doc-list">
-                <li>
-                  De PDF moet altijd op <strong>100%</strong> geprint worden
-                  (geen “Aanpassen”, “Fit”, “Shrink”, “Schaal naar papier”).
-                </li>
-                <li>
-                  Controleer de <strong>labelafmetingen</strong> in de tool bij
-                  <em>“Berekende labelafmetingen (werkelijke cm)”</em> en
-                  gebruik die maat als referentie.
-                </li>
-                <li>
-                  Vraag de leverancier om de PDF <strong>1:1</strong> te
-                  verwerken in hun printsoftware/RIP en
-                  <strong>geen automatische schaal</strong> toe te passen.
-                </li>
-                <li>
-                  Praktische check: print 1 exemplaar en meet met een liniaal of
-                  de breedte/hoogte exact overeenkomt met de weergegeven cm.
-                </li>
-                <li>
-                  Als de leverancier snij-/stanslijnen of extra afloop (bleed)
-                  nodig heeft, laat dit weten; de huidige PDF is bedoeld als
-                  <strong>print op maat</strong> van het label.
-                </li>
-              </ul>
             </section>
           </div>
         </div>
