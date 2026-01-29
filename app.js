@@ -786,6 +786,8 @@
       el("div", { class: "val" }, `${values.gw || ""} KGS`),
       el("div", { class: "key" }, "CBM:"),
       el("div", { class: "val" }, values.cbm || ""),
+      el("div", { class: "key" }, "BATCH:"),
+      el("div", { class: "val" }, values.batch || ""),
     );
 
     return grid;
