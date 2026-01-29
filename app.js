@@ -139,8 +139,6 @@
   function applyBucketTypography(innerEl) {
     const W_cm = Number(innerEl.dataset.wcm);
     const H_cm = Number(innerEl.dataset.hcm);
-    // Key bepaald op basis van ratio (drijft layout). Anchor kan daarop fallbacken (drijft typografie).
-    const selectedKey = selectBucketKeyFor(W_cm, H_cm);
     const anchor = getBucketAnchorFor(W_cm, H_cm);
 
     // Fallback: geen bucket -> zet niets (oude auto-fit kan dan nog werken)
@@ -164,9 +162,7 @@
     innerEl.style.setProperty("--fs-text", `${textPx}px`);
     innerEl.style.setProperty("--fs-footer", `${footerPx}px`);
 
-    // Layout moet volgen uit de berekende key (incl. SHORT/COLUMNS), ook als de anchor fallbackt.
-    innerEl.dataset.bucketKey = String(selectedKey || anchor.key || "");
-    innerEl.dataset.anchorKey = String(anchor.key || "");
+    innerEl.dataset.bucketKey = String(anchor.key || "");
     innerEl.dataset.bucketK = String(k);
     innerEl.dataset.family = String(anchor.requirements?.family || "");
     innerEl.dataset.variant = String(anchor.requirements?.variant || "");
@@ -544,18 +540,24 @@
   }
 
   function layoutForBucketKey(bucketKey) {
-    const parts = String(bucketKey || "")
-      .split("_")
-      .filter(Boolean);
+    const parts = String(bucketKey || "").split("_");
     const family = (parts[0] || "").toUpperCase();
 
-    // bucketKey format: FAMILY_SIZECLASS[_VARIANT]
-    // Sizeclass "EXTRA_LARGE" bevat een underscore -> parts: [FAMILY, EXTRA, LARGE, VARIANT]
+    // bucketKey examples:
+    // - LANDSCAPE_SMALL_SHORT
+    // - LANDSCAPE_EXTRA_LARGE_SHORT  (sizeClass is two tokens)
+    // - PORTRAIT_MEDIUM_STANDARD
+    // - SQUARE_LARGE
     let variant = "";
-    if (parts[1] === "EXTRA" && parts[2] === "LARGE") {
-      variant = (parts[3] || "").toUpperCase();
+    if (
+      parts[1] &&
+      parts[2] &&
+      parts[1].toUpperCase() === "EXTRA" &&
+      parts[2].toUpperCase() === "LARGE"
+    ) {
+      variant = parts.slice(3).join("_").toUpperCase();
     } else {
-      variant = (parts[2] || "").toUpperCase();
+      variant = parts.slice(2).join("_").toUpperCase();
     }
 
     // Layout mapping (per bucket family + variant)
