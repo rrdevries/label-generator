@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="nl">
   <head>
     <meta charset="utf-8" />
@@ -12,7 +12,7 @@
         <div class="brand">
           <div class="brand-text">
             <h1>
-              Etiketten Generator<span class="version-badge">v0.124</span>
+              Etiketten Generator<span class="version-badge">v0.131</span>
             </h1>
           </div>
           <a
@@ -64,7 +64,7 @@
             aria-controls="tab-doc"
             data-tab-target="tab-doc"
           >
-            Help
+            Documentatie
           </button>
         </nav>
 
@@ -79,75 +79,78 @@
               <section class="panel panel-form">
                 <h2>Gegevens</h2>
 
-                <div class="form-section">
-                  <h3 class="form-section-title">Doosspecificaties</h3>
-                  <div class="form-grid">
-                    <label class="field">
-                      <span>Length (L)</span>
-                      <input id="len" type="text" />
-                    </label>
+                <div class="form-grid">
+                  <label class="field">
+                    <span>ERP</span>
+                    <input id="erp" type="text" value="LG1000843" />
+                  </label>
 
-                    <label class="field">
-                      <span>Width (W)</span>
-                      <input id="wid" type="text" />
-                    </label>
+                  <label class="field span-2">
+                    <span>Productomschrijving</span>
+                    <textarea id="desc" rows="3">
+Combination Lock - Orange - 1 Pack (YF20610B)</textarea
+                    >
+                  </label>
 
-                    <label class="field">
-                      <span>Height (H)</span>
-                      <input id="hei" type="text" />
-                    </label>
+                  <label class="field">
+                    <span>EAN</span>
+                    <input id="ean" type="text" value="8719632951889" />
+                  </label>
 
-                    <label class="field">
-                      <span>G.W (KGS)</span>
-                      <input id="gw" type="text" />
-                    </label>
+                  <label class="field">
+                    <span>QTY (PCS)</span>
+                    <input id="qty" type="text" value="12" />
+                  </label>
 
-                    <label class="field">
-                      <span>CBM</span>
-                      <input id="cbm" type="text" />
-                    </label>
-                  </div>
-                </div>
+                  <label class="field">
+                    <span>G.W (KGS)</span>
+                    <input id="gw" type="text" value="18,00" />
+                  </label>
 
-                <div class="form-section">
-                  <h3 class="form-section-title">Etiketgegevens</h3>
-                  <div class="form-grid">
-                    <label class="field">
-                      <span>ERP</span>
-                      <input id="erp" type="text" />
-                    </label>
+                  <label class="field">
+                    <span>CBM</span>
+                    <input id="cbm" type="text" value="0.02" />
+                  </label>
 
-                    <label class="field span-2">
-                      <span>Productomschrijving</span>
-                      <textarea id="desc" rows="3"></textarea>
-                    </label>
+                  <label class="field">
+                    <span>Length (L)</span>
+                    <input id="len" type="text" value="39" />
+                  </label>
 
-                    <label class="field">
-                      <span>EAN</span>
-                      <input id="ean" type="text" />
-                    </label>
+                  <label class="field">
+                    <span>Width (W)</span>
+                    <input id="wid" type="text" value="19,5" />
+                  </label>
 
-                    <label class="field">
-                      <span>QTY (PCS)</span>
-                      <input id="qty" type="text" />
-                    </label>
+                  <label class="field">
+                    <span>Height (H)</span>
+                    <input id="hei" type="text" value="22" />
+                  </label>
 
-                    <label class="field">
-                      <span>Batch</span>
-                      <input id="batch" type="text" />
-                    </label>
-                  </div>
+                  <label class="field">
+                    <span>Batch</span>
+                    <input id="batch" type="text" value="IOR2500307" />
+                  </label>
                 </div>
 
                 <div class="actions">
-                  <button id="btnGen" class="btn primary">Preview</button>
-                  <button id="btnPDF" class="btn success">Maak PDF</button>
+                  <button type="button" id="btnGen" class="btn primary">
+                    Preview
+                  </button>
+                  <button type="button" id="btnClear" class="btn">
+                    Maak leeg
+                  </button>
+                  <button type="button" id="btnPDF" class="btn success">
+                    Maak PDF
+                  </button>
                 </div>
               </section>
 
               <section class="panel panel-preview">
                 <h2>Preview</h2>
-                <div id="labelsGrid" class="labels-grid"></div>
+                <div id="labelsGrid" class="labels-grid">
+                  <div class="preview-placeholder">Hier komt de preview</div>
+                </div>
               </section>
             </div>
 
@@ -262,334 +265,69 @@
             aria-labelledby="tabBtnDoc"
           >
             <section class="panel">
-              <h2>Help</h2>
+              <h2>Documentatie</h2>
 
-              <p class="muted"></p>
-
-              <h3>Snel starten</h3>
-              <ul class="doc-list">
-                <li>
-                  Kies <strong>Single-PDF</strong> of
-                  <strong>Bulk-Upload</strong>.
-                </li>
-                <li>Vul de doosmaten in (cm).</li>
-                <li>
-                  Single-PDF: klik <strong>Preview</strong> om te controleren.
-                </li>
-                <li>
-                  Klik <strong>Maak PDF</strong> voor de definitieve export.
-                </li>
-              </ul>
-
-              <h3>Invoer (velden)</h3>
-              <ul class="doc-list">
-                <li>
-                  <strong>Doosspecificaties</strong>: lengte (cm), breedte (cm),
-                  hoogte (cm), GW (kg), CBM (m³).
-                </li>
-                <li>
-                  <strong>Etiketgegevens</strong>: ERP, productomschrijving,
-                  EAN, quantity, batch.
-                </li>
-              </ul>
-
-              <h3>Belangrijkste regels</h3>
-              <ul class="doc-list">
-                <li>
-                  Doosmaten moeten tussen <strong>5</strong> en
-                  <strong>100</strong> cm liggen. Buiten dit bereik wordt het
-                  veld rood en verschijnt een melding.
-                </li>
-                <li>
-                  Labels zijn altijd <strong>10% kleiner</strong> dan het
-                  bijbehorende doosvlak (schaalfactor <strong>0,9</strong>).
-                </li>
-                <li>
-                  Bulk-Upload toont geen zichtbare preview per item; je krijgt
-                  alleen de eindresultaten (PDF’s/ZIP).
-                </li>
-              </ul>
-
-              <h3>Families, varianten en layouts (automatisch)</h3>
-              <p class="muted" style="margin-top: 6px">
-                Bepaald door de labelverhouding en de grootste maat:
-                <strong>ratio = W/H</strong>,
-                <strong>D = max(W,H)</strong> (cm).
+              <p class="muted">
+                Deze pagina beschrijft de invoervelden, de batch-upload
+                (Excel/CSV) en de PDF-output.
               </p>
 
-              <div style="overflow-x: auto">
-                <table
-                  style="
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-top: 8px;
-                  "
+              <h3>Single-PDF</h3>
+              <p>
+                Vul de velden in en klik op
+                <strong>Preview</strong> voor de preview. Klik daarna op
+                <strong>Maak PDF</strong> om een PDF te downloaden.
+              </p>
+
+              <h3>Invoervelden</h3>
+              <ul class="doc-list">
+                <li><strong>ERP</strong>: interne ERP-code (tekst).</li>
+                <li>
+                  <strong>Productomschrijving</strong>: korte omschrijving
+                  (tekst).
+                </li>
+                <li>
+                  <strong>EAN</strong>: EAN/GTIN code (tekst of numeriek).
+                </li>
+                <li><strong>Aantal</strong>: aantal stuks (numeriek).</li>
+                <li><strong>GW</strong>: brutogewicht (kg).</li>
+                <li><strong>CBM</strong>: kubieke meter (m³).</li>
+                <li>
+                  <strong>Afmetingen doos</strong>: <strong>L</strong>,
+                  <strong>B</strong>, <strong>H</strong> (cm).
+                </li>
+                <li><strong>Batch</strong>: batch/lot nummer (tekst).</li>
+              </ul>
+
+              <h3>Bulk-Upload</h3>
+              <p>
+                Upload een XLSX/XLS/CSV en koppel daarna de kolommen aan de
+                velden. Gebruik de template-knoppen om een voorbeeldbestand te
+                downloaden.
+              </p>
+
+              <h3>Normalisatie</h3>
+              <ul class="doc-list">
+                <li>
+                  <strong>Komma als decimaal</strong>: zet <code>1,25</code> om
+                  naar <code>1.25</code> indien aangevinkt.
+                </li>
+                <li>
+                  <strong>Spaties trimmen</strong>: verwijdert spaties rondom
+                  waarden.
+                </li>
+              </ul>
+
+              <h3>Links</h3>
+              <p>
+                LifeGoods Group website:
+                <a
+                  href="https://lifegoodsgroup.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >lifegoodsgroup.com</a
                 >
-                  <thead>
-                    <tr>
-                      <th
-                        style="
-                          text-align: left;
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.18);
-                        "
-                      >
-                        Family
-                      </th>
-                      <th
-                        style="
-                          text-align: left;
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.18);
-                        "
-                      >
-                        Variant-regel
-                      </th>
-                      <th
-                        style="
-                          text-align: left;
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.18);
-                        "
-                      >
-                        Layout
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        <strong>Square</strong>
-                      </td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        ratio ligt dicht bij 1 (±0,10)
-                      </td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        Standard
-                      </td>
-                    </tr>
-
-                    <tr>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        <strong>Portrait</strong>
-                      </td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        Narrow: ratio &lt; 0,40
-                      </td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        Stacked
-                      </td>
-                    </tr>
-                    <tr>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      ></td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        Standard: 0,40 ≤ ratio &lt; 0,65
-                      </td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        Stacked
-                      </td>
-                    </tr>
-                    <tr>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      ></td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        Wide: ratio ≥ 0,65
-                      </td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        Standard
-                      </td>
-                    </tr>
-
-                    <tr>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        <strong>Landscape</strong>
-                      </td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        Short: H/W &lt; 0,40
-                      </td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        Columns
-                      </td>
-                    </tr>
-                    <tr>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      ></td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        Standard: 0,40 ≤ H/W &lt; 0,65
-                      </td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        Standard
-                      </td>
-                    </tr>
-                    <tr>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      ></td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        High: H/W ≥ 0,65
-                      </td>
-                      <td
-                        style="
-                          padding: 8px;
-                          border-bottom: 1px solid rgba(49, 60, 108, 0.12);
-                        "
-                      >
-                        Standard
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <p class="muted" style="margin-top: 8px">
-                Size class (op basis van D): <strong>Micro</strong> 5–&lt;10,
-                <strong>Small</strong> 10–&lt;25,
-                <strong>Medium</strong> 25–&lt;40,
-                <strong>Large</strong> 40–&lt;70,
-                <strong>Extra-Large</strong> 70–100 (cm).
               </p>
-
-              <h3>Problemen oplossen</h3>
-              <ul class="doc-list">
-                <li>
-                  <strong>Veld rood / foutmelding</strong>: controleer of de
-                  waarde een getal is en tussen 5 en 100 cm ligt.
-                </li>
-                <li>
-                  <strong>Tekst past niet</strong>: verkort de
-                  productomschrijving of controleer of je doosmaten correct zijn
-                  (cm).
-                </li>
-                <li>
-                  <strong>PDF ontbreekt of lijkt leeg</strong>: meestal is één
-                  veld ongeldig; corrigeer de invoer en genereer opnieuw.
-                </li>
-              </ul>
-
-              <h3>
-                Op ware grootte printen (voor drukker/etikettenleverancier)
-              </h3>
-              <ul class="doc-list">
-                <li>
-                  De PDF moet altijd op <strong>100%</strong> geprint worden
-                  (geen “Aanpassen”, “Fit”, “Shrink”, “Schaal naar papier”).
-                </li>
-                <li>
-                  Controleer de <strong>labelafmetingen</strong> in de tool bij
-                  <em>“Berekende labelafmetingen (werkelijke cm)”</em> en
-                  gebruik die maat als referentie.
-                </li>
-                <li>
-                  Vraag de leverancier om de PDF <strong>1:1</strong> te
-                  verwerken in hun printsoftware/RIP en
-                  <strong>geen automatische schaal</strong> toe te passen.
-                </li>
-                <li>
-                  Praktische check: print 1 exemplaar en meet met een liniaal of
-                  de breedte/hoogte exact overeenkomt met de weergegeven cm.
-                </li>
-                <li>
-                  Als de leverancier snij-/stanslijnen of extra afloop (bleed)
-                  nodig heeft, laat dit weten; de huidige PDF is bedoeld als
-                  <strong>print op maat</strong> van het label.
-                </li>
-              </ul>
             </section>
           </div>
         </div>
