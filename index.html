@@ -7,12 +7,18 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <!--
+      Etiketten Generator – single-page UI.
+      - Tabs: Single-PDF / Bulk-Upload / Help (aria-enabled, controlled by app.js)
+      - Each tab panel is a self-contained section; IDs must match data-tab-target.
+      - This file contains only structure/content; styling in styles.css; behavior in app.js.
+    -->
     <div class="app">
       <header class="app-header">
         <div class="brand">
           <div class="brand-text">
             <h1>
-              Etiketten Generator<span class="version-badge">v0.137</span>
+              Etiketten Generator<span class="version-badge">v0.138</span>
             </h1>
           </div>
           <a
@@ -32,6 +38,7 @@
       </header>
 
       <main class="app-main">
+        <!-- Tab navigation (buttons act as tabs; app.js manages active state & hash routing) -->
         <nav class="tabs" role="tablist" aria-label="Etiketten Generator tabs">
           <button
             type="button"
@@ -69,6 +76,7 @@
         </nav>
 
         <div class="tab-panels">
+          <!-- TAB: Single-PDF (manual invoer + preview + PDF export) -->
           <div
             id="tab-single"
             class="tab-panel"
@@ -162,6 +170,7 @@
               <div id="dims" class="dims-grid"></div>
             </section>
           </div>
+          <!-- TAB: Bulk-Upload (Excel/CSV mapping + ZIP export) -->
 
           <div
             id="tab-bulk"
@@ -255,6 +264,7 @@
             </section>
           </div>
 
+          <!-- TAB: Help (handleiding, printinstructies, layoutmatrix) -->
           <div
             id="tab-doc"
             class="tab-panel hidden"

@@ -1,3 +1,22 @@
+/* ==========================================================================
+   Etiketten Generator – styles.css
+
+   Doel
+   - Legt de visuele “design tokens” vast (CSS variables in :root) en vertaalt die
+     naar component-styling (tabs, panels, forms, previews, batch UI, help content).
+   - Houdt labels (de preview) zo neutraal mogelijk zodat PDF-export 1:1 consistent is.
+
+   Belangrijke afspraken
+   - Huisstijlkleuren staan als tokens in :root (brand + semantische rollen).
+   - Gebruik semantische tokens (bv. --color-danger) i.p.v. hard-coded kleuren.
+   - Label-typografie wordt in app.js gezet via CSS-variables (--fs-*) per bucket.
+
+   Let op
+   - Cascade/overrides zijn soms historisch gegroeid; niet "opschonen" zonder
+     te verifiëren dat de UI en PDF-capture identiek blijven.
+   ========================================================================== */
+
+/* --- Design tokens (kleuren, radius, schaduw, typografie) ------------------ */
 :root {
   /* Brand (huisstijl) */
   --brand-primary: #2c3a6b;
@@ -87,6 +106,8 @@ select {
 }
 
 /* ===== Layout ===== */
+
+/* --- App shell (header, main, footer) ------------------------------------- */
 .app {
   flex: 1;
   width: 100%;
@@ -297,6 +318,8 @@ select {
 }
 
 /* ===== Labels grid ===== */
+
+/* --- Preview grid (4 labels) ----------------------------------------------- */
 .labels-grid {
   display: grid;
   grid-template-columns: repeat(2, auto);
@@ -311,6 +334,7 @@ select {
   align-items: flex-start;
 }
 
+/* --- Label canvas (preview + PDF capture basis) ---------------------------- */
 .label {
   border: var(--border-1px) solid #000;
   background: var(--surface-2);
@@ -575,6 +599,8 @@ select {
 }
 
 /* ===== Panels (compat) ===== */
+
+/* --- Panels (kaart-achtige containers) ------------------------------------- */
 .panel {
   border: 1px solid var(--ui-border);
   background: var(--ui-bg);
@@ -621,6 +647,8 @@ select {
 }
 
 /* ===== Batch UI ===== */
+
+/* --- Bulk-Upload UI -------------------------------------------------------- */
 .batch-panel {
   display: flex;
   flex-direction: column;
@@ -750,6 +778,8 @@ select {
 }
 
 /* ====== Tabs ====== */
+
+/* --- Tabs (navigatie + actieve tab-styling) -------------------------------- */
 .tabs {
   display: flex;
   gap: 8px;
@@ -865,6 +895,8 @@ body {
 }
 
 /* Help tab: two-column quick start blocks */
+
+/* --- Help tab (documentatie) ---------------------------------------------- */
 .help-quickstart-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
