@@ -34,7 +34,7 @@
     if (!res.ok) {
       throw new Error(
         `Bucket-config kon niet worden geladen (${res.status} ${res.statusText}). ` +
-          `Tip: open dit via een (lokale) webserver i.p.v. file://.`,
+          `Tip: open dit via een (lokale) webserver i.p.v. file://.`
       );
     }
     const cfg = await res.json();
@@ -180,7 +180,7 @@
 
   function initTabs() {
     const tabButtons = Array.from(
-      document.querySelectorAll(".tab-btn[data-tab-target]"),
+      document.querySelectorAll(".tab-btn[data-tab-target]")
     );
     const panels = Array.from(document.querySelectorAll(".tab-panel"));
 
@@ -188,14 +188,21 @@
 
     const idToHash = (id) => {
       if (id === "tab-bulk") return "bulk";
-      if (id === "tab-doc") return "doc";
+      if (id === "tab-doc") return "help";
       return "single";
     };
 
     const hashToId = (hash) => {
       const h = (hash || "").replace("#", "").toLowerCase();
       if (h === "bulk") return "tab-bulk";
-      if (h === "doc" || h === "docs" || h === "documentatie") return "tab-doc";
+      if (
+        h === "help" ||
+        h === "hulp" ||
+        h === "doc" ||
+        h === "docs" ||
+        h === "documentatie"
+      )
+        return "tab-doc";
       return "tab-single";
     };
 
@@ -325,7 +332,7 @@
     if (n < BOX_CM_MIN || n > BOX_CM_MAX) {
       setFieldError(
         inputEl,
-        `Moet tussen ${BOX_CM_MIN} en ${BOX_CM_MAX} cm liggen.`,
+        `Moet tussen ${BOX_CM_MIN} en ${BOX_CM_MAX} cm liggen.`
       );
       return false;
     }
@@ -478,27 +485,34 @@
     // UI helper: return the effective bucket key (incl. fallbacks) and layout.
     const anchor = BUCKET_CONFIG ? getBucketAnchorFor(W_cm, H_cm) : null;
     const bucketKey = String(
-      anchor?.key || selectBucketKeyFor(W_cm, H_cm) || "",
+      anchor?.key || selectBucketKeyFor(W_cm, H_cm) || ""
     );
     const layout = layoutForBucketKey(bucketKey);
     return { bucketKey, layout };
   }
 
-  function renderDims(sizes) {
+  function renderDims(sizes, opts = {}) {
+    const { includeBucket = false } = opts;
     const dims = $("#dims");
     if (!dims) return;
 
-    // Render as explicit 3-cell rows (Label | W | H)
     dims.innerHTML = "";
+
     sizes.forEach((s) => {
-      const row = el(
-        "div",
-        { class: "dims-row", role: "row" },
-        el("div", { class: "dim", role: "cell" }, s.name),
-        el("div", { class: "dim", role: "cell" }, format2(s.w)),
-        el("div", { class: "dim", role: "cell" }, format2(s.h)),
+      let bucketUi = "";
+      if (includeBucket) {
+        const picked = determineBucket(s.w, s.h);
+        const name = bucketKeyToUiName(picked.bucketKey);
+        bucketUi =
+          name === "—" ? "—" : `${name} (${layoutToUiName(picked.layout)})`;
+      }
+
+      dims.append(
+        el("div", { class: "dim" }, s.name),
+        el("div", { class: "dim" }, format2(s.w)),
+        el("div", { class: "dim" }, format2(s.h)),
+        el("div", { class: "dim" }, bucketUi)
       );
-      dims.append(row);
     });
   }
 
@@ -569,7 +583,7 @@
     variant.innerHTML = "";
     (variantItems || []).forEach((v) => {
       variant.append(
-        el("div", { class: "pill" }, `Label ${v.label}: ${v.name}`),
+        el("div", { class: "pill" }, `Label ${v.label}: ${v.name}`)
       );
     });
   }
@@ -580,7 +594,7 @@
 
     // Detecteer overflow in grid-cellen (EAN/waarden)
     const valOverflow = Array.from(
-      content.querySelectorAll(".specs-grid .val"),
+      content.querySelectorAll(".specs-grid .val")
     ).some((v) => v.scrollWidth > v.clientWidth + 0.5);
     if (valOverflow) return false;
 
@@ -684,7 +698,7 @@
       el("div", { class: "key" }, "G.W:"),
       el("div", { class: "val" }, `${values.gw || ""} KGS`),
       el("div", { class: "key" }, "CBM:"),
-      el("div", { class: "val" }, values.cbm || ""),
+      el("div", { class: "val" }, values.cbm || "")
     );
 
     return grid;
@@ -719,13 +733,13 @@
     const erpBox = el(
       "div",
       { class: "erp-box" },
-      el("div", { class: "code-box line" }, values.code),
+      el("div", { class: "code-box line" }, values.code)
     );
 
     const descEl = el(
       "div",
       { class: "line label-desc product-desc" },
-      values.desc,
+      values.desc
     );
 
     const specs = buildSpecsGrid(values);
@@ -733,7 +747,7 @@
     const footerEl = el(
       "div",
       { class: "footer-text" },
-      footerTextForLabel(size, largestTwo),
+      footerTextForLabel(size, largestTwo)
     );
 
     const content = el(
@@ -742,7 +756,7 @@
       erpBox,
       descEl,
       specs,
-      footerEl,
+      footerEl
     );
 
     // Apply an initial bucket/layout guess early (helps preview layout before fitting).
@@ -826,27 +840,39 @@
 
     return { sizes, scale, container: target };
   }
-
-  function renderPreviewPlaceholder() {
-    const grid = $("#labelsGrid");
-    const dims = $("#dims");
-    if (grid) {
-      grid.innerHTML =
-        '<div class="preview-placeholder">Hier komt de preview</div>';
-    }
-    if (dims) dims.innerHTML = "";
-  }
-
   async function renderSingle() {
     const vals = getFormValues();
 
     // Empty state: no box dimensions entered yet
     if (vals.len === "" && vals.wid === "" && vals.hei === "") {
-      renderPreviewPlaceholder();
+      const grid = $("#labelsGrid");
+      const dims = $("#dims");
+
+      if (grid) {
+        grid.innerHTML = "";
+        grid.append(
+          el(
+            "div",
+            {
+              class: "preview-placeholder",
+              style: {
+                gridColumn: "1 / -1",
+                textAlign: "center",
+                padding: "28px 16px",
+                border: "1px dashed rgba(49, 60, 108, 0.35)",
+                borderRadius: "10px",
+                opacity: "0.8",
+              },
+            },
+            "Hier komt de preview"
+          )
+        );
+      }
+      if (dims) dims.innerHTML = "";
       return;
     }
 
-    await renderPreviewFor(vals, { showVariant: false });
+    await renderPreviewFor(vals, { showVariant: true });
   }
 
   /* ====== jsPDF / html2canvas ====== */
@@ -910,7 +936,7 @@
     const capScale = Math.max(
       2,
       window.devicePixelRatio || 1,
-      1 / (currentPreviewScale || 1),
+      1 / (currentPreviewScale || 1)
     );
 
     const canvas = await html2canvas(clone, {
@@ -964,7 +990,7 @@
         wRot,
         hRot,
         undefined,
-        "FAST",
+        "FAST"
       );
       y += hRot;
     }
@@ -1030,7 +1056,7 @@
     const div = el(
       "div",
       { class: type === "error" ? "err" : type === "ok" ? "ok" : "" },
-      msg,
+      msg
     );
     logList.appendChild(div);
   }
@@ -1176,7 +1202,7 @@
     for (let i = 0; i < n; i++) {
       const tr = el("tr");
       cols.forEach((c) =>
-        tr.appendChild(el("td", {}, String(rows[i][c] ?? ""))),
+        tr.appendChild(el("td", {}, String(rows[i][c] ?? "")))
       );
       tbody.appendChild(tr);
     }
@@ -1198,7 +1224,7 @@
   function readRowWithMapping(row, mappingObj) {
     const get = (key) => {
       const hdr = mappingObj[key] || "";
-      return hdr ? (row[hdr] ?? "") : "";
+      return hdr ? row[hdr] ?? "" : "";
     };
 
     return {
@@ -1287,8 +1313,8 @@
     const cols = Object.keys(rows[0]);
     const lines = [cols.join(";")].concat(
       rows.map((r) =>
-        cols.map((c) => String(r[c] ?? "").replace(/;/g, ",")).join(";"),
-      ),
+        cols.map((c) => String(r[c] ?? "").replace(/;/g, ",")).join(";")
+      )
     );
     const blob = new Blob([lines.join("\n")], {
       type: "text/csv;charset=utf-8",
@@ -1410,7 +1436,7 @@
           setHidden(logWrap, false);
           log(
             `Fout: ${rowErrors.length} rij(en) missen verplichte velden. Er worden geen PDF’s gegenereerd.`,
-            "error",
+            "error"
           );
           rowErrors.slice(0, 20).forEach((e) => {
             log(`Rij ${e.row}: ontbreekt ${e.missing.join(", ")}`, "error");
@@ -1425,7 +1451,7 @@
               rowErrors
                 .slice(0, 10)
                 .map((e) => `Rij ${e.row}: ${e.missing.join(", ")}`)
-                .join("\n"),
+                .join("\n")
           );
           return;
         }
@@ -1462,7 +1488,7 @@
             const visibleGrid = document.querySelector("#labelsGrid");
             const stableScale = computePreviewScale(
               calcLabelSizes(vals),
-              visibleGrid || batchHost,
+              visibleGrid || batchHost
             );
 
             const result = await renderPreviewFor(vals, {
@@ -1500,7 +1526,7 @@
                 s.h,
                 s.w,
                 undefined,
-                "FAST",
+                "FAST"
               );
               y += s.w;
             }
@@ -1508,7 +1534,7 @@
             const blob = pdf.output("blob");
             const safeCode = (vals.code || "export").trim() || "export";
             const name = `${safeCode} - ${batchTime} - R${String(
-              i + 1,
+              i + 1
             ).padStart(3, "0")}.pdf`;
             zip.file(name, blob);
             okCount++;
@@ -1519,7 +1545,7 @@
 
           if (progressBar)
             progressBar.style.width = `${Math.round(
-              ((i + 1) / parsedRows.length) * 100,
+              ((i + 1) / parsedRows.length) * 100
             )}%`;
           if (progressLabel)
             progressLabel.textContent = `${i + 1} / ${parsedRows.length}`;
@@ -1573,49 +1599,13 @@
 
     initSingleBoxValidation();
     const btnGen = $("#btnGen");
-    const btnClear = $("#btnClear");
     const btnPDF = $("#btnPDF");
 
     const safeRender = () => {
       if (!validateSingleBoxFields()) return;
       renderSingle().catch((err) => alert(err.message || err));
     };
-
     btnGen?.addEventListener("click", safeRender);
-
-    btnClear?.addEventListener("click", (ev) => {
-      ev?.preventDefault?.();
-      ev?.stopPropagation?.();
-
-      // Clear all Single input fields
-      const ids = [
-        "len",
-        "wid",
-        "hei",
-        "gw",
-        "cbm",
-        "erp",
-        "desc",
-        "ean",
-        "qty",
-        "batch",
-      ];
-      ids.forEach((id) => {
-        const input = $("#" + id);
-        if (!input) return;
-        input.value = "";
-        input.classList.remove("is-invalid");
-        input.removeAttribute("aria-invalid");
-      });
-
-      // Clear inline error messages (if any)
-      document
-        .querySelectorAll(".field-error")
-        .forEach((e) => (e.textContent = ""));
-
-      // Reset preview + calculated dims to empty state
-      renderPreviewPlaceholder();
-    });
 
     btnPDF?.addEventListener("click", async () => {
       try {
