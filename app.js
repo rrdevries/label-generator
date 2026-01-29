@@ -1,31 +1,34 @@
 (() => {
   /*
-    Etiketten Generator – app.js
+  ============================================================================
+  LABEL GENERATOR — app.js (client-side controller)
+  ----------------------------------------------------------------------------
+  What this script does
+  - Handles tab navigation (Single / Bulk upload / Help).
+  - Single flow: read inputs -> compute 4 label faces -> render preview -> fit typography.
+  - PDF flow: render labels in a stable offscreen layout -> capture via html2canvas -> build a single PDF (jsPDF).
+  - Bulk flow: parse XLSX/CSV -> map columns -> validate rows -> generate many PDFs -> zip as download (JSZip).
 
-    Dit bestand bevat alle client-side logica:
-    1) Tab-navigatie (Single / Bulk / Help) + URL-hash routing (#single/#bulk/#help)
-    2) Single workflow: input → validatie → preview → PDF export
-    3) Bulk workflow: Excel/CSV upload → kolom-mapping → batch render → ZIP met PDFs
-    4) “Bucket” typografie & layout: per label-dimensie wordt een bucket gekozen uit
-       labelBuckets.json. Die bucket stuurt font-sizes (CSS vars) en layout-modus.
+  Non-obvious invariants (business rules)
+  - Box dimensions are validated: 5–100 cm inclusive.
+  - Label face size is always 0.9 * corresponding box face (10% smaller each side).
+  - Layout (Standard / Stacked / Columns) is derived from the bucket key:
+      * PORTRAIT: NARROW/STANDARD => Stacked, WIDE => Standard
+      * LANDSCAPE: SHORT => Columns, STANDARD/HIGH => Standard
+      * SQUARE: Standard
+  - Typography is bucket-driven: labelBuckets.json provides anchor font sizes (pt) per bucket.
+    We scale anchors to the actual label size and then apply a final fit/scale fallback if needed.
 
-    Externe dependencies (via index.html):
-    - html2canvas: DOM → canvas (voor PDF capture)
-    - jsPDF: canvas/png → PDF
-    - XLSX: Excel/CSV inlezen
-    - JSZip: bundelen van batch-PDF’s als ZIP
-
-    Belangrijke ontwerpkeuzes:
-    - Rendering en PDF-capture gebruiken dezelfde DOM-structuur, zodat wat je ziet
-      overeenkomt met wat er in de PDF terecht komt.
-    - Fitting heeft een “safety net”: als tekst toch niet past, wordt de volledige
-      content geschaald (--k) zodat er nooit content buiten het label valt.
+  Maintenance tips
+  - HTML element IDs used below must remain stable (see index.html).
+  - Keep color/styling out of JS: use CSS classes and CSS variables instead.
+  ============================================================================
   */
 
   /* ====== CONSTANTS ======
-     Pixel/maat conversies + globale UI/label parameters.
-     Let op: cm is leidend voor echte afmetingen; px is alleen voor preview/capture.
-  */
+   Unit conversions, thresholds, and shared state.
+   Keep these centralized: they affect preview sizing, PDF sizing, and fit logic.
+*/
   const PX_PER_CM = 37.7952755906;
   const PX_PER_PT = 96 / 72; // 1pt = 1/72 inch; CSS px = 1/96 inch
 
@@ -44,19 +47,20 @@
   // Enforce allowed box dimension range (cm)
   const BOX_CM_MIN = 5;
   const BOX_CM_MAX = 100;
-  /* ====== Bucket config ======
-     labelBuckets.json bevat ‘anchors’ (D_ref + font sizes in pt) per bucket.
-     app.js kiest een bucket op basis van W/H verhouding en grootste maat (D).
-  */
+  /* ====== BUCKET CONFIG ======
+   Bucket anchors are loaded from labelBuckets.json.
+   BUCKET_BY_KEY provides O(1) lookup for typography anchors.
+*/
   let BUCKET_CONFIG = null;
   let BUCKET_BY_KEY = new Map();
 
   /**
-   * Laadt labelBuckets.json (anchors + bucketRules) via fetch.
-   * cache: no-store zodat updates direct zichtbaar zijn.
-   * Werkt alleen via (lokale) webserver; file:// blokkeert meestal fetch().
-   * @return {Promise<object>} bucket-config JSON
+   * Fetches the bucket typography config (labelBuckets.json).
+   * This MUST be served via http(s) due to fetch() restrictions; file:// will fail in most browsers.
+   * @param {string} url - Relative/absolute URL to the JSON config.
+   * @returns {Promise<object>} Parsed config object with an `anchors` array.
    */
+
   async function loadBucketConfig(url = "./labelBuckets.json") {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
@@ -72,11 +76,6 @@
     return cfg;
   }
 
-  /**
-   * Indexeert anchors uit labelBuckets.json in een Map (BUCKET_BY_KEY).
-   * Dit versnelt lookup tijdens rendering/fitting.
-   * @param {object} cfg bucket-config (moet cfg.anchors hebben)
-   */
   function indexBucketConfig(cfg) {
     BUCKET_BY_KEY = new Map();
     cfg.anchors.forEach((a) => {
@@ -94,12 +93,17 @@
   }
 
   /**
-   * Bepaalt bucket-key op basis van label-afmetingen (cm).
-   * family: SQUARE / PORTRAIT / LANDSCAPE (op ratio W/H).
-   * variant: bv. LANDSCAPE_*_SHORT of PORTRAIT_*_NARROW.
-   * sizeClass: MICRO..EXTRA_LARGE o.b.v. D=max(W,H).
-   * @return {string|null} bucket-key of null bij ongeldige input.
+   * Computes a bucket key from label face dimensions.
+   * Bucket key format examples:
+   *   - SQUARE_SMALL
+   *   - PORTRAIT_MEDIUM_STANDARD
+   *   - LANDSCAPE_EXTRA_LARGE_SHORT
+   * Note: EXTRA_LARGE is two tokens and must be handled carefully when parsing later.
+   * @param {number} W_cm - label width in cm
+   * @param {number} H_cm - label height in cm
+   * @returns {string|null} Bucket key or null if inputs invalid.
    */
+
   function selectBucketKeyFor(W_cm, H_cm) {
     // Inputs are label face dimensions (cm)
     const w = Number(W_cm);
@@ -146,11 +150,6 @@
     return `${family}_${sizeClass}_${variant}`;
   }
 
-  /**
-   * Zoekt de beste anchor voor een label (met fallbacks).
-   * Fallbacks voorkomen ‘gaten’ als een variant-key niet bestaat of disabled is.
-   * @return {object|null} anchor of null.
-   */
   function getBucketAnchorFor(W_cm, H_cm) {
     const key = selectBucketKeyFor(W_cm, H_cm);
     if (!key) return null;
@@ -181,12 +180,6 @@
     return a || null;
   }
 
-  /**
-   * Zet font-sizes (CSS variables) op .label-inner op basis van bucket anchor.
-   * Anchor waarden zijn in pt; worden omgerekend naar px.
-   * schaalfactor k = D / D_ref_cm zodat typografie meegroeit met labelmaat.
-   * @return {object|null} info over toegepaste bucket of null.
-   */
   function applyBucketTypography(innerEl) {
     const W_cm = Number(innerEl.dataset.wcm);
     const H_cm = Number(innerEl.dataset.hcm);
@@ -226,7 +219,10 @@
     };
   }
 
-  /* ====== Helpers ====== */
+  /* ====== DOM HELPERS ======
+   Small helpers for querying and building DOM safely.
+   NOTE: Avoid adding styling inline; prefer classes handled by styles.css.
+*/
   const $ = (sel) => document.querySelector(sel);
 
   function initTabs() {
@@ -327,11 +323,6 @@
     return node;
   }
 
-  /**
-   * Parse helper voor gebruikersinvoer.
-   * Accepteert komma of punt als decimaal.
-   * Returnt '' (lege string) bij ongeldige input zodat 'empty state' werkt.
-   */
   function parseNumber(val) {
     if (val == null) return "";
     const s = String(val).trim();
@@ -347,7 +338,10 @@
     return n.toFixed(2);
   }
 
-  /* ====== Single UI: box dimension validation (5–100 cm) ====== */
+  /* ====== SINGLE INPUT VALIDATION (5–100 cm) ======
+   Only len/wid/hei are range-validated.
+   Errors are shown inline (adds .is-invalid and a .field-error element).
+*/
   function ensureInlineError(inputEl) {
     if (!inputEl) return null;
     const host = inputEl.closest(".field") || inputEl.parentElement;
@@ -506,7 +500,10 @@
     desc.style.fontSize = best + "px";
   }
 
-  /* ====== Label sizes (Optie A: 0.9) ====== */
+  /* ====== LABEL GEOMETRY ======
+   Calculates the four label faces based on box dimensions.
+   Business rule: 0.9 scaling factor in both directions.
+*/
   function calcLabelSizes(values) {
     const L = values.len || 0;
     const W = values.wid || 0;
@@ -596,12 +593,16 @@
   }
 
   /**
-   * Mapt bucket-key → layout-modus:
-   * STANDARD: standaard flow
-   * STACKED: compacte, verticale stapeling (portrait narrow/standard)
-   * COLUMNS: 2 kolommen (landscape short)
-   * @return {'STANDARD'|'STACKED'|'COLUMNS'}
+   * Maps a bucket key to a layout class.
+   * Layout drives CSS structure:
+   *   - STANDARD: ERP + description + specs stacked vertically
+   *   - STACKED: portrait narrow/standard uses a tighter vertical stacking
+   *   - COLUMNS: landscape short uses a two-column layout for specs
+   * IMPORTANT: Keys containing EXTRA_LARGE split into two tokens (EXTRA, LARGE).
+   * @param {string} bucketKey
+   * @returns {"STANDARD"|"STACKED"|"COLUMNS"}
    */
+
   function layoutForBucketKey(bucketKey) {
     const parts = String(bucketKey || "").split("_");
     const family = (parts[0] || "").toUpperCase();
@@ -667,7 +668,11 @@
     });
   }
 
-  /* ====== Fit / guard / fallback ====== */
+  /* ====== FITTING / OVERFLOW CONTROL ======
+   Bucket typography sets target font sizes.
+   Then we verify the content fits; if not, we scale down the entire content as a last resort.
+   This ensures: 'always render' (no clipped text), even for worst-case inputs.
+*/
   function fitsWithGuard(innerEl, guardX, guardY) {
     const content = innerEl.querySelector(".label-content") || innerEl;
 
@@ -764,7 +769,10 @@
     });
   }
 
-  /* ====== Build label DOM ====== */
+  /* ====== LABEL DOM CONSTRUCTION ======
+   createLabelEl() builds the DOM structure that CSS expects:
+     .label (size) -> .label-inner (layout + vars) -> .label-content (actual content)
+*/
 
   function buildSpecsGrid(values) {
     const grid = el("div", { class: "specs-grid" });
@@ -853,7 +861,10 @@
     return wrap;
   }
 
-  /* ====== Preview render ====== */
+  /* ====== PREVIEW RENDERING ======
+   Renders 4 labels in a 2x2 grid.
+   Uses a computed previewScale so large labels still fit in the viewport.
+*/
   function computePreviewScale(sizes, containerEl) {
     const labelsGrid = containerEl || $("#labelsGrid");
     if (!labelsGrid) return 1;
@@ -876,11 +887,13 @@
   }
 
   /**
-   * Rendert 4 labels in de preview container (of een meegegeven target).
-   * Werkt zowel voor Single (zichtbaar) als Bulk (offscreen host).
-   * Berekent previewScale (of gebruikt meegegeven previewScale), bouwt label DOM,
-   * en doet mountThenFit() om typografie/wrapping/fallback te stabiliseren.
+   * Renders the 4 labels into a target container (Single preview grid or offscreen batch host).
+   * Also updates the calculated dimensions table unless opts.renderDims === false.
+   * @param {object} values - Form values (dimensions + label fields)
+   * @param {object} [opts]
+   * @returns {Promise<{sizes:Array, scale:number, container:Element}|void>}
    */
+
   async function renderPreviewFor(values, opts = {}) {
     const visibleGrid = $("#labelsGrid");
     const target = opts.targetEl || visibleGrid;
@@ -946,7 +959,12 @@
     await renderPreviewFor(vals, { showVariant: true });
   }
 
-  /* ====== jsPDF / html2canvas ====== */
+  /* ====== PDF GENERATION ======
+   1) Render labels (often offscreen) at a stable scale.
+   2) Capture each label DOM node to a canvas via html2canvas.
+   3) Rotate (labels are placed rotated in the PDF).
+   4) Add images to jsPDF with cm units for true-size output.
+*/
   function loadJsPDF() {
     return window.jspdf?.jsPDF;
   }
@@ -1024,10 +1042,11 @@
   }
 
   /**
-   * Single export: rendert labels en zet ze in één PDF.
-   * PDF is 1 kolom met 4 labels (volgorde 1,3,2,4).
-   * Elke label wordt via html2canvas gecaptured, 90° gedraaid en als PNG ingevoegd.
+   * Generates a single combined PDF for the current Single form values.
+   * Uses cm units in jsPDF so the output can be printed at 100% scale (true size).
+   * The Help tab contains vendor instructions: print at 100%, do not auto-scale.
    */
+
   async function generatePDFSingle() {
     const JsPDF = loadJsPDF();
     if (!JsPDF) throw new Error("jsPDF niet geladen");
@@ -1074,7 +1093,11 @@
     pdf.save(buildPdfFileName(vals.code));
   }
 
-  /* ====== BATCH (Excel / CSV) ====== */
+  /* ====== BULK UPLOAD / BATCH ======
+   Parses an uploaded sheet and maps columns to required fields.
+   Validates all rows before generating any PDFs to avoid partial output.
+   Generates one PDF per row and bundles them in a ZIP.
+*/
   // Batch state
   let parsedRows = [];
   let isBatchRunning = false;
@@ -1415,9 +1438,13 @@
   }
 
   /**
-   * Initialiseert Bulk-Upload UI handlers:
-   * drag/drop + file picker, templates, kolom-mapping, validatie en batch-run (PDF → ZIP).
+   * Wires the Bulk upload UI:
+   * - Drag/drop + file picker
+   * - Column mapping dropdowns
+   * - Preview of first rows
+   * - Run/Abort generation with progress + log
    */
+
   function initBatchUI() {
     dropzone = $("#dropzone");
     fileInput = $("#fileInput");
@@ -1663,12 +1690,12 @@
     });
   }
 
-  /* ====== init ====== */
-  /**
-   * Globale init na DOMContentLoaded:
-   * bucket-config laden, tabs initialiseren, bulk UI initialiseren,
-   * single validatie + knoppen, en initiële empty-state preview renderen.
-   */
+  /* ====== INIT ======
+   Entry point on DOMContentLoaded.
+   - Loads bucket config (optional; app still works with fallback fitting)
+   - Initializes tabs and batch UI
+   - Wires Single buttons (Preview, Clear, PDF)
+*/
   async function init() {
     try {
       BUCKET_CONFIG = await loadBucketConfig("./labelBuckets.json");

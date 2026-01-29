@@ -1,22 +1,25 @@
-/* ==========================================================================
-   Etiketten Generator – styles.css
+/*
+================================================================================
+LABEL GENERATOR — styles.css  (BASE: styles_patched_v15.css)
+--------------------------------------------------------------------------------
+Goal of this stylesheet:
+- Provide a role-based color system using the company brand palette (huisstijl).
+- Keep UI readable: neutral surfaces for content, brand color for emphasis (CTA/active state),
+  semantic colors for status (error/success), and clear focus indication for accessibility.
+- Maintain stable layout rules for:
+  - Tabs and panels
+  - Single/Bulk forms
+  - Preview grid + label rendering (the .label / .label-inner structure)
+  - Help tab two-column quickstart layout
 
-   Doel
-   - Legt de visuele “design tokens” vast (CSS variables in :root) en vertaalt die
-     naar component-styling (tabs, panels, forms, previews, batch UI, help content).
-   - Houdt labels (de preview) zo neutraal mogelijk zodat PDF-export 1:1 consistent is.
+IMPORTANT MAINTENANCE NOTES
+- Do not change selector names casually: app.js injects markup that relies on these classes.
+- Colors should be changed via :root variables (tokens) first; avoid sprinkling new hex values.
+- The preview placeholder is styled via .preview-placeholder (JS only toggles the class).
+================================================================================
+*/
 
-   Belangrijke afspraken
-   - Huisstijlkleuren staan als tokens in :root (brand + semantische rollen).
-   - Gebruik semantische tokens (bv. --color-danger) i.p.v. hard-coded kleuren.
-   - Label-typografie wordt in app.js gezet via CSS-variables (--fs-*) per bucket.
-
-   Let op
-   - Cascade/overrides zijn soms historisch gegroeid; niet "opschonen" zonder
-     te verifiëren dat de UI en PDF-capture identiek blijven.
-   ========================================================================== */
-
-/* --- Design tokens (kleuren, radius, schaduw, typografie) ------------------ */
+/* === Design tokens (colors, radii, shadows, unit conversions) === */
 :root {
   /* Brand (huisstijl) */
   --brand-primary: #2c3a6b;
@@ -69,6 +72,8 @@
   --danger-soft: rgba(211, 47, 47, 0.16);
   --success: var(--color-success);
 }
+
+/* === Base document styles (typography + page background) === */
 html,
 body {
   margin: 0;
@@ -107,7 +112,7 @@ select {
 
 /* ===== Layout ===== */
 
-/* --- App shell (header, main, footer) ------------------------------------- */
+/* === App shell: width constraints + global spacing === */
 .app {
   flex: 1;
   width: 100%;
@@ -319,7 +324,7 @@ select {
 
 /* ===== Labels grid ===== */
 
-/* --- Preview grid (4 labels) ----------------------------------------------- */
+/* === Preview grid: 2x2 label cards on Single tab === */
 .labels-grid {
   display: grid;
   grid-template-columns: repeat(2, auto);
@@ -334,7 +339,7 @@ select {
   align-items: flex-start;
 }
 
-/* --- Label canvas (preview + PDF capture basis) ---------------------------- */
+/* === Label rendering: outer box matches computed size; padding set by JS === */
 .label {
   border: var(--border-1px) solid #000;
   background: var(--surface-2);
@@ -354,6 +359,7 @@ select {
 
 /* ====== LABEL CONTENT ====== */
 
+/* === Label inner: contains .label-content; bucket typography sets CSS vars === */
 .label-inner {
   display: flex;
   align-items: center;
@@ -600,7 +606,7 @@ select {
 
 /* ===== Panels (compat) ===== */
 
-/* --- Panels (kaart-achtige containers) ------------------------------------- */
+/* === Panel surfaces: card-like containers for each section === */
 .panel {
   border: 1px solid var(--ui-border);
   background: var(--ui-bg);
@@ -647,8 +653,6 @@ select {
 }
 
 /* ===== Batch UI ===== */
-
-/* --- Bulk-Upload UI -------------------------------------------------------- */
 .batch-panel {
   display: flex;
   flex-direction: column;
@@ -779,7 +783,7 @@ select {
 
 /* ====== Tabs ====== */
 
-/* --- Tabs (navigatie + actieve tab-styling) -------------------------------- */
+/* === Tabs: button row + active state styling === */
 .tabs {
   display: flex;
   gap: 8px;
@@ -896,7 +900,7 @@ body {
 
 /* Help tab: two-column quick start blocks */
 
-/* --- Help tab (documentatie) ---------------------------------------------- */
+/* === Help tab: two-column quickstart layout (responsive) === */
 .help-quickstart-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -971,6 +975,7 @@ select:focus-visible,
   border-bottom: 0;
 }
 
+/* === Empty preview state: shown when no Single input is provided yet === */
 .preview-placeholder {
   grid-column: 1 / -1;
   text-align: center;

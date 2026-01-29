@@ -1,24 +1,39 @@
 <!doctype html>
 <html lang="nl">
   <head>
+<!--
+================================================================================
+LABEL GENERATOR — index.html (UI skeleton)
+--------------------------------------------------------------------------------
+This file contains the static UI structure (tabs, forms, containers).
+app.js binds behavior by querying element IDs/classes defined here.
+
+Conventions used in this file:
+- Tab buttons have: .tab-btn + data-tab-target="<panel-id>"
+- Tab panels have:  .tab-panel + id="<panel-id>"
+- Input IDs are stable API between HTML and JS; do not rename without updating app.js.
+
+Key containers app.js writes into:
+- #labelsGrid : live preview label cards (Single tab)
+- #dims       : calculated label sizes (W/H in cm)
+- #variant    : (optional / legacy) debug output — may be unused in current build
+- Batch tab has its own DOM refs, initialized by initBatchUI() in app.js.
+================================================================================
+-->
+
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Etiketten Generator</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <!--
-      Etiketten Generator – single-page UI.
-      - Tabs: Single-PDF / Bulk-Upload / Help (aria-enabled, controlled by app.js)
-      - Each tab panel is a self-contained section; IDs must match data-tab-target.
-      - This file contains only structure/content; styling in styles.css; behavior in app.js.
-    -->
     <div class="app">
-      <header class="app-header">
+      <!-- App header: title/branding and primary navigation (tabs) -->
+<header class="app-header">
         <div class="brand">
           <div class="brand-text">
             <h1>
-              Etiketten Generator<span class="version-badge">v0.138</span>
+              Etiketten Generator<span class="version-badge">v0.139</span>
             </h1>
           </div>
           <a
@@ -38,7 +53,6 @@
       </header>
 
       <main class="app-main">
-        <!-- Tab navigation (buttons act as tabs; app.js manages active state & hash routing) -->
         <nav class="tabs" role="tablist" aria-label="Etiketten Generator tabs">
           <button
             type="button"
@@ -76,9 +90,9 @@
         </nav>
 
         <div class="tab-panels">
-          <!-- TAB: Single-PDF (manual invoer + preview + PDF export) -->
           <div
-            id="tab-single"
+            <!-- TAB: Single — manual input -> preview -> PDF generation -->
+id="tab-single"
             class="tab-panel"
             role="tabpanel"
             aria-labelledby="tabBtnSingle"
@@ -154,13 +168,15 @@
               </section>
 
               <section class="panel panel-preview">
-                <h2>Preview</h2>
+                <!-- Preview area: app.js renders 4 labels as cards into #labelsGrid -->
+<h2>Preview</h2>
                 <div id="labelsGrid" class="labels-grid"></div>
               </section>
             </div>
 
             <section class="panel panel-dims">
-              <h2>Berekende labelafmetingen (werkelijke cm)</h2>
+              <!-- Calculated dimensions: app.js writes label W/H (cm) rows into #dims -->
+<h2>Berekende labelafmetingen (werkelijke cm)</h2>
               <div class="dims-grid-head">
                 <div>Label</div>
                 <div>W</div>
@@ -170,10 +186,10 @@
               <div id="dims" class="dims-grid"></div>
             </section>
           </div>
-          <!-- TAB: Bulk-Upload (Excel/CSV mapping + ZIP export) -->
 
           <div
-            id="tab-bulk"
+            <!-- TAB: Bulk upload — file parsing, column mapping, bulk PDF generation -->
+id="tab-bulk"
             class="tab-panel hidden"
             role="tabpanel"
             aria-labelledby="tabBtnBulk"
@@ -264,9 +280,9 @@
             </section>
           </div>
 
-          <!-- TAB: Help (handleiding, printinstructies, layoutmatrix) -->
           <div
-            id="tab-doc"
+            <!-- TAB: Help — user-facing instructions + layout table (static content) -->
+id="tab-doc"
             class="tab-panel hidden"
             role="tabpanel"
             aria-labelledby="tabBtnDoc"
@@ -424,7 +440,8 @@
       </main>
     </div>
 
-    <footer class="app-footer" role="contentinfo">
+    <!-- Footer: versioning / attribution / notes (static) -->
+<footer class="app-footer" role="contentinfo">
       <div class="app-footer__inner">
         © <span id="copyrightYear"></span>
         <a href="http://studiord.nl" target="_blank" rel="noopener noreferrer"
