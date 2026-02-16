@@ -705,6 +705,25 @@ select {
   pointer-events: none;
 }
 
+/* Off-screen host for single-PDF rendering (same intent as .batch-render-host). */
+.pdf-render-host {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 1100px;
+  background: #ffffff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* PDF mode: keep padding/border inside the computed label dimensions.
+   Without this, the captured PNG becomes (w+padding+border)×(h+padding+border) and
+   jsPDF stretches it back to w×h, causing non-uniform scaling. */
+.pdf-mode .label {
+  box-sizing: border-box;
+  background: #ffffff;
+}
+
 .mapping-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -983,4 +1002,56 @@ select:focus-visible,
   border: 1px dashed var(--border);
   border-radius: 10px;
   color: var(--muted);
+}
+
+/* ====== SELFTEST (developer/regression guard UI) ======
+   Kept minimal and visually consistent with the Help tab.
+*/
+details.selftest {
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+
+details.selftest > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--brand-text);
+}
+
+.selftest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.selftest-summary {
+  margin-top: 8px;
+}
+
+.selftest-log {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--ui-border);
+  background: #ffffff;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.selftest-log .ok {
+  color: #0a7a2f;
+}
+
+.selftest-log .err {
+  color: #b00;
 }

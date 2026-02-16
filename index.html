@@ -32,7 +32,7 @@ Key containers app.js writes into:
       <header class="app-header">
         <div class="brand">
           <div class="brand-text">
-            <h1>Etiketten Generator<span class="version-badge">v1.1</span></h1>
+            <h1>Etiketten Generator<span class="version-badge">v1.2</span></h1>
           </div>
           <a
             href="https://lifegoodsgroup.com/"
@@ -432,6 +432,36 @@ Key containers app.js writes into:
                 <strong>Large</strong> 40–&lt;70,
                 <strong>Extra-Large</strong> 70–100 (cm).
               </p>
+
+              <details class="selftest">
+                <summary>Regressie self-test (PDF geometry)</summary>
+                <p class="muted help-muted">
+                  Deze test genereert een kleine set “edge cases” en controleert
+                  in de resulterende PDF: (a) MediaBox paginagrootte en (b) de
+                  beeldverhouding (image Width/Height) t.o.v. de verwachte
+                  labelverhouding (H/W) binnen 0,2%.
+                </p>
+
+                <div class="selftest-actions">
+                  <button type="button" id="btnRunPdfGeometryTest" class="btn">
+                    Run PDF geometry test
+                  </button>
+                  <button
+                    type="button"
+                    id="btnDownloadPdfGeometryFailures"
+                    class="btn"
+                    disabled
+                  >
+                    Download fail-PDF’s (ZIP)
+                  </button>
+                </div>
+
+                <div
+                  id="pdfGeometryTestSummary"
+                  class="muted help-muted selftest-summary"
+                ></div>
+                <div id="pdfGeometryTestLog" class="selftest-log"></div>
+              </details>
             </section>
           </div>
         </div>

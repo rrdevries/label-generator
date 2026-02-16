@@ -1014,6 +1014,7 @@
     clone.style.borderLeft = `${BORDER_PX}px solid #000`;
 
     const host = document.createElement("div");
+    host.className = "pdf-capture-host pdf-mode";
     host.style.position = "fixed";
     host.style.left = "-10000px";
     host.style.top = "0";
@@ -1055,7 +1056,12 @@
     if (!window.html2canvas) throw new Error("html2canvas niet geladen");
 
     const vals = getFormValues();
-    const result = await renderPreviewFor(vals);
+    const pdfHost = ensurePdfRenderHost();
+    const result = await renderPreviewFor(vals, {
+      targetEl: pdfHost,
+      previewScale: 1,
+      renderDims: false,
+    });
     if (!result) throw new Error("Kon preview niet renderen voor PDF.");
     const { sizes, container } = result;
 
@@ -1141,11 +1147,392 @@
     if (batchRenderHost) return batchRenderHost;
     const host = document.createElement("div");
     host.id = "batchRenderHost";
-    host.className = "batch-render-host";
+    host.className = "batch-render-host pdf-mode";
     host.setAttribute("aria-hidden", "true");
     document.body.appendChild(host);
     batchRenderHost = host;
     return host;
+  }
+
+  // Dedicated off-screen render host for single-PDF generation.
+  // We render labels here with PDF-specific box model rules (see .pdf-mode in CSS),
+  // so html2canvas captures the correct physical aspect ratio (no padding/border expansion).
+  let pdfRenderHost = null;
+
+  function ensurePdfRenderHost() {
+    if (pdfRenderHost) return pdfRenderHost;
+    const host = document.createElement("div");
+    host.id = "pdfRenderHost";
+    host.className = "pdf-render-host pdf-mode";
+    host.setAttribute("aria-hidden", "true");
+    document.body.appendChild(host);
+    pdfRenderHost = host;
+    return host;
+  }
+
+  /* ====== PDF GEOMETRY SELF-TEST (regression guard) ======
+   Why this exists
+   - The generator depends on a DOM->canvas->PDF pipeline (html2canvas + jsPDF).
+   - A subtle box-model mismatch (content-box vs border-box) can introduce anisotropic scaling
+     in the embedded PNGs, which becomes visible only for extreme aspect ratios.
+   This self-test generates a curated edge-case set and validates:
+   (a) PDF MediaBox page size (true-size output), and
+   (b) embedded image pixel ratio (Width/Height) ≈ expected label ratio (H/W) within 0.2%.
+  */
+
+  const CM_TO_PT = 72 / 2.54; // PDF points per centimeter
+  const PDF_GEOMETRY_RATIO_TOL_REL = 0.002; // 0.2% relative tolerance
+  const PDF_GEOMETRY_PAGE_TOL_PT = 0.5; // ~0.18mm tolerance on MediaBox
+
+  // Curated edge-case set:
+  // - Small H (5–15cm) with large L/W
+  // - Small L/W with large H
+  // - Boundaries (5 and 100)
+  // - A few decimal dimensions to exercise rounding
+  const PDF_GEOMETRY_EDGE_CASES = [
+    // Small H, large L/W
+    { name: "H05_L100_W100", len: 100, wid: 100, hei: 5 },
+    { name: "H05_L100_W60", len: 100, wid: 60, hei: 5 },
+    { name: "H06_L90_W30", len: 90, wid: 30, hei: 6 },
+    { name: "H08_L80_W20", len: 80, wid: 20, hei: 8 },
+    { name: "H10_L100_W50", len: 100, wid: 50, hei: 10 },
+    { name: "H12_L70_W25", len: 70, wid: 25, hei: 12 },
+    { name: "H15_L100_W40", len: 100, wid: 40, hei: 15 },
+
+    // Small L/W, large H
+    { name: "L05_W05_H100", len: 5, wid: 5, hei: 100 },
+    { name: "L06_W10_H100", len: 6, wid: 10, hei: 100 },
+    { name: "L10_W15_H80", len: 10, wid: 15, hei: 80 },
+    { name: "L12_W12_H70", len: 12, wid: 12, hei: 70 },
+
+    // Very narrow / very wide faces (within allowed 5–100cm)
+    { name: "L100_W05_H15", len: 100, wid: 5, hei: 15 },
+    { name: "L05_W100_H15", len: 5, wid: 100, hei: 15 },
+
+    // Square-ish / stable baselines
+    { name: "L50_W50_H50", len: 50, wid: 50, hei: 50 },
+    { name: "L25_W25_H10", len: 25, wid: 25, hei: 10 },
+
+    // Decimals / rounding surfaces
+    { name: "L63_5_W47_2_H12_3", len: 63.5, wid: 47.2, hei: 12.3 },
+    { name: "L99_9_W5_1_H14_9", len: 99.9, wid: 5.1, hei: 14.9 },
+  ];
+
+  function _pdfGeomRelDiff(a, b) {
+    const denom = Math.abs(b) > 0 ? Math.abs(b) : 1;
+    return Math.abs(a - b) / denom;
+  }
+
+  function _pdfGeomFmtPct(x) {
+    return `${(x * 100).toFixed(3)}%`;
+  }
+
+  function _pdfGeomDecodePdfText(arrayBuffer) {
+    // We only need ASCII tokens (MediaBox, Width/Height). UTF-8 decoding is sufficient.
+    try {
+      return new TextDecoder("iso-8859-1").decode(new Uint8Array(arrayBuffer));
+    } catch {
+      return new TextDecoder("utf-8").decode(new Uint8Array(arrayBuffer));
+    }
+  }
+
+  function _pdfGeomExtractMediaBoxPt(pdfText) {
+    // Match first MediaBox: [x0 y0 x1 y1]
+    const re =
+      /\/MediaBox\s*\[\s*([0-9.+-]+)\s+([0-9.+-]+)\s+([0-9.+-]+)\s+([0-9.+-]+)\s*\]/;
+    const m = re.exec(pdfText);
+    if (!m) return null;
+    const x0 = parseFloat(m[1]);
+    const y0 = parseFloat(m[2]);
+    const x1 = parseFloat(m[3]);
+    const y1 = parseFloat(m[4]);
+    if (![x0, y0, x1, y1].every(Number.isFinite)) return null;
+    return { w: x1 - x0, h: y1 - y0, raw: { x0, y0, x1, y1 } };
+  }
+
+  function _pdfGeomExtractTopImageRatios(pdfText, topN = 4) {
+    const hits = [];
+    const re = /\/Subtype\s*\/Image\b/g;
+    let m;
+    while ((m = re.exec(pdfText))) {
+      const chunk = pdfText.slice(m.index, m.index + 2500);
+      const wm = /\/Width\s+(\d+)/.exec(chunk);
+      const hm = /\/Height\s+(\d+)/.exec(chunk);
+      if (!wm || !hm) continue;
+      const w = parseInt(wm[1], 10);
+      const h = parseInt(hm[1], 10);
+      if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0)
+        continue;
+      hits.push({ w, h, area: w * h, ratio: w / h });
+    }
+    hits.sort((a, b) => b.area - a.area);
+    return hits.slice(0, topN);
+  }
+
+  async function _buildPdfArrayBufferForValues(vals, opts = {}) {
+    const JsPDF = loadJsPDF();
+    if (!JsPDF) throw new Error("jsPDF niet geladen");
+    if (!window.html2canvas) throw new Error("html2canvas niet geladen");
+
+    const pdfHost = ensurePdfRenderHost();
+
+    // Self-test uses fixed previewScale=1 for stable capture geometry.
+    const result = await renderPreviewFor(vals, {
+      targetEl: pdfHost,
+      previewScale: 1,
+      renderDims: false,
+      showVariant: false,
+    });
+    if (!result)
+      throw new Error("Kon preview niet renderen voor PDF self-test.");
+
+    const { sizes, container } = result;
+    const order = [1, 3, 2, 4];
+
+    const pageW = Math.max(...sizes.map((s) => s.h)) + PDF_MARGIN_CM * 2;
+    const pageH = sizes.reduce((sum, s) => sum + s.w, 0) + PDF_MARGIN_CM * 2;
+
+    // Disable compression for deterministic, parse-friendly output.
+    const pdf = new JsPDF({
+      unit: "cm",
+      orientation: "portrait",
+      format: [pageW, pageH],
+      compress: false,
+    });
+
+    let y = PDF_MARGIN_CM;
+
+    for (const idx of order) {
+      const s = sizes[idx - 1];
+      const imgData = await captureLabelToRotatedPng(idx, container);
+
+      // Rotated placement: width = H, height = W
+      pdf.addImage(
+        imgData,
+        "PNG",
+        PDF_MARGIN_CM,
+        y,
+        s.h,
+        s.w,
+        undefined,
+        "FAST",
+      );
+      y += s.w;
+    }
+
+    const expectedRatios = order.map((idx) => {
+      const s = sizes[idx - 1];
+      // Rotated PNG ratio in PDF should be H/W
+      return s.h / s.w;
+    });
+
+    const arrayBuffer = pdf.output("arraybuffer");
+    return {
+      arrayBuffer,
+      expected: { pageWcm: pageW, pageHcm: pageH, ratios: expectedRatios },
+      pdf, // optional (debug)
+    };
+  }
+
+  async function runPdfGeometrySelfTestUI() {
+    const btnRun = $("#btnRunPdfGeometryTest");
+    const btnDl = $("#btnDownloadPdfGeometryFailures");
+    const summaryEl = $("#pdfGeometryTestSummary");
+    const logEl = $("#pdfGeometryTestLog");
+
+    if (!btnRun || !summaryEl || !logEl) return;
+
+    const setBusy = (busy) => {
+      btnRun.disabled = !!busy;
+      btnRun.textContent = busy ? "Test draait…" : "Run PDF geometry test";
+      if (busy && btnDl) {
+        btnDl.disabled = true;
+        btnDl.dataset.ready = "";
+        btnDl.onclick = null;
+      }
+    };
+
+    const logLine = (msg, cls) => {
+      const div = document.createElement("div");
+      if (cls) div.className = cls;
+      div.textContent = msg;
+      logEl.appendChild(div);
+      logEl.scrollTop = logEl.scrollHeight;
+    };
+
+    // Reset UI
+    logEl.textContent = "";
+    summaryEl.textContent = "";
+    setBusy(true);
+
+    const failures = [];
+    let pass = 0;
+    let fail = 0;
+
+    try {
+      logLine(
+        `Start PDF geometry self-test: ${PDF_GEOMETRY_EDGE_CASES.length} cases…`,
+      );
+
+      for (let i = 0; i < PDF_GEOMETRY_EDGE_CASES.length; i++) {
+        const tc = PDF_GEOMETRY_EDGE_CASES[i];
+        const code = `SELFTEST_${tc.name}`;
+
+        const vals = {
+          code,
+          desc: "PDF geometry self-test",
+          ean: "0000000000000",
+          qty: "1",
+          gw: "0",
+          cbm: "0",
+          len: tc.len,
+          wid: tc.wid,
+          hei: tc.hei,
+          batch: "",
+        };
+
+        // Hard guard: keep cases within allowed ranges.
+        // (If someone edits the list incorrectly, we want a clear error.)
+        const dims = [vals.len, vals.wid, vals.hei];
+        if (
+          dims.some(
+            (d) => !Number.isFinite(d) || d < BOX_CM_MIN || d > BOX_CM_MAX,
+          )
+        ) {
+          throw new Error(`Edge-case buiten bereik (5–100cm): ${tc.name}`);
+        }
+
+        const { arrayBuffer, expected } =
+          await _buildPdfArrayBufferForValues(vals);
+
+        const txt = _pdfGeomDecodePdfText(arrayBuffer);
+        const mb = _pdfGeomExtractMediaBoxPt(txt);
+        const imgs = _pdfGeomExtractTopImageRatios(txt, 4);
+
+        // Page size check (MediaBox)
+        const expWpt = expected.pageWcm * CM_TO_PT;
+        const expHpt = expected.pageHcm * CM_TO_PT;
+
+        let ok = true;
+        let reason = [];
+
+        if (!mb) {
+          ok = false;
+          reason.push("MediaBox niet gevonden");
+        } else {
+          const dw = Math.abs(mb.w - expWpt);
+          const dh = Math.abs(mb.h - expHpt);
+          if (dw > PDF_GEOMETRY_PAGE_TOL_PT || dh > PDF_GEOMETRY_PAGE_TOL_PT) {
+            ok = false;
+            reason.push(
+              `MediaBox mismatch: ΔW=${dw.toFixed(2)}pt, ΔH=${dh.toFixed(2)}pt`,
+            );
+          }
+        }
+
+        // Image ratio check (PNG Width/Height ≈ expected H/W within 0.2%)
+        if (!imgs.length) {
+          ok = false;
+          reason.push("Geen images gevonden");
+        } else {
+          // We validate that every embedded top image ratio matches at least one expected ratio,
+          // and that every expected ratio is represented by at least one embedded ratio.
+          const actualRatios = imgs.map((x) => x.ratio);
+          const expectedRatios = expected.ratios;
+
+          const matchesExpected = (ar) =>
+            expectedRatios.some(
+              (er) => _pdfGeomRelDiff(ar, er) <= PDF_GEOMETRY_RATIO_TOL_REL,
+            );
+          const coversActual = actualRatios.every(matchesExpected);
+
+          const coversExpected = expectedRatios.every((er) =>
+            actualRatios.some(
+              (ar) => _pdfGeomRelDiff(ar, er) <= PDF_GEOMETRY_RATIO_TOL_REL,
+            ),
+          );
+
+          if (!coversActual || !coversExpected) {
+            ok = false;
+
+            // Provide a useful delta readout: best match per expected ratio
+            const deltas = expectedRatios.map((er) => {
+              const best = Math.min(
+                ...actualRatios.map((ar) => _pdfGeomRelDiff(ar, er)),
+              );
+              return best;
+            });
+
+            reason.push(
+              `Image ratio mismatch (tol=${_pdfGeomFmtPct(PDF_GEOMETRY_RATIO_TOL_REL)}). ` +
+                `bestΔ per expected: [${deltas.map(_pdfGeomFmtPct).join(", ")}]`,
+            );
+          }
+        }
+
+        if (ok) {
+          pass++;
+          logLine(
+            `OK  ${tc.name}  (L=${tc.len}, W=${tc.wid}, H=${tc.hei})`,
+            "ok",
+          );
+        } else {
+          fail++;
+          logLine(
+            `ERR ${tc.name}  (L=${tc.len}, W=${tc.wid}, H=${tc.hei})  -> ${reason.join(" | ")}`,
+            "err",
+          );
+          failures.push({
+            name: tc.name,
+            vals,
+            arrayBuffer,
+            reason: reason.join(" | "),
+          });
+        }
+
+        // Yield to UI
+        await new Promise((r) => setTimeout(r, 0));
+      }
+
+      summaryEl.textContent = `Resultaat: ${pass} OK, ${fail} fouten.`;
+      if (failures.length && window.JSZip && btnDl) {
+        btnDl.disabled = false;
+        btnDl.dataset.ready = "1";
+        btnDl.onclick = async () => {
+          const zip = new JSZip();
+          const stamp = buildTimestamp().replace(/[:]/g, ".");
+          const folder = zip.folder(`pdf-geometry-failures - ${stamp}`);
+
+          failures.forEach((f, idx) => {
+            const blob = new Blob([f.arrayBuffer], { type: "application/pdf" });
+            folder.file(
+              `${String(idx + 1).padStart(2, "0")} - ${f.name}.pdf`,
+              blob,
+            );
+            folder.file(
+              `${String(idx + 1).padStart(2, "0")} - ${f.name}.txt`,
+              f.reason,
+            );
+          });
+
+          const zipBlob = await zip.generateAsync({ type: "blob" });
+          downloadBlob(zipBlob, `pdf-geometry-failures - ${stamp}.zip`);
+        };
+      }
+    } catch (err) {
+      summaryEl.textContent = `Self-test afgebroken: ${err.message || err}`;
+      logLine(String(err?.stack || err?.message || err), "err");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function initPdfGeometrySelfTestUI() {
+    const btnRun = $("#btnRunPdfGeometryTest");
+    if (!btnRun) return; // UI not present (future: separate builds)
+    btnRun.addEventListener("click", () => {
+      runPdfGeometrySelfTestUI().catch((e) => alert(e.message || e));
+    });
   }
 
   function resetLog() {
@@ -1710,6 +2097,7 @@
 
     initTabs();
     initBatchUI();
+    initPdfGeometrySelfTestUI();
 
     initSingleBoxValidation();
     const btnGen = $("#btnGen");
