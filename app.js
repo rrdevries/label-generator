@@ -439,28 +439,16 @@
     const desc = innerEl.querySelector(".label-desc");
     if (!desc) return;
 
-    // In columns-layout the description should use the natural left-column width.
+    // Columns layout: width is governed by the left grid column; keep natural sizing.
     if (innerEl.classList.contains("layout-columns")) {
       desc.style.setProperty("--desc-w", "auto");
       return;
     }
 
-    // In Standard/Stacked we want ERP + productomschrijving to be as wide as the label allows
-    // (inside the label padding). This reduces unnecessary wrapping and prevents extra fallback
-    // scaling that makes the top block look "too narrow".
-    const innerW =
-      innerEl.clientWidth || innerEl.getBoundingClientRect().width || 0;
-    if (innerW > 0) {
-      desc.style.setProperty("--desc-w", Math.floor(innerW) + "px");
-      return;
-    }
-
-    // Fallback: if layout has not stabilized yet, sync to specs grid width (legacy behavior).
-    const grid = innerEl.querySelector(".specs-grid");
-    if (!grid) return;
-
-    const w = grid.offsetWidth || grid.getBoundingClientRect().width;
-    desc.style.setProperty("--desc-w", w + "px");
+    // Standard/Stacked: always use the full available width inside the label padding.
+    // IMPORTANT: do NOT set a measured px width here; width measurement can be unstable when
+    // flex items shrink-to-fit in the preview, which can trigger a runaway fallback-scale.
+    desc.style.setProperty("--desc-w", "100%");
   }
 
   function descFitsInMaxLines(descEl, maxLines = 3) {
@@ -1306,6 +1294,7 @@
 
     // Realistic max-width case (matches the 120×120 scenario)
     { name: "L120_W120_H60", len: 120, wid: 120, hei: 60 },
+    { name: "L120_W50_H50", len: 120, wid: 50, hei: 50 },
 
     // Decimals / rounding surfaces
     { name: "L63_5_W47_2_H12_3", len: 63.5, wid: 47.2, hei: 12.3 },
