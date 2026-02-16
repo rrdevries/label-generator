@@ -502,6 +502,21 @@ select {
   margin-right: auto;
 }
 
+/* === Fit & alignment in non-centered layouts ===
+   For STACKED and COLUMNS we want the whole content block to align to the top-left of the label.
+   This avoids the "floating center-left" look when fallback scaling (--k) is applied and prevents
+   perceived misalignment in very short labels.
+*/
+.label-inner.layout-stacked,
+.label-inner.layout-columns {
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.label-inner.layout-stacked .label-content,
+.label-inner.layout-columns .label-content {
+  transform-origin: top left;
+}
 /* Columns: product description left, specs column on the right. */
 .label-inner.layout-columns .label-content {
   display: grid;

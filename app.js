@@ -673,18 +673,64 @@
    Then we verify the content fits; if not, we scale down the entire content as a last resort.
    This ensures: 'always render' (no clipped text), even for worst-case inputs.
 */
-  function fitsWithGuard(innerEl, guardX, guardY) {
+
+  /* ====== FITTING / OVERFLOW CONTROL ======
+   Bucket typography sets target font sizes.
+   Then we verify the content fits; if not, we scale down the entire content as a last resort.
+   This ensures: 'always render' (no clipped text), even for worst-case inputs.
+
+   Regression note (2026-02):
+   Some edge-case labels still showed overflow after the PDF aspect-ratio fix. Root cause:
+   - A single child (e.g. description/ERP/footer) can overflow without increasing the parent's scrollWidth/scrollHeight
+     (depends on layout mode and browser rounding), so the old fit-check could miss it.
+   - The PDF capture path previously cloned DOM nodes, which can slightly change line wrapping in tight cases.
+   We therefore:
+   - detect overflow on key child elements, and
+   - verify the *visual* bounding box after scaling.
+*/
+  function elementOverflows(el, tol = 0.5) {
+    if (!el) return false;
+    return (
+      el.scrollWidth > el.clientWidth + tol ||
+      el.scrollHeight > el.clientHeight + tol
+    );
+  }
+
+  function intrinsicFits(innerEl, guardX, guardY) {
     const content = innerEl.querySelector(".label-content") || innerEl;
 
-    // Detecteer overflow in grid-cellen (EAN/waarden)
-    const valOverflow = Array.from(
-      content.querySelectorAll(".specs-grid .val"),
-    ).some((v) => v.scrollWidth > v.clientWidth + 0.5);
-    if (valOverflow) return false;
+    // Detect overflow in individual cells/blocks (these can overflow without affecting parent scroll metrics).
+    const watch = [
+      ...content.querySelectorAll(".specs-grid .val"),
+      ...content.querySelectorAll(".code-box"),
+      ...content.querySelectorAll(".label-desc"),
+      ...content.querySelectorAll(".footer-text"),
+    ];
+    if (watch.some((n) => elementOverflows(n))) return false;
+
+    const grid = content.querySelector(".specs-grid");
+    if (grid && elementOverflows(grid)) return false;
 
     return (
       content.scrollWidth <= innerEl.clientWidth - guardX &&
       content.scrollHeight <= innerEl.clientHeight - guardY
+    );
+  }
+
+  function visualFits(innerEl, guardX, guardY) {
+    const content = innerEl.querySelector(".label-content") || innerEl;
+
+    const ir = innerEl.getBoundingClientRect();
+    const cr = content.getBoundingClientRect();
+
+    // Tolerantie: we allow subpixel rounding drift.
+    const tol = 0.75;
+
+    return (
+      cr.left >= ir.left + guardX - tol &&
+      cr.right <= ir.right - guardX + tol &&
+      cr.top >= ir.top + guardY - tol &&
+      cr.bottom <= ir.bottom - guardY + tol
     );
   }
 
@@ -701,18 +747,63 @@
     let scaleW = availW / sw;
     let scaleH = availH / sh;
 
-    // Extra: corrigeer voor overflow die alleen in grid-cellen zichtbaar is
-    let scaleVal = 1;
-    content.querySelectorAll(".specs-grid .val").forEach((v) => {
-      const vSw = v.scrollWidth;
-      const vCw = v.clientWidth;
-      if (vSw > vCw + 0.5) {
-        scaleVal = Math.min(scaleVal, vCw / vSw);
+    // Corrigeer extra voor overflow in specifieke blokken (vals/desc/ERP/footer)
+    let scaleChild = 1;
+    const candidates = [
+      ...content.querySelectorAll(".specs-grid .val"),
+      ...content.querySelectorAll(".code-box"),
+      ...content.querySelectorAll(".label-desc"),
+      ...content.querySelectorAll(".footer-text"),
+    ];
+    candidates.forEach((el) => {
+      const elSw = el.scrollWidth;
+      const elCw = el.clientWidth;
+      if (elSw > elCw + 0.5) {
+        scaleChild = Math.min(scaleChild, elCw / elSw);
+      }
+      const elSh = el.scrollHeight;
+      const elCh = el.clientHeight;
+      if (elSh > elCh + 0.5) {
+        scaleChild = Math.min(scaleChild, elCh / elSh);
       }
     });
 
-    const k = Math.max(MIN_SCALE_K, Math.min(1, scaleW, scaleH, scaleVal));
+    const k = Math.max(MIN_SCALE_K, Math.min(1, scaleW, scaleH, scaleChild));
     content.style.setProperty("--k", String(k));
+    return k;
+  }
+
+  function ensureContentFits(innerEl, guardX, guardY) {
+    const content = innerEl.querySelector(".label-content") || innerEl;
+
+    // Reset fallback-scale bij nieuwe metingen
+    if (content) content.style.setProperty("--k", "1");
+
+    // 1) Intrinsic fit (no transform scaling needed)
+    if (intrinsicFits(innerEl, guardX, guardY)) {
+      if (content) content.style.setProperty("--k", "1");
+      return 1;
+    }
+
+    // 2) Apply fallback scaling (based on intrinsic scroll metrics)
+    let k = applyScaleFallback(innerEl, guardX, guardY);
+
+    // 3) Verify visual bounding box (after transforms). If still clipped, apply an extra safety factor.
+    if (!visualFits(innerEl, guardX, guardY)) {
+      const ir = innerEl.getBoundingClientRect();
+      const cr = content.getBoundingClientRect();
+
+      const availW = Math.max(1, ir.width - guardX);
+      const availH = Math.max(1, ir.height - guardY);
+
+      const extraW = availW / Math.max(1, cr.width);
+      const extraH = availH / Math.max(1, cr.height);
+      const extra = Math.min(1, extraW, extraH);
+
+      k = Math.max(MIN_SCALE_K, Math.min(1, k * extra * 0.995));
+      content.style.setProperty("--k", String(k));
+    }
+
     return k;
   }
 
@@ -741,23 +832,23 @@
       innerEl.classList.add("softwrap-mode");
     }
 
-    // Reset fallback-scale bij nieuwe metingen
-    const content = innerEl.querySelector(".label-content");
-    if (content) content.style.setProperty("--k", "1");
-
-    // 3) ensure desc is max 2 lines
+    // 3) ensure description stays within maxLines (wrap width matters per layout)
     syncDescWidthToSpecs(innerEl);
     shrinkDescToMaxLines(innerEl, 3);
 
-    // 4) final safety net: scale down whole content if needed
-    if (!fitsWithGuard(innerEl, guardX, guardY)) {
-      applyScaleFallback(innerEl, guardX, guardY);
-    } else {
-      if (content) content.style.setProperty("--k", "1");
-    }
+    // 4) final safety net: scale down whole content if needed (intrinsic + visual check)
+    ensureContentFits(innerEl, guardX, guardY);
   }
 
   async function mountThenFit(container) {
+    // Wait for fonts + layout. This improves stability of wrapping/line metrics in tight cases.
+    if (document.fonts && document.fonts.ready) {
+      try {
+        await document.fonts.ready;
+      } catch (_) {
+        /* ignore */
+      }
+    }
     await new Promise((r) => requestAnimationFrame(r));
     await new Promise((r) => requestAnimationFrame(r));
     fitAllIn(container);
@@ -1006,41 +1097,31 @@
     if (!src)
       throw new Error(`Label ${labelIdx} niet gevonden voor PDF-capture.`);
 
-    const clone = src.cloneNode(true);
+    // Ensure fonts are ready before capture (prevents late reflow that can change wrapping).
+    // document.fonts is widely supported in modern browsers; we guard it for older ones.
+    if (document.fonts && document.fonts.ready) {
+      try {
+        await document.fonts.ready;
+      } catch (_) {
+        /* ignore */
+      }
+    }
 
-    clone.style.borderTop = `${BORDER_PX}px solid #000`;
-    clone.style.borderRight = `${BORDER_PX}px solid #000`;
-    clone.style.borderBottom = `${BORDER_PX}px solid #000`;
-    clone.style.borderLeft = `${BORDER_PX}px solid #000`;
-
-    const host = document.createElement("div");
-    host.className = "pdf-capture-host pdf-mode";
-    host.style.position = "fixed";
-    host.style.left = "-10000px";
-    host.style.top = "0";
-    host.style.background = "#fff";
-    host.style.padding = "0";
-    host.style.margin = "0";
-
-    document.body.appendChild(host);
-    host.appendChild(clone);
-
+    // Capture the *already fitted* DOM node directly. Cloning can subtly change layout
+    // (e.g. line-wrapping / subpixel rounding), which can reintroduce overflow in edge cases.
     const capScale = Math.max(
       2,
       window.devicePixelRatio || 1,
       1 / (currentPreviewScale || 1),
     );
 
-    const canvas = await html2canvas(clone, {
+    const canvas = await html2canvas(src, {
       scale: capScale,
       backgroundColor: "#ffffff",
       useCORS: true,
     });
 
     const rot = rotateCanvas90CW(canvas);
-
-    document.body.removeChild(host);
-
     return rot.toDataURL("image/png");
   }
 
@@ -1217,6 +1298,43 @@
     { name: "L63_5_W47_2_H12_3", len: 63.5, wid: 47.2, hei: 12.3 },
     { name: "L99_9_W5_1_H14_9", len: 99.9, wid: 5.1, hei: 14.9 },
   ];
+  // Stress strings for layout overflow regression (long tokens + hyphens + unicode dash).
+  const PDF_LAYOUT_STRESS_DESC =
+    "8719327417447 - BarDeluxe - 5-piece - Boston - Black / Slow Juicer – Cherry Red";
+  const PDF_LAYOUT_STRESS_EAN = "8719327417447";
+
+  function _pdfLayoutCheck(container) {
+    const issues = [];
+    for (let i = 1; i <= 4; i++) {
+      const inner = container?.querySelector(`#label${i} .label-inner`);
+      if (!inner) continue;
+
+      const w = inner.clientWidth;
+      const h = inner.clientHeight;
+      const guardX = Math.max(2, w * 0.015);
+      const guardY = Math.max(2, h * 0.015);
+
+      // After renderPreviewFor, fitAllIn() already ran. We validate that nothing is clipped.
+      const ok =
+        visualFits(inner, guardX, guardY) &&
+        ![
+          ...inner.querySelectorAll(
+            ".specs-grid .val, .code-box, .label-desc, .footer-text",
+          ),
+        ].some((n) => elementOverflows(n));
+
+      if (!ok) {
+        issues.push({
+          label: i,
+          bucketKey: inner.dataset.bucketKey || "",
+          layout: inner.dataset.layout || "",
+          w,
+          h,
+        });
+      }
+    }
+    return issues;
+  }
 
   function _pdfGeomRelDiff(a, b) {
     const denom = Math.abs(b) > 0 ? Math.abs(b) : 1;
@@ -1287,6 +1405,7 @@
       throw new Error("Kon preview niet renderen voor PDF self-test.");
 
     const { sizes, container } = result;
+    const layoutIssues = _pdfLayoutCheck(container);
     const order = [1, 3, 2, 4];
 
     const pageW = Math.max(...sizes.map((s) => s.h)) + PDF_MARGIN_CM * 2;
@@ -1329,6 +1448,7 @@
     const arrayBuffer = pdf.output("arraybuffer");
     return {
       arrayBuffer,
+      layoutIssues,
       expected: { pageWcm: pageW, pageHcm: pageH, ratios: expectedRatios },
       pdf, // optional (debug)
     };
@@ -1380,8 +1500,8 @@
 
         const vals = {
           code,
-          desc: "PDF geometry self-test",
-          ean: "0000000000000",
+          desc: PDF_LAYOUT_STRESS_DESC,
+          ean: PDF_LAYOUT_STRESS_EAN,
           qty: "1",
           gw: "0",
           cbm: "0",
@@ -1402,8 +1522,24 @@
           throw new Error(`Edge-case buiten bereik (5–100cm): ${tc.name}`);
         }
 
-        const { arrayBuffer, expected } =
+        const { arrayBuffer, expected, layoutIssues } =
           await _buildPdfArrayBufferForValues(vals);
+
+        if (layoutIssues && layoutIssues.length) {
+          fail++;
+          failures.push({
+            case: tc.name,
+            kind: "LAYOUT_OVERFLOW",
+            details: layoutIssues,
+          });
+          logLine(
+            `FAIL ${tc.name}: layout overflow in labels ${layoutIssues
+              .map((x) => x.label)
+              .join(", ")}`,
+            "fail",
+          );
+          continue;
+        }
 
         const txt = _pdfGeomDecodePdfText(arrayBuffer);
         const mb = _pdfGeomExtractMediaBoxPt(txt);
