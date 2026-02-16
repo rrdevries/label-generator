@@ -10,7 +10,7 @@
   - Bulk flow: parse XLSX/CSV -> map columns -> validate rows -> generate many PDFs -> zip as download (JSZip).
 
   Non-obvious invariants (business rules)
-  - Box dimensions are validated: 5–100 cm inclusive.
+  - Box dimensions are validated: 5–120 cm inclusive.
   - Label face size is always 0.9 * corresponding box face (10% smaller each side).
   - Layout (Standard / Stacked / Columns) is derived from the bucket key:
       * PORTRAIT: NARROW/STANDARD => Stacked, WIDE => Standard
@@ -46,7 +46,7 @@
 
   // Enforce allowed box dimension range (cm)
   const BOX_CM_MIN = 5;
-  const BOX_CM_MAX = 100;
+  const BOX_CM_MAX = 120;
   /* ====== BUCKET CONFIG ======
    Bucket anchors are loaded from labelBuckets.json.
    BUCKET_BY_KEY provides O(1) lookup for typography anchors.
@@ -142,7 +142,7 @@
     else if (D >= 10 && D < 25) sizeClass = "SMALL";
     else if (D >= 25 && D < 40) sizeClass = "MEDIUM";
     else if (D >= 40 && D < 70) sizeClass = "LARGE";
-    else if (D >= 70 && D <= 100) sizeClass = "EXTRA_LARGE";
+    else if (D >= 70 && D <= 120) sizeClass = "EXTRA_LARGE";
 
     if (!sizeClass) return null;
 
@@ -338,7 +338,7 @@
     return n.toFixed(2);
   }
 
-  /* ====== SINGLE INPUT VALIDATION (5–100 cm) ======
+  /* ====== SINGLE INPUT VALIDATION (5–120 cm) ======
    Only len/wid/hei are range-validated.
    Errors are shown inline (adds .is-invalid and a .field-error element).
 */
@@ -1272,23 +1272,23 @@
   // - A few decimal dimensions to exercise rounding
   const PDF_GEOMETRY_EDGE_CASES = [
     // Small H, large L/W
-    { name: "H05_L100_W100", len: 100, wid: 100, hei: 5 },
-    { name: "H05_L100_W60", len: 100, wid: 60, hei: 5 },
+    { name: "H05_L120_W120", len: 120, wid: 120, hei: 5 },
+    { name: "H05_L120_W60", len: 120, wid: 60, hei: 5 },
     { name: "H06_L90_W30", len: 90, wid: 30, hei: 6 },
     { name: "H08_L80_W20", len: 80, wid: 20, hei: 8 },
-    { name: "H10_L100_W50", len: 100, wid: 50, hei: 10 },
+    { name: "H10_L120_W60", len: 120, wid: 60, hei: 10 },
     { name: "H12_L70_W25", len: 70, wid: 25, hei: 12 },
-    { name: "H15_L100_W40", len: 100, wid: 40, hei: 15 },
+    { name: "H15_L120_W40", len: 120, wid: 40, hei: 15 },
 
     // Small L/W, large H
-    { name: "L05_W05_H100", len: 5, wid: 5, hei: 100 },
-    { name: "L06_W10_H100", len: 6, wid: 10, hei: 100 },
+    { name: "L05_W05_H120", len: 5, wid: 5, hei: 120 },
+    { name: "L06_W10_H120", len: 6, wid: 10, hei: 120 },
     { name: "L10_W15_H80", len: 10, wid: 15, hei: 80 },
     { name: "L12_W12_H70", len: 12, wid: 12, hei: 70 },
 
-    // Very narrow / very wide faces (within allowed 5–100cm)
-    { name: "L100_W05_H15", len: 100, wid: 5, hei: 15 },
-    { name: "L05_W100_H15", len: 5, wid: 100, hei: 15 },
+    // Very narrow / very wide faces (within allowed 5–120cm)
+    { name: "L120_W05_H15", len: 120, wid: 5, hei: 15 },
+    { name: "L05_W120_H15", len: 5, wid: 120, hei: 15 },
 
     // Square-ish / stable baselines
     { name: "L50_W50_H50", len: 50, wid: 50, hei: 50 },
@@ -1519,7 +1519,7 @@
             (d) => !Number.isFinite(d) || d < BOX_CM_MIN || d > BOX_CM_MAX,
           )
         ) {
-          throw new Error(`Edge-case buiten bereik (5–100cm): ${tc.name}`);
+          throw new Error(`Edge-case buiten bereik (5–120cm): ${tc.name}`);
         }
 
         const { arrayBuffer, expected, layoutIssues } =
