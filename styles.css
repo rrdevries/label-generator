@@ -404,7 +404,10 @@ select {
 .label-desc {
   display: block;
   margin: 0 auto;
-  width: var(--desc-w, auto); /* wordt door JS gezet op specs-grid breedte */
+  width: var(
+    --desc-w,
+    auto
+  ); /* JS: Standard/Stacked -> label-breedte, Columns -> auto */
   max-width: 100%;
   font-size: var(--fs-desc);
   line-height: 1.15;

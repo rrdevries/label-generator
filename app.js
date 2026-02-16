@@ -445,10 +445,20 @@
       return;
     }
 
+    // In Standard/Stacked we want ERP + productomschrijving to be as wide as the label allows
+    // (inside the label padding). This reduces unnecessary wrapping and prevents extra fallback
+    // scaling that makes the top block look "too narrow".
+    const innerW =
+      innerEl.clientWidth || innerEl.getBoundingClientRect().width || 0;
+    if (innerW > 0) {
+      desc.style.setProperty("--desc-w", Math.floor(innerW) + "px");
+      return;
+    }
+
+    // Fallback: if layout has not stabilized yet, sync to specs grid width (legacy behavior).
     const grid = innerEl.querySelector(".specs-grid");
     if (!grid) return;
 
-    // offsetWidth is layout-breedte (niet beïnvloed door transform scale)
     const w = grid.offsetWidth || grid.getBoundingClientRect().width;
     desc.style.setProperty("--desc-w", w + "px");
   }
@@ -1274,29 +1284,32 @@
     // Small H, large L/W
     { name: "H05_L120_W120", len: 120, wid: 120, hei: 5 },
     { name: "H05_L120_W60", len: 120, wid: 60, hei: 5 },
-    { name: "H06_L90_W30", len: 90, wid: 30, hei: 6 },
-    { name: "H08_L80_W20", len: 80, wid: 20, hei: 8 },
-    { name: "H10_L120_W60", len: 120, wid: 60, hei: 10 },
-    { name: "H12_L70_W25", len: 70, wid: 25, hei: 12 },
+    { name: "H06_L110_W30", len: 110, wid: 30, hei: 6 },
+    { name: "H08_L100_W20", len: 100, wid: 20, hei: 8 },
+    { name: "H10_L120_W50", len: 120, wid: 50, hei: 10 },
+    { name: "H12_L90_W25", len: 90, wid: 25, hei: 12 },
     { name: "H15_L120_W40", len: 120, wid: 40, hei: 15 },
 
     // Small L/W, large H
     { name: "L05_W05_H120", len: 5, wid: 5, hei: 120 },
     { name: "L06_W10_H120", len: 6, wid: 10, hei: 120 },
-    { name: "L10_W15_H80", len: 10, wid: 15, hei: 80 },
-    { name: "L12_W12_H70", len: 12, wid: 12, hei: 70 },
+    { name: "L10_W15_H100", len: 10, wid: 15, hei: 100 },
+    { name: "L12_W12_H90", len: 12, wid: 12, hei: 90 },
 
     // Very narrow / very wide faces (within allowed 5–120cm)
     { name: "L120_W05_H15", len: 120, wid: 5, hei: 15 },
     { name: "L05_W120_H15", len: 5, wid: 120, hei: 15 },
 
     // Square-ish / stable baselines
-    { name: "L50_W50_H50", len: 50, wid: 50, hei: 50 },
+    { name: "L60_W60_H60", len: 60, wid: 60, hei: 60 },
     { name: "L25_W25_H10", len: 25, wid: 25, hei: 10 },
+
+    // Realistic max-width case (matches the 120×120 scenario)
+    { name: "L120_W120_H60", len: 120, wid: 120, hei: 60 },
 
     // Decimals / rounding surfaces
     { name: "L63_5_W47_2_H12_3", len: 63.5, wid: 47.2, hei: 12.3 },
-    { name: "L99_9_W5_1_H14_9", len: 99.9, wid: 5.1, hei: 14.9 },
+    { name: "L119_9_W5_1_H14_9", len: 119.9, wid: 5.1, hei: 14.9 },
   ];
   // Stress strings for layout overflow regression (long tokens + hyphens + unicode dash).
   const PDF_LAYOUT_STRESS_DESC =
@@ -1315,13 +1328,24 @@
       const guardY = Math.max(2, h * 0.015);
 
       // After renderPreviewFor, fitAllIn() already ran. We validate that nothing is clipped.
-      const ok =
+      let ok =
         visualFits(inner, guardX, guardY) &&
         ![
           ...inner.querySelectorAll(
             ".specs-grid .val, .code-box, .label-desc, .footer-text",
           ),
         ].some((n) => elementOverflows(n));
+
+      // Regression guard: in Standard/Stacked the description should not be artificially narrowed
+      // to the specs-grid width (which increases wrapping and can trigger fallback scaling).
+      // Use offsetWidth (unaffected by transform scale) for a stable check.
+      const desc = inner.querySelector(".label-desc");
+      if (ok && desc && !inner.classList.contains("layout-columns")) {
+        const innerW = inner.clientWidth || 1;
+        const descW = desc.offsetWidth || 0;
+        const ratio = descW / innerW;
+        if (ratio < 0.85) ok = false;
+      }
 
       if (!ok) {
         issues.push({
@@ -1519,7 +1543,9 @@
             (d) => !Number.isFinite(d) || d < BOX_CM_MIN || d > BOX_CM_MAX,
           )
         ) {
-          throw new Error(`Edge-case buiten bereik (5–120cm): ${tc.name}`);
+          throw new Error(
+            `Edge-case buiten bereik (${BOX_CM_MIN}–${BOX_CM_MAX}cm): ${tc.name}`,
+          );
         }
 
         const { arrayBuffer, expected, layoutIssues } =
