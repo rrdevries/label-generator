@@ -390,12 +390,6 @@ select {
   text-align: center;
   gap: 0.9em;
 
-  /* Prevent shrink-to-fit collapse in extreme aspect ratios (e.g. very wide labels).
-     The content block must span the available label width so fitting logic does not
-     enter a runaway fallback-scale loop. */
-  width: 100%;
-  box-sizing: border-box;
-
   /* Fallback-scale vanuit JS (altijd alles tonen) */
   transform: scale(var(--k, 1));
   transform-origin: center;
@@ -410,10 +404,7 @@ select {
 .label-desc {
   display: block;
   margin: 0 auto;
-  width: var(
-    --desc-w,
-    100%
-  ); /* JS: Standard/Stacked -> label-breedte, Columns -> auto */
+  width: var(--desc-w, auto); /* wordt door JS gezet op specs-grid breedte */
   max-width: 100%;
   font-size: var(--fs-desc);
   line-height: 1.15;
