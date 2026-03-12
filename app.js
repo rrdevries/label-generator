@@ -688,11 +688,73 @@
    - detect overflow on key child elements, and
    - verify the *visual* bounding box after scaling.
 */
+  let textMeasureCtx = null;
+
+  function getTextMeasureCtx() {
+    if (textMeasureCtx) return textMeasureCtx;
+    const canvas = document.createElement("canvas");
+    textMeasureCtx = canvas.getContext("2d");
+    return textMeasureCtx;
+  }
+
+  function measureNoWrapTextWidth(el) {
+    if (!el || typeof window.getComputedStyle !== "function") return null;
+
+    const cs = window.getComputedStyle(el);
+    const whiteSpace = cs.whiteSpace || "";
+    if (!whiteSpace.includes("nowrap")) return null;
+
+    const ctx = getTextMeasureCtx();
+    if (!ctx) return null;
+
+    const rawText = (el.textContent || "").replace(/\s+/g, " ").trim();
+    if (!rawText) return 0;
+
+    let text = rawText;
+    if (cs.textTransform === "uppercase") text = text.toUpperCase();
+    else if (cs.textTransform === "lowercase") text = text.toLowerCase();
+
+    const font =
+      cs.font && cs.font !== ""
+        ? cs.font
+        : `${cs.fontStyle} ${cs.fontVariant} ${cs.fontWeight} ${cs.fontSize} / ${cs.lineHeight} ${cs.fontFamily}`;
+    ctx.font = font;
+
+    const glyphCount = Array.from(text).length;
+    const letterSpacing = parseFloat(cs.letterSpacing);
+    const extraLetterSpacing =
+      Number.isFinite(letterSpacing) && glyphCount > 1
+        ? letterSpacing * (glyphCount - 1)
+        : 0;
+
+    const spaceCount = (text.match(/ /g) || []).length;
+    const wordSpacing = parseFloat(cs.wordSpacing);
+    const extraWordSpacing =
+      Number.isFinite(wordSpacing) && spaceCount > 0
+        ? wordSpacing * spaceCount
+        : 0;
+
+    const padX =
+      (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+
+    return (
+      ctx.measureText(text).width + extraLetterSpacing + extraWordSpacing + padX
+    );
+  }
+
   function elementOverflows(el, tol = 0.5) {
     if (!el) return false;
-    return (
+
+    if (
       el.scrollWidth > el.clientWidth + tol ||
       el.scrollHeight > el.clientHeight + tol
+    ) {
+      return true;
+    }
+
+    const measuredNoWrapWidth = measureNoWrapTextWidth(el);
+    return (
+      measuredNoWrapWidth != null && measuredNoWrapWidth > el.clientWidth + tol
     );
   }
 
@@ -712,8 +774,8 @@
     if (grid && elementOverflows(grid)) return false;
 
     return (
-      content.scrollWidth <= innerEl.clientWidth - guardX &&
-      content.scrollHeight <= innerEl.clientHeight - guardY
+      content.scrollWidth <= innerEl.clientWidth - guardX * 2 &&
+      content.scrollHeight <= innerEl.clientHeight - guardY * 2
     );
   }
 
@@ -738,8 +800,8 @@
   function applyScaleFallback(innerEl, guardX, guardY) {
     const content = innerEl.querySelector(".label-content") || innerEl;
 
-    const availW = Math.max(1, innerEl.clientWidth - guardX);
-    const availH = Math.max(1, innerEl.clientHeight - guardY);
+    const availW = Math.max(1, innerEl.clientWidth - guardX * 2);
+    const availH = Math.max(1, innerEl.clientHeight - guardY * 2);
 
     const sw = Math.max(1, content.scrollWidth);
     const sh = Math.max(1, content.scrollHeight);
@@ -760,6 +822,10 @@
       const elCw = el.clientWidth;
       if (elSw > elCw + 0.5) {
         scaleChild = Math.min(scaleChild, elCw / elSw);
+      }
+      const measuredNoWrapWidth = measureNoWrapTextWidth(el);
+      if (measuredNoWrapWidth != null && measuredNoWrapWidth > elCw + 0.5) {
+        scaleChild = Math.min(scaleChild, elCw / measuredNoWrapWidth);
       }
       const elSh = el.scrollHeight;
       const elCh = el.clientHeight;
@@ -793,8 +859,8 @@
       const ir = innerEl.getBoundingClientRect();
       const cr = content.getBoundingClientRect();
 
-      const availW = Math.max(1, ir.width - guardX);
-      const availH = Math.max(1, ir.height - guardY);
+      const availW = Math.max(1, ir.width - guardX * 2);
+      const availH = Math.max(1, ir.height - guardY * 2);
 
       const extraW = availW / Math.max(1, cr.width);
       const extraH = availH / Math.max(1, cr.height);
