@@ -319,7 +319,7 @@ Key containers app.js writes into:
               <ul class="doc-list">
                 <li>
                   Doosmaten moeten tussen <strong>5</strong> en
-                  <strong>100</strong> cm liggen. Buiten dit bereik wordt het
+                  <strong>120</strong> cm liggen. Buiten dit bereik wordt het
                   veld rood en verschijnt een melding.
                 </li>
                 <li>
@@ -336,7 +336,7 @@ Key containers app.js writes into:
               <ul class="doc-list">
                 <li>
                   <strong>Veld rood / foutmelding</strong>: controleer of de
-                  waarde een getal is en tussen 5 en 100 cm ligt.
+                  waarde een getal is en tussen 5 en 120 cm ligt.
                 </li>
                 <li>
                   <strong>Tekst past niet</strong>: verkort de
@@ -430,38 +430,8 @@ Key containers app.js writes into:
                 <strong>Small</strong> 10–&lt;25,
                 <strong>Medium</strong> 25–&lt;40,
                 <strong>Large</strong> 40–&lt;70,
-                <strong>Extra-Large</strong> 70–100 (cm).
+                <strong>Extra-Large</strong> 70–120 (cm).
               </p>
-
-              <details class="selftest">
-                <summary>Regressie self-test (PDF geometry)</summary>
-                <p class="muted help-muted">
-                  Deze test genereert een kleine set “edge cases” en controleert
-                  in de resulterende PDF: (a) MediaBox paginagrootte en (b) de
-                  beeldverhouding (image Width/Height) t.o.v. de verwachte
-                  labelverhouding (H/W) binnen 0,2%.
-                </p>
-
-                <div class="selftest-actions">
-                  <button type="button" id="btnRunPdfGeometryTest" class="btn">
-                    Run PDF geometry test
-                  </button>
-                  <button
-                    type="button"
-                    id="btnDownloadPdfGeometryFailures"
-                    class="btn"
-                    disabled
-                  >
-                    Download fail-PDF’s (ZIP)
-                  </button>
-                </div>
-
-                <div
-                  id="pdfGeometryTestSummary"
-                  class="muted help-muted selftest-summary"
-                ></div>
-                <div id="pdfGeometryTestLog" class="selftest-log"></div>
-              </details>
             </section>
           </div>
         </div>
