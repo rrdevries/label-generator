@@ -1,0 +1,41 @@
+Studio RD - Commerciële Licentie (Individuele Licentie)
+Versie 2.0 - 2026-04-01
+
+Licentiegever: Renée de Vries | Studio RD (“Licentiegever”)
+Licentienemer: LifeGoods Group B.V., gevestigd te P.J. Oudweg 4, 1314 CH Almere, KvK 6911901 (“Licentienemer”)
+Software: “Etiketten Generator” en bijbehorende documentatie, broncode en builds (“Software”).
+
+Copyright © 2026 Renée de Vries handelend onder de naam Studio RD.
+Alle rechten voorbehouden.
+
+Deze software (“Etiketten Generator”), inclusief broncode, documentatie en bijbehorende
+bestanden, wordt uitsluitend in licentie verstrekt en niet verkocht.
+
+Toegestaan
+- Gebruik door LifeGoods Group B.V. voor intern gebruik binnen de eigen bedrijfsvoering.
+- Hosting onder één of meerdere eigen subdomeinen van LifeGoods Group B.V.
+- Aanpassing van de code voor intern gebruik.
+
+Niet toegestaan
+- Overdracht van de licentie aan derden zonder voorafgaande schriftelijke toestemming van Studio RD.
+- Verkoop, verhuur, verhandeling, weggeven of verspreiding van de software aan derden.
+- Beschikbaar stellen van de software aan derden, waaronder gelieerde vennootschappen,
+  zonder voorafgaande schriftelijke toestemming van Studio RD.
+- Verlenen van sublicenties.
+
+Uitzondering
+- Inschakeling van derden voor hosting of integratie ten behoeve van LifeGoods Group B.V.
+  is toegestaan, mits deze derden gebonden zijn aan geheimhouding en gebruiksbeperkingen
+  die passen bij de gesloten overeenkomst.
+
+Derden
+Derde-partij componenten en open-source onderdelen blijven onder hun eigen
+licentievoorwaarden vallen. Zie README en/of de betreffende bronvermeldingen.
+
+Support en onderhoud
+Tenzij schriftelijk anders overeengekomen, wordt de software geleverd “as is” en zijn
+support, onderhoud, bugfixes en wijzigingswerkzaamheden niet inbegrepen.
+
+Leidend document
+Bij strijdigheid tussen dit bestand en de tussen partijen gesloten overeenkomst, prevaleert
+de schriftelijk ondertekende Overdrachts- en Licentieovereenkomst.
