@@ -1,24 +1,27 @@
 Etiketten Generator — Third-Party Notices
 
-De volgende componenten worden gedistribueerd of gebruikt door de Software en
-vallen onder hun eigen licenties:
+De Software maakt gebruik van de volgende third-party componenten, die onder
+hun eigen licenties vallen:
 
-1) jsPDF
-   Copyright (c) 2014-heden Parallax
+1) html2canvas v1.4.1
+   Copyright (c) 2012 Niklas von Hertzen
    Licentie: MIT License
 
-2) html2canvas
-   Copyright (c) Niklas von Hertzen
+2) jsPDF v2.5.1
+   Copyright (c) 2010-2025 James Hall
+   Copyright (c) 2015-2025 yWorks GmbH
    Licentie: MIT License
 
-3) JSZip
-   Copyright (c) 2009-heden Stuart Knightley, David Duponchel, Franz Buchinger,
+3) JSZip v3.10.1
+   Copyright (c) 2009-2016 Stuart Knightley, David Duponchel, Franz Buchinger,
    António Afonso
-   Licentie: MIT License
+   Licentie: dual-licensed MIT License or GPLv3
+   Gebruikt onder: MIT License
 
-4) SheetJS (xlsx) — Community Edition
-   Copyright (c) 2012-heden SheetJS LLC
+4) SheetJS (xlsx) — Community Edition v0.18.5
+   Copyright (c) 2012-present SheetJS LLC
    Licentie: Apache License 2.0
 
-Kopieën van de volledige licentieteksten zijn beschikbaar via de respectieve
-projectpagina’s en/of in de distributies van deze componenten.
+De volledige licentieteksten en bijbehorende copyright notices zijn
+beschikbaar via de respectieve upstream-projecten en/of distributies van deze
+componenten.
